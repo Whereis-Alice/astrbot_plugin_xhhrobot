@@ -45,7 +45,9 @@ class FakeSession:
 
 
 class XhhClientTests(unittest.IsolatedAsyncioTestCase):
-    def make_client(self, responses: list[FakeResponse]) -> tuple[XhhClient, FakeSession]:
+    def make_client(
+        self, responses: list[FakeResponse]
+    ) -> tuple[XhhClient, FakeSession]:
         session = FakeSession(responses)
         client = XhhClient(
             api_base_url="https://api.xiaoheihe.cn",
@@ -86,7 +88,89 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         params = session.requests[0][2]["params"]
         self.assertEqual(params["message_type"], "16")
         self.assertIn("hkey", params)
-        self.assertEqual(session.requests[0][2]["headers"]["Cookie"], "user_heybox_id=42; token=value")
+        self.assertEqual(
+            session.requests[0][2]["headers"]["Cookie"],
+            "user_heybox_id=42; token=value",
+        )
+
+    async def test_fetch_comment_messages_filters_mixed_page_but_keeps_raw_count(
+        self,
+    ) -> None:
+        client, session = self.make_client(
+            [
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "messages": [
+                                {
+                                    "message_id": 31,
+                                    "message_type": 1,
+                                    "comment_a_id": 41,
+                                    "comment_a_text": "普通评论",
+                                    "link": {"linkid": 51},
+                                    "user_a": {"userid": 61},
+                                },
+                                {"message_id": 30, "message_type": 4},
+                                {
+                                    "message_id": 29,
+                                    "message_type": "2",
+                                    "comment_id": 39,
+                                    "content": "回复评论",
+                                    "link": {"link_id": 49},
+                                    "user_a": {"heybox_id": 59},
+                                },
+                            ]
+                        },
+                    }
+                )
+            ]
+        )
+
+        page = await client.fetch_comment_messages_page(offset=0, limit=20)
+
+        self.assertEqual(page.raw_count, 3)
+        self.assertEqual(page.message_ids, (31, 30, 29))
+        self.assertEqual([item.message_id for item in page.items], [31, 29])
+        self.assertEqual(page.items[0].source, "own_post_comment")
+        self.assertEqual(page.items[0].link_id, 51)
+        self.assertEqual(page.items[0].user_id, 61)
+        self.assertEqual(page.items[0].root_comment_id, 41)
+        params = session.requests[0][2]["params"]
+        self.assertNotIn("message_type", params)
+        self.assertEqual(params["no_more"], "false")
+
+    def test_feed_parser_handles_nested_links_and_deduplicates(self) -> None:
+        payload = {
+            "result": {
+                "feeds": [
+                    {
+                        "link": {
+                            "linkid": "701",
+                            "title": "第一帖",
+                            "description": "摘要",
+                            "user": {"userid": "81", "username": "甲"},
+                            "topics": [{"name": "硬件"}],
+                            "hashtags": [{"name": "测试"}],
+                            "up": 9,
+                            "comment_num": 4,
+                        }
+                    },
+                    {"link": {"linkid": 701, "title": "重复项"}},
+                    {"link_id": 702, "title": "第二帖"},
+                ]
+            }
+        }
+
+        posts = XhhClient.parse_feed_posts(payload, limit=20)
+
+        self.assertEqual([post.link_id for post in posts], [701, 702])
+        self.assertEqual(posts[0].author_id, "81")
+        self.assertEqual(posts[0].author_name, "甲")
+        self.assertEqual(posts[0].topics, ("硬件",))
+        self.assertEqual(posts[0].tags, ("测试",))
+        self.assertEqual(posts[0].likes, 9)
+        self.assertEqual(posts[0].comments, 4)
 
     async def test_fetch_post_extracts_text_images_topics_and_tags(self) -> None:
         content = json.dumps(
@@ -104,6 +188,7 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
                         "result": {
                             "link": {
                                 "title": "标题",
+                                "user": {"userid": "42", "username": "机器人"},
                                 "text": content,
                                 "topics": [{"name": "游戏"}],
                                 "hashtags": [{"name": "测试"}],
@@ -115,13 +200,17 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         )
         post = await client.fetch_post_context(99)
         self.assertEqual(post.title, "标题")
+        self.assertEqual(post.author_id, "42")
+        self.assertEqual(post.author_name, "机器人")
         self.assertEqual(post.body_text, "正文")
         self.assertEqual(post.image_urls, ("https://cdn.example/image.jpg",))
         self.assertEqual(post.topics, ("游戏",))
         self.assertEqual(post.tags, ("测试",))
 
     async def test_send_reply_uses_workshop_api_and_form_fields(self) -> None:
-        client, session = self.make_client([FakeResponse({"status": "ok", "msg": "done"})])
+        client, session = self.make_client(
+            [FakeResponse({"status": "ok", "msg": "done"})]
+        )
         receipt = await client.send_reply(text="回复", link_id=1, reply_id=2, root_id=3)
         self.assertEqual(receipt.status, "ok")
         method, url, kwargs = session.requests[0]
@@ -159,7 +248,9 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         cookies = SimpleCookie()
         cookies.load("user_heybox_id=88; session=abc")
         session.cookie_jar = list(cookies.values())
-        result = await client.poll_qr_login(QrChallenge(challenge.qr_url, challenge.state_params, 120))
+        result = await client.poll_qr_login(
+            QrChallenge(challenge.qr_url, challenge.state_params, 120)
+        )
         self.assertEqual(result.state, "success")
         self.assertIsNotNone(result.auth)
         assert result.auth is not None
@@ -196,7 +287,9 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             copy_url,
             "https://api.xiaoheihe.cn/bbs/app/api/qcloud/cos/copy/image/by/url",
         )
-        self.assertEqual(copy_kwargs["params"]["target_url"], "https://images.example/source.jpg")
+        self.assertEqual(
+            copy_kwargs["params"]["target_url"], "https://images.example/source.jpg"
+        )
 
         method, url, kwargs = session.requests[1]
         self.assertEqual(method, "POST")
@@ -212,7 +305,9 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             {"type": "img", "url": "https://cdn.xiaoheihe.cn/copied.jpg"},
         )
 
-    async def test_search_profile_and_sub_comments_use_expected_parameters(self) -> None:
+    async def test_search_profile_and_sub_comments_use_expected_parameters(
+        self,
+    ) -> None:
         client, session = self.make_client(
             [
                 FakeResponse({"status": "ok", "result": {"items": []}}),

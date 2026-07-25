@@ -14,7 +14,9 @@ import aiohttp
 
 from .models import (
     AuthInfo,
+    FeedPost,
     Mention,
+    NotificationPage,
     PostContext,
     QrChallenge,
     QrPollResult,
@@ -75,11 +77,17 @@ class XhhClient:
     async def start(self) -> None:
         if self._session is None or self._session.closed:
             timeout = aiohttp.ClientTimeout(total=self.timeout_seconds)
-            self._session = aiohttp.ClientSession(timeout=timeout, cookie_jar=aiohttp.CookieJar())
+            self._session = aiohttp.ClientSession(
+                timeout=timeout, cookie_jar=aiohttp.CookieJar()
+            )
             self._owns_session = True
 
     async def close(self) -> None:
-        if self._session is not None and self._owns_session and not self._session.closed:
+        if (
+            self._session is not None
+            and self._owns_session
+            and not self._session.closed
+        ):
             await self._session.close()
 
     def set_auth(self, auth: AuthInfo | None) -> None:
@@ -98,7 +106,9 @@ class XhhClient:
             raise XhhError("小黑盒没有返回登录二维码地址。", retryable=False)
         query = dict(parse_qsl(urlparse(qr_url).query, keep_blank_values=True))
         expires_in = self._to_int(result.get("expire"), 120)
-        return QrChallenge(qr_url=qr_url, state_params=query, expires_in=max(30, expires_in))
+        return QrChallenge(
+            qr_url=qr_url, state_params=query, expires_in=max(30, expires_in)
+        )
 
     async def poll_qr_login(self, challenge: QrChallenge) -> QrPollResult:
         response = await self._request_json(
@@ -110,7 +120,9 @@ class XhhClient:
         )
         result = self._result_mapping(response.payload)
         state = str(result.get("error") or "").strip().lower()
-        message = str(result.get("error_msg") or response.payload.get("msg") or "").strip()
+        message = str(
+            result.get("error_msg") or response.payload.get("msg") or ""
+        ).strip()
 
         if state == "ok":
             cookies = self._all_session_cookies()
@@ -136,19 +148,85 @@ class XhhClient:
             return QrPollResult("failed", message or "登录已取消。")
         return QrPollResult("pending", message or "等待扫码确认。")
 
-    async def fetch_mentions(self, *, offset: int = 0, limit: int = 20) -> list[Mention]:
+    async def fetch_mentions(
+        self, *, offset: int = 0, limit: int = 20
+    ) -> list[Mention]:
+        page = await self.fetch_mentions_page(offset=offset, limit=limit)
+        return list(page.items)
+
+    async def fetch_mentions_page(
+        self,
+        *,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> NotificationPage:
         payload = await self.fetch_messages(
             message_type="16",
             offset=offset,
             limit=limit,
         )
-        response = _JsonResponse(payload=payload, cookies={})
-        result = self._result_mapping(response.payload)
+        return self.parse_notification_page(payload, source="mention")
+
+    async def fetch_comment_messages(
+        self,
+        *,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> list[Mention]:
+        page = await self.fetch_comment_messages_page(offset=offset, limit=limit)
+        return list(page.items)
+
+    async def fetch_comment_messages_page(
+        self,
+        *,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> NotificationPage:
+        payload = await self.fetch_messages(
+            message_type="",
+            offset=offset,
+            limit=limit,
+        )
+        return self.parse_notification_page(
+            payload,
+            source="own_post_comment",
+            allowed_message_types={"1", "2"},
+        )
+
+    @classmethod
+    def parse_notification_page(
+        cls,
+        payload: Mapping[str, Any],
+        *,
+        source: str,
+        allowed_message_types: set[str] | None = None,
+    ) -> NotificationPage:
+        result = cls._result_mapping(dict(payload))
         raw_messages = result.get("messages")
         if not isinstance(raw_messages, list):
-            return []
-        mentions = [Mention.from_mapping(item) for item in raw_messages if isinstance(item, Mapping)]
-        return [mention for mention in mentions if mention.message_id > 0]
+            return NotificationPage()
+
+        message_ids: list[int] = []
+        items: list[Mention] = []
+        for raw in raw_messages:
+            if not isinstance(raw, Mapping):
+                continue
+            message_id = cls._to_int(raw.get("message_id"))
+            if message_id > 0:
+                message_ids.append(message_id)
+            if (
+                allowed_message_types is not None
+                and str(raw.get("message_type") or "") not in allowed_message_types
+            ):
+                continue
+            mention = Mention.from_mapping(raw, source=source)
+            if mention.message_id > 0:
+                items.append(mention)
+        return NotificationPage(
+            items=tuple(items),
+            message_ids=tuple(message_ids),
+            raw_count=len(raw_messages),
+        )
 
     async def fetch_post_context(self, link_id: int) -> PostContext:
         response = await self._request_json(
@@ -160,7 +238,9 @@ class XhhClient:
         result = self._result_mapping(response.payload)
         link = result.get("link")
         if not isinstance(link, Mapping):
-            raise XhhError("帖子详情响应中缺少 link 数据。", terminal=True, retryable=False)
+            raise XhhError(
+                "帖子详情响应中缺少 link 数据。", terminal=True, retryable=False
+            )
 
         text_parts: list[str] = []
         image_urls: list[str] = []
@@ -181,7 +261,9 @@ class XhhClient:
                     continue
                 item_type = str(item.get("type") or "text").lower()
                 text = str(item.get("text") or "").strip()
-                url = self._normalise_media_url(str(item.get("url") or item.get("src") or "").strip())
+                url = self._normalise_media_url(
+                    str(item.get("url") or item.get("src") or "").strip()
+                )
                 if item_type in {"text", "html"} and text:
                     text_parts.append(text)
                 elif url:
@@ -189,8 +271,22 @@ class XhhClient:
                 elif text:
                     text_parts.append(text)
 
+        user = link.get("user") or link.get("author") or link.get("userinfo")
+        user = user if isinstance(user, Mapping) else {}
         return PostContext(
             title=str(link.get("title") or "").strip(),
+            author_id=str(
+                user.get("heybox_id")
+                or user.get("user_heybox_id")
+                or user.get("userid")
+                or user.get("user_id")
+                or user.get("uid")
+                or user.get("id")
+                or ""
+            ).strip(),
+            author_name=str(
+                user.get("username") or user.get("nickname") or user.get("name") or ""
+            ).strip(),
             text_parts=tuple(text_parts),
             image_urls=tuple(dict.fromkeys(image_urls)),
             topics=tuple(self._extract_names(link.get("topics"))),
@@ -221,7 +317,9 @@ class XhhClient:
         )
         return response.payload
 
-    async def fetch_feed(self, *, offset: int = 0, pull: bool = False) -> dict[str, Any]:
+    async def fetch_feed(
+        self, *, offset: int = 0, pull: bool = False
+    ) -> dict[str, Any]:
         response = await self._request_json(
             "GET",
             "/bbs/app/feeds",
@@ -234,6 +332,113 @@ class XhhClient:
             auth_required=True,
         )
         return response.payload
+
+    async def fetch_feed_posts(
+        self,
+        *,
+        offset: int = 0,
+        pull: bool = True,
+        limit: int = 20,
+    ) -> list[FeedPost]:
+        payload = await self.fetch_feed(offset=offset, pull=pull)
+        return self.parse_feed_posts(payload, limit=limit)
+
+    @classmethod
+    def parse_feed_posts(
+        cls,
+        payload: Mapping[str, Any],
+        *,
+        limit: int = 20,
+    ) -> list[FeedPost]:
+        result = payload.get("result")
+        result = result if isinstance(result, Mapping) else {}
+        raw_links: Any = []
+        for value in (
+            result.get("links"),
+            result.get("feeds"),
+            result.get("list"),
+            payload.get("links"),
+        ):
+            if isinstance(value, list):
+                raw_links = value
+                break
+
+        posts: list[FeedPost] = []
+        seen: set[int] = set()
+        for raw_item in raw_links:
+            if not isinstance(raw_item, Mapping):
+                continue
+            nested = raw_item.get("link")
+            link = nested if isinstance(nested, Mapping) else raw_item
+            link_id = cls._to_int(
+                link.get("linkid")
+                or link.get("link_id")
+                or link.get("id")
+                or link.get("linkId")
+            )
+            if link_id <= 0 or link_id in seen:
+                continue
+            seen.add(link_id)
+
+            user = link.get("user") or link.get("author") or link.get("userinfo")
+            user = user if isinstance(user, Mapping) else {}
+            author_id = str(
+                user.get("heybox_id")
+                or user.get("user_heybox_id")
+                or user.get("userid")
+                or user.get("user_id")
+                or user.get("uid")
+                or user.get("id")
+                or ""
+            ).strip()
+            author_name = str(
+                user.get("username") or user.get("nickname") or user.get("name") or ""
+            ).strip()
+            created_at = cls._to_int(
+                link.get("create_at")
+                or link.get("created_at")
+                or link.get("create_time")
+                or link.get("time")
+                or link.get("timestamp")
+            )
+            if created_at > 100_000_000_000:
+                created_at //= 1000
+
+            posts.append(
+                FeedPost(
+                    link_id=link_id,
+                    title=str(
+                        link.get("title")
+                        or link.get("topic_title")
+                        or link.get("name")
+                        or ""
+                    ).strip(),
+                    description=str(
+                        link.get("description")
+                        or link.get("desc")
+                        or link.get("summary")
+                        or ""
+                    ).strip(),
+                    author_id=author_id,
+                    author_name=author_name,
+                    created_at=created_at,
+                    likes=cls._to_int(
+                        link.get("up") or link.get("like_num") or link.get("like_count")
+                    ),
+                    comments=cls._to_int(
+                        link.get("comment_num")
+                        or link.get("comments_num")
+                        or link.get("comment_count")
+                    ),
+                    topics=tuple(cls._extract_names(link.get("topics"))),
+                    tags=tuple(
+                        cls._extract_names(link.get("hashtags") or link.get("tags"))
+                    ),
+                )
+            )
+            if len(posts) >= max(1, min(50, int(limit or 20))):
+                break
+        return posts
 
     async def search(
         self,
@@ -523,7 +728,9 @@ class XhhClient:
                 "post_type": "1",
                 "words_count": str(len(body)),
                 "topic_ids": ",".join(topic_ids or []),
-                "hashtags": json.dumps(hashtags or [], ensure_ascii=False, separators=(",", ":")),
+                "hashtags": json.dumps(
+                    hashtags or [], ensure_ascii=False, separators=(",", ":")
+                ),
                 "text": json.dumps(content, ensure_ascii=False, separators=(",", ":")),
                 "link_tag": "11",
             },
@@ -531,7 +738,9 @@ class XhhClient:
         result = self._result_mapping(payload)
         link_id = payload.get("link_id") or result.get("link_id")
         if not str(link_id or "").strip():
-            raise XhhError("小黑盒发帖响应中缺少 link_id，无法确认帖子已发布。", retryable=False)
+            raise XhhError(
+                "小黑盒发帖响应中缺少 link_id，无法确认帖子已发布。", retryable=False
+            )
         return payload
 
     async def create_comment(
@@ -567,7 +776,9 @@ class XhhClient:
         folder_id: str = "",
     ) -> dict[str, Any]:
         if self.auth is None or not self.auth.heybox_id:
-            raise XhhError("登录凭据中缺少 heybox_id。", auth_required=True, retryable=False)
+            raise XhhError(
+                "登录凭据中缺少 heybox_id。", auth_required=True, retryable=False
+            )
         data = {
             "link_id": str(link_id),
             "userid": self.auth.heybox_id,
@@ -602,7 +813,11 @@ class XhhClient:
         followed: bool,
         link_id: int = 0,
     ) -> dict[str, Any]:
-        path = "/bbs/app/profile/follow/user" if followed else "/bbs/app/profile/follow/user/cancel"
+        path = (
+            "/bbs/app/profile/follow/user"
+            if followed
+            else "/bbs/app/profile/follow/user/cancel"
+        )
         data = {"following_id": user_id}
         if link_id > 0:
             data["link_id"] = str(link_id)
@@ -643,13 +858,17 @@ class XhhClient:
                 str(result.get("heybox__protocol__execute__directly") or "")
             ).lower()
             if "web_auth" in protocol or "name_verify" in protocol:
-                message = "小黑盒要求安全认证或实名认证，请先在 App 中完成后再发送私信。"
+                message = (
+                    "小黑盒要求安全认证或实名认证，请先在 App 中完成后再发送私信。"
+                )
             else:
                 message = "小黑盒私信响应中缺少消息 ID，无法确认私信已发送。"
             raise XhhError(message, retryable=False)
         return payload
 
-    async def send_reply(self, *, text: str, link_id: int, reply_id: int, root_id: int) -> ReplyReceipt:
+    async def send_reply(
+        self, *, text: str, link_id: int, reply_id: int, root_id: int
+    ) -> ReplyReceipt:
         response = await self._request_json(
             "POST",
             "/bbs/app/comment/create",
@@ -672,14 +891,33 @@ class XhhClient:
 
         combined = f"{status} {message}".lower()
         if self._looks_like_auth_error(combined):
-            raise XhhError(message or "小黑盒登录已失效。", auth_required=True, retryable=False)
-        if any(word in combined for word in ("评论已被删除", "帖子已删除", "无法评论", "不存在", "not found")):
-            raise XhhError(message or "目标评论无法回复。", terminal=True, retryable=False)
+            raise XhhError(
+                message or "小黑盒登录已失效。", auth_required=True, retryable=False
+            )
+        if any(
+            word in combined
+            for word in (
+                "评论已被删除",
+                "帖子已删除",
+                "无法评论",
+                "不存在",
+                "not found",
+            )
+        ):
+            raise XhhError(
+                message or "目标评论无法回复。", terminal=True, retryable=False
+            )
         if self._looks_like_rate_limit(combined):
-            raise XhhError(message or "小黑盒请求过于频繁。", retryable=True, retry_after=60)
+            raise XhhError(
+                message or "小黑盒请求过于频繁。", retryable=True, retry_after=60
+            )
         if status == "failed":
-            raise XhhError(message or "目标评论当前无法回复。", terminal=True, retryable=False)
-        raise XhhError(message or f"小黑盒回帖失败：{status or 'unknown'}", retryable=True)
+            raise XhhError(
+                message or "目标评论当前无法回复。", terminal=True, retryable=False
+            )
+        raise XhhError(
+            message or f"小黑盒回帖失败：{status or 'unknown'}", retryable=True
+        )
 
     async def _write_json(
         self,
@@ -769,9 +1007,13 @@ class XhhClient:
         url = f"{base_url}{path}"
         assert self._session is not None
         try:
-            async with self._session.request(method, url, params=query, data=data, headers=headers) as response:
+            async with self._session.request(
+                method, url, params=query, data=data, headers=headers
+            ) as response:
                 raw = await response.text(errors="replace")
-                cookies = {name: morsel.value for name, morsel in response.cookies.items()}
+                cookies = {
+                    name: morsel.value for name, morsel in response.cookies.items()
+                }
                 try:
                     payload = json.loads(raw)
                 except json.JSONDecodeError as exc:
@@ -780,7 +1022,9 @@ class XhhClient:
                         retryable=response.status == 429 or response.status >= 500,
                         auth_required=response.status in {401, 403},
                         delivery_uncertain=write_request and response.status >= 500,
-                        retry_after=self._retry_after(response.headers.get("Retry-After")),
+                        retry_after=self._retry_after(
+                            response.headers.get("Retry-After")
+                        ),
                     ) from exc
 
                 if not isinstance(payload, dict):
@@ -813,13 +1057,21 @@ class XhhClient:
         message = str(payload.get("msg") or "").strip()
         combined = f"{status} {message}".lower()
         if self._looks_like_auth_error(combined):
-            raise XhhError(message or "小黑盒登录已失效。", auth_required=True, retryable=False)
+            raise XhhError(
+                message or "小黑盒登录已失效。", auth_required=True, retryable=False
+            )
         if self._looks_like_rate_limit(combined):
-            raise XhhError(message or "小黑盒请求过于频繁。", retryable=True, retry_after=60)
+            raise XhhError(
+                message or "小黑盒请求过于频繁。", retryable=True, retry_after=60
+            )
         terminal = status == "failed" and any(
             word in combined for word in ("删除", "不存在", "不可见", "not found")
         )
-        raise XhhError(message or f"小黑盒接口返回 {status}。", retryable=not terminal, terminal=terminal)
+        raise XhhError(
+            message or f"小黑盒接口返回 {status}。",
+            retryable=not terminal,
+            terminal=terminal,
+        )
 
     def _all_session_cookies(self) -> dict[str, str]:
         if self._session is None:
@@ -837,7 +1089,9 @@ class XhhClient:
 
     @staticmethod
     def _format_cookie_header(cookies: Mapping[str, str]) -> str:
-        return "; ".join(f"{name}={value}" for name, value in cookies.items() if name and value)
+        return "; ".join(
+            f"{name}={value}" for name, value in cookies.items() if name and value
+        )
 
     @staticmethod
     def _result_mapping(payload: Mapping[str, Any]) -> Mapping[str, Any]:
@@ -850,7 +1104,17 @@ class XhhClient:
 
     @staticmethod
     def _looks_like_auth_error(value: str) -> bool:
-        return any(word in value for word in ("未登录", "登录失效", "请登录", "unauthorized", "forbidden", "cookie"))
+        return any(
+            word in value
+            for word in (
+                "未登录",
+                "登录失效",
+                "请登录",
+                "unauthorized",
+                "forbidden",
+                "cookie",
+            )
+        )
 
     @staticmethod
     def _looks_like_rate_limit(value: str) -> bool:
@@ -893,7 +1157,7 @@ class XhhClient:
             return None
 
     @staticmethod
-    def _to_int(value: Any, default: int) -> int:
+    def _to_int(value: Any, default: int = 0) -> int:
         try:
             return int(value)
         except (TypeError, ValueError):
