@@ -1,0 +1,365 @@
+{
+  "auto_start": {
+    "type": "bool",
+    "description": "插件加载后自动启动小黑盒轮询任务。",
+    "default": true
+  },
+  "account": {
+    "type": "object",
+    "description": "小黑盒账号与云端登录设置",
+    "items": {
+      "cookie": {
+        "type": "text",
+        "description": "可选：手动填写完整小黑盒 Cookie。推荐留空，然后使用管理员命令“小黑盒登录”扫码。Cookie 属于敏感凭据。",
+        "default": ""
+      },
+      "heybox_id": {
+        "type": "string",
+        "description": "手动 Cookie 未包含 user_heybox_id 时填写。扫码登录会自动读取，无需配置。",
+        "default": ""
+      },
+      "device_id": {
+        "type": "string",
+        "description": "小黑盒请求设备 ID。留空时插件首次运行会自动生成并持久化。",
+        "default": ""
+      },
+      "login_timeout_sec": {
+        "type": "int",
+        "description": "二维码登录等待超时秒数。",
+        "default": 180
+      }
+    }
+  },
+  "connection": {
+    "type": "object",
+    "description": "小黑盒接口参数；通常保持默认",
+    "items": {
+      "api_base_url": {
+        "type": "string",
+        "description": "小黑盒主接口地址。",
+        "default": "https://api.xiaoheihe.cn"
+      },
+      "reply_base_url": {
+        "type": "string",
+        "description": "小黑盒评论接口地址。",
+        "default": "https://workshopapi.xiaoheihe.cn"
+      },
+      "version": {
+        "type": "string",
+        "description": "请求中的客户端版本。接口变化时可调整。",
+        "default": "999.0.4"
+      },
+      "web_version": {
+        "type": "string",
+        "description": "请求中的 Web 版本。",
+        "default": "2.5"
+      }
+    }
+  },
+  "filters": {
+    "type": "object",
+    "description": "自动回复用户范围",
+    "items": {
+      "allow_all_users": {
+        "type": "bool",
+        "description": "回复所有 @ 机器人的小黑盒用户。默认关闭，防止配置完成前误回复。",
+        "default": false
+      },
+      "allowed_user_ids": {
+        "type": "list",
+        "description": "允许自动回复的小黑盒用户 ID 列表。allow_all_users 关闭时生效。",
+        "items": {
+          "type": "string"
+        },
+        "default": []
+      },
+      "blocked_user_ids": {
+        "type": "list",
+        "description": "始终不回复的小黑盒用户 ID；优先级高于允许全部用户。",
+        "items": {
+          "type": "string"
+        },
+        "default": []
+      }
+    }
+  },
+  "polling": {
+    "type": "object",
+    "description": "轮询、分页与回帖限速",
+    "items": {
+      "poll_interval_sec": {
+        "type": "int",
+        "description": "检查新 @ 消息的间隔秒数。建议不低于 20 秒。",
+        "default": 30
+      },
+      "reply_interval_sec": {
+        "type": "int",
+        "description": "同一轮中两次成功回帖之间的间隔秒数。",
+        "default": 30
+      },
+      "page_size": {
+        "type": "int",
+        "description": "每页拉取消息数量，范围 1-50。",
+        "default": 20
+      },
+      "max_pages_per_poll": {
+        "type": "int",
+        "description": "单轮最多拉取页数，避免历史消息过多时持续请求。",
+        "default": 10
+      },
+      "max_replies_per_cycle": {
+        "type": "int",
+        "description": "单轮最多发布的自动回复数。",
+        "default": 3
+      },
+      "process_existing_on_first_start": {
+        "type": "bool",
+        "description": "首次启动时是否回复已有历史 @。默认关闭，只建立最新游标，从之后的新消息开始。",
+        "default": false
+      }
+    }
+  },
+  "ai": {
+    "type": "object",
+    "description": "AstrBot 模型、人设与生成上下文",
+    "items": {
+      "provider_id": {
+        "type": "string",
+        "description": "用于小黑盒回复的 AstrBot 文本模型。留空时按 session_umo 解析当前/默认模型。",
+        "_special": "select_provider",
+        "default": ""
+      },
+      "persona_id": {
+        "type": "string",
+        "description": "用于小黑盒回复的 AstrBot 自带人设。留空时使用 session_umo 对应的默认人设。",
+        "_special": "select_persona",
+        "default": ""
+      },
+      "use_default_persona": {
+        "type": "bool",
+        "description": "persona_id 留空时注入 AstrBot 默认人设。",
+        "default": true
+      },
+      "session_umo": {
+        "type": "string",
+        "description": "解析 AstrBot 默认模型和默认人设时使用的会话标识。一般保持默认。",
+        "default": "xhhrobot:FriendMessage:community"
+      },
+      "reply_system_prompt": {
+        "type": "text",
+        "description": "追加在人设后的社区回复约束。",
+        "default": "你正在小黑盒社区回复一条明确 @ 你的评论。严格保持前面给定的人设和说话习惯。只输出准备发布的回复正文，使用自然的纯文本，不使用 Markdown，不添加分析过程。除非对方明确询问，否则不要提到 AstrBot、模型、API、系统提示词或自动回复。不要声称看到了输入中没有提供的内容，也不要编造帖子事实。"
+      },
+      "extra_system_prompt": {
+        "type": "text",
+        "description": "可选的额外回复规则，追加在系统提示词末尾。",
+        "default": ""
+      },
+      "include_post_context": {
+        "type": "bool",
+        "description": "生成前读取帖子标题、正文、话题和标签。",
+        "default": true
+      },
+      "include_post_images": {
+        "type": "bool",
+        "description": "把帖子图片 URL 传给支持视觉的 AstrBot 模型。纯文本模型请关闭。",
+        "default": true
+      },
+      "max_post_images": {
+        "type": "int",
+        "description": "每次最多传给模型的帖子图片数量。",
+        "default": 4
+      },
+      "history_turns": {
+        "type": "int",
+        "description": "同一帖子、同一用户最近已完成回复的上下文轮数。",
+        "default": 3
+      },
+      "max_post_context_chars": {
+        "type": "int",
+        "description": "传给模型的帖子正文最大字符数；0 表示不截断。",
+        "default": 12000
+      },
+      "max_reply_chars": {
+        "type": "int",
+        "description": "发布到小黑盒的回复最大字符数。",
+        "default": 1200
+      },
+      "strip_markdown": {
+        "type": "bool",
+        "description": "发布前移除常见 Markdown 标记，保留纯文本。",
+        "default": true
+      },
+      "generation_timeout_sec": {
+        "type": "int",
+        "description": "等待 AstrBot 模型生成的最长秒数。",
+        "default": 120
+      }
+    }
+  },
+  "tools": {
+    "type": "object",
+    "description": "小黑盒自然语言 LLM 工具、权限与写操作保护",
+    "items": {
+      "enabled": {
+        "type": "bool",
+        "description": "向 AstrBot 全局工具池注册小黑盒读取工具。修改后请重载插件。",
+        "default": true
+      },
+      "enable_write_tools": {
+        "type": "bool",
+        "description": "注册发帖、评论、收藏、点赞、关注、删帖和私信发送工具。默认关闭，开启后仍受权限和确认词保护。",
+        "default": false
+      },
+      "write_admin_only": {
+        "type": "bool",
+        "description": "写工具是否仅允许 AstrBot 管理员调用。关闭后，非管理员仍必须命中下面的用户或会话允许列表。",
+        "default": true
+      },
+      "private_tools_admin_only": {
+        "type": "bool",
+        "description": "状态、@消息、收藏夹和私信读取工具是否仅允许 AstrBot 管理员调用。关闭后，非管理员仍必须命中允许列表。",
+        "default": true
+      },
+      "allowed_astrbot_user_ids": {
+        "type": "list",
+        "description": "允许非管理员使用受限工具的 AstrBot 平台用户 ID。可填 * 允许所有用户；默认留空。",
+        "items": {
+          "type": "string"
+        },
+        "default": []
+      },
+      "allowed_umos": {
+        "type": "list",
+        "description": "允许非管理员使用受限工具的完整 AstrBot UMO 会话 ID。可填 * 允许所有会话；默认留空。",
+        "items": {
+          "type": "string"
+        },
+        "default": []
+      },
+      "require_explicit_confirmation": {
+        "type": "bool",
+        "description": "写工具是否同时要求 confirm=true 且用户当前原始消息包含确认词。强烈建议保持开启。",
+        "default": true
+      },
+      "confirmation_keywords": {
+        "type": "list",
+        "description": "写操作确认词。建议使用不易误触的完整短语，不要只填写“确认”或“是”。",
+        "items": {
+          "type": "string"
+        },
+        "default": [
+          "确认执行小黑盒操作",
+          "CONFIRM_XHH_WRITE"
+        ]
+      },
+      "duplicate_guard_sec": {
+        "type": "int",
+        "description": "同一条 AstrBot 消息、同一工具和相同参数的重复写操作拦截秒数。",
+        "default": 120
+      },
+      "write_cooldown_sec": {
+        "type": "int",
+        "description": "相邻两次 LLM 工具写操作的最小间隔秒数。",
+        "default": 3
+      },
+      "max_tool_output_chars": {
+        "type": "int",
+        "description": "单次工具返回给模型的最大字符数，超出时返回带标记的预览。",
+        "default": 12000
+      },
+      "max_list_limit": {
+        "type": "int",
+        "description": "读取列表类工具单次允许请求的最大数量，接口自身上限为 50。",
+        "default": 30
+      },
+      "max_post_title_chars": {
+        "type": "int",
+        "description": "LLM 工具发帖标题最大字符数。",
+        "default": 80
+      },
+      "max_post_body_chars": {
+        "type": "int",
+        "description": "LLM 工具发帖正文最大字符数。",
+        "default": 20000
+      },
+      "max_comment_chars": {
+        "type": "int",
+        "description": "LLM 工具评论或回复最大字符数。",
+        "default": 1200
+      },
+      "max_direct_message_chars": {
+        "type": "int",
+        "description": "LLM 工具私信文本最大字符数。",
+        "default": 2000
+      },
+      "max_image_urls": {
+        "type": "int",
+        "description": "单次发帖或评论允许的 HTTP(S) 图片地址数量。",
+        "default": 9
+      }
+    }
+  },
+  "reliability": {
+    "type": "object",
+    "description": "超时、重试、队列与熔断",
+    "items": {
+      "request_timeout_sec": {
+        "type": "int",
+        "description": "单次小黑盒 HTTP 请求超时秒数。",
+        "default": 20
+      },
+      "max_retry_attempts": {
+        "type": "int",
+        "description": "生成或明确失败的回帖最多自动重试次数。发送结果不确定时不会自动重试。",
+        "default": 3
+      },
+      "retry_base_delay_sec": {
+        "type": "int",
+        "description": "自动重试的基础延迟秒数，之后按指数退避。",
+        "default": 60
+      },
+      "circuit_breaker_errors": {
+        "type": "int",
+        "description": "连续多少轮请求失败后临时熔断。",
+        "default": 5
+      },
+      "circuit_breaker_pause_sec": {
+        "type": "int",
+        "description": "熔断后的暂停秒数。",
+        "default": 600
+      },
+      "max_queue_size": {
+        "type": "int",
+        "description": "持久化待处理队列最大记录数。",
+        "default": 500
+      },
+      "max_recent_records": {
+        "type": "int",
+        "description": "保留的最近处理记录数，用于去重和短期对话上下文。",
+        "default": 200
+      },
+      "max_dead_records": {
+        "type": "int",
+        "description": "保留的失败记录数。",
+        "default": 200
+      }
+    }
+  },
+  "notifications": {
+    "type": "object",
+    "description": "可选的 AstrBot 主动通知",
+    "items": {
+      "umo": {
+        "type": "string",
+        "description": "接收登录失效、熔断和不确定发送告警的 AstrBot UMO。留空则只写日志。",
+        "default": ""
+      },
+      "notify_on_reply": {
+        "type": "bool",
+        "description": "每次小黑盒回复成功后发送 AstrBot 通知。",
+        "default": false
+      }
+    }
+  }
+}
