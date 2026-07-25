@@ -1,7 +1,7 @@
 name: astrbot_plugin_xhhrobot
-display_name: 小黑盒社区机器人与 LLM 工具
-desc: 只运行 AstrBot，即可使用小黑盒扫码登录、人设自动回复及发帖、评论、搜索、私信等自然语言工具。
-version: v0.3.0
+display_name: 小黑盒bot
+desc: 在 AstrBot 内完成小黑盒扫码登录、人设自动回复，并提供发帖、评论、搜索、私信等自然语言工具。
+version: v0.3.1
 author: Whereis-Alice
 repo: https://github.com/Whereis-Alice/astrbot_plugin_xhhrobot
 astrbot_version: ">=4.16,<5"
