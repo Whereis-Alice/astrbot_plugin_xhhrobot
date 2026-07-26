@@ -57,6 +57,8 @@ class EventBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(comment.sender.user_id, "xhh:99")
         self.assertEqual(comment.self_id, "xhh:42")
         self.assertEqual(comment.session_id, "post!100")
+        self.assertEqual(comment.group.group_id, "100")
+        self.assertEqual(int(comment.group.group_id), 100)
         self.assertEqual(sum(isinstance(item, Image) for item in comment.message), 1)
         self.assertEqual(direct.type, MessageType.FRIEND_MESSAGE)
         self.assertEqual(direct.session_id, "dm!99")
@@ -180,6 +182,93 @@ class EventBridgeTests(unittest.IsolatedAsyncioTestCase):
             max_local_image_bytes=1024,
             cooldown_seconds=3,
         )
+
+    async def test_internal_plugin_error_result_is_not_posted(self) -> None:
+        event, client, callbacks = self._make_comment_event()
+        diagnostic = (
+            ":(\n\n在调用插件 cr4zythursday 的处理函数 on_message 时出现异常："
+            "invalid literal for int() with base 10: 'xhh-post:186407230'"
+        )
+
+        with patch.object(AstrMessageEvent, "send", new=AsyncMock()):
+            await event.send(MessageChain([Plain(diagnostic)]))
+
+        client.send_reply.assert_not_awaited()
+        callbacks["start"].assert_not_awaited()
+        callbacks["sent"].assert_not_awaited()
+        callbacks["empty"].assert_awaited_once()
+        self.assertEqual(event.delivery_future.result().status, "empty")
+
+    async def test_internal_plugin_error_suffix_is_removed_from_reply(self) -> None:
+        event, client, callbacks = self._make_comment_event()
+        diagnostic = (
+            ":(\n\n在调用插件 cr4zythursday 的处理函数 on_message 时出现异常：boom"
+        )
+
+        with patch.object(AstrMessageEvent, "send", new=AsyncMock()):
+            await event.send(MessageChain([Plain("正常回复\n\n"), Plain(diagnostic)]))
+
+        self.assertEqual(client.send_reply.await_args.kwargs["text"], "正常回复")
+        callbacks["start"].assert_awaited_once()
+        callbacks["sent"].assert_awaited_once()
+        callbacks["empty"].assert_not_awaited()
+
+    async def test_plain_sad_face_is_not_filtered(self) -> None:
+        event, client, callbacks = self._make_comment_event()
+
+        with patch.object(AstrMessageEvent, "send", new=AsyncMock()):
+            await event.send(MessageChain([Plain(":(")]))
+
+        self.assertEqual(client.send_reply.await_args.kwargs["text"], ":(")
+        callbacks["sent"].assert_awaited_once()
+
+    def _make_comment_event(
+        self,
+    ) -> tuple[XhhMessageEvent, AsyncMock, dict[str, AsyncMock]]:
+        message_obj = build_comment_message(
+            self_user_id="42",
+            session_id="post!100",
+            message_id="7",
+            sender_id="99",
+            sender_name="Alice",
+            message_text="评论正文",
+            image_urls=(),
+            link_id=100,
+            link_title="帖子标题",
+            timestamp=123,
+            raw_message={},
+        )
+        client = AsyncMock()
+        callbacks = {
+            "start": AsyncMock(),
+            "sent": AsyncMock(),
+            "error": AsyncMock(),
+            "empty": AsyncMock(),
+        }
+        event = XhhMessageEvent(
+            message_obj=message_obj,
+            target=EventTarget(
+                kind="comment",
+                source="mention",
+                event_key="comment:100:7",
+                raw_user_id="99",
+                link_id=100,
+                comment_id=7,
+                root_comment_id=7,
+            ),
+            client=client,
+            max_reply_chars=1000,
+            max_outgoing_images=2,
+            max_local_image_bytes=1024,
+            allowed_local_roots=(self.root,),
+            direct_message_cooldown_seconds=0,
+            clean_text=lambda value: value.strip(),
+            on_send_start=callbacks["start"],
+            on_sent=callbacks["sent"],
+            on_send_error=callbacks["error"],
+            on_empty=callbacks["empty"],
+        )
+        return event, client, callbacks
 
 
 if __name__ == "__main__":

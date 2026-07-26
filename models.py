@@ -2,11 +2,112 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import time
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
-from typing import Any, Mapping
+from html.parser import HTMLParser
+from typing import Any
 
 from .media import extract_image_urls
+
+_HTML_BLOCK_TAGS = frozenset(
+    {
+        "address",
+        "article",
+        "aside",
+        "blockquote",
+        "div",
+        "dl",
+        "fieldset",
+        "figcaption",
+        "figure",
+        "footer",
+        "form",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "header",
+        "hr",
+        "li",
+        "main",
+        "nav",
+        "ol",
+        "p",
+        "pre",
+        "section",
+        "table",
+        "tbody",
+        "td",
+        "tfoot",
+        "th",
+        "thead",
+        "tr",
+        "ul",
+    }
+)
+_HTML_SKIPPED_TAGS = frozenset({"script", "style"})
+
+
+class _HtmlTextParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
+        del attrs
+        tag = tag.lower()
+        if tag in _HTML_SKIPPED_TAGS:
+            self._skip_depth += 1
+        elif self._skip_depth == 0 and (tag == "br" or tag in _HTML_BLOCK_TAGS):
+            self._append_break()
+
+    def handle_startendtag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
+        self.handle_starttag(tag, attrs)
+        if tag.lower() in _HTML_SKIPPED_TAGS:
+            self.handle_endtag(tag)
+
+    def handle_endtag(self, tag: str) -> None:
+        tag = tag.lower()
+        if tag in _HTML_SKIPPED_TAGS:
+            self._skip_depth = max(0, self._skip_depth - 1)
+        elif self._skip_depth == 0 and tag in _HTML_BLOCK_TAGS:
+            self._append_break()
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth == 0:
+            self.parts.append(data)
+
+    def _append_break(self) -> None:
+        if self.parts and not self.parts[-1].endswith("\n"):
+            self.parts.append("\n")
+
+
+def _html_to_plain_text(value: Any) -> str:
+    text = str(value or "")
+    if not text:
+        return ""
+    parser = _HtmlTextParser()
+    parser.feed(text)
+    parser.close()
+    text = "".join(parser.parts)
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"[^\S\n]+", " ", text)
+    text = re.sub(r" *\n *", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
 
 
 def _as_int(value: Any) -> int:
@@ -105,13 +206,12 @@ class Mention:
                 or user.get("uid")
                 or user.get("id")
             ),
-            comment_text=str(
+            comment_text=_html_to_plain_text(
                 value.get("comment_a_text")
                 or value.get("comment_text")
                 or value.get("content")
                 or value.get("text")
-                or ""
-            ).strip(),
+            ),
             source=str(source or "mention"),
             user_name=str(
                 user.get("username") or user.get("nickname") or user.get("name") or ""
@@ -120,7 +220,7 @@ class Mention:
                 value.get("timestamp") or value.get("time") or value.get("create_time")
             ),
             link_title=str(link.get("title") or value.get("link_title") or "").strip(),
-            replied_text=str(value.get("comment_b_text") or "").strip(),
+            replied_text=_html_to_plain_text(value.get("comment_b_text")),
             image_urls=tuple(
                 extract_image_urls(
                     [
@@ -153,12 +253,12 @@ class Mention:
             root_comment_id=_as_int(value.get("root_comment_id")),
             link_id=_as_int(value.get("link_id")),
             user_id=_as_int(value.get("user_id")),
-            comment_text=str(value.get("comment_text") or "").strip(),
+            comment_text=_html_to_plain_text(value.get("comment_text")),
             source=str(value.get("source") or "mention"),
             user_name=str(value.get("user_name") or "").strip(),
             message_time=_as_int(value.get("message_time")),
             link_title=str(value.get("link_title") or "").strip(),
-            replied_text=str(value.get("replied_text") or "").strip(),
+            replied_text=_html_to_plain_text(value.get("replied_text")),
             image_urls=_string_tuple(value.get("image_urls")),
             replied_image_urls=_string_tuple(value.get("replied_image_urls")),
         )

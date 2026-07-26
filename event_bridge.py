@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from astrbot.api import logger
 from astrbot.api.event import AstrMessageEvent, MessageChain
 from astrbot.api.message_components import (
     At,
@@ -37,6 +39,12 @@ XHH_PLATFORM_META = PlatformMetadata(
     adapter_display_name="小黑盒bot",
     support_streaming_message=False,
     support_proactive_message=False,
+)
+
+_ASTRBOT_PLUGIN_ERROR_RE = re.compile(
+    r":\([ \t]*(?:\r?\n[ \t]*){1,3}"
+    r"在调用插件[^\r\n]+?的处理函数[^\r\n]+?时出现异常[：:]"
+    r"[\s\S]*\Z"
 )
 
 
@@ -114,7 +122,16 @@ class XhhMessageEvent(AstrMessageEvent):
                 return
             self._delivery_started = True
 
-            text = self._clean_text(self._message_chain_to_text(message)).strip()
+            raw_text = self._message_chain_to_text(message)
+            raw_text, suppressed_internal_error = _strip_astrbot_plugin_error(raw_text)
+            if suppressed_internal_error:
+                logger.warning(
+                    "xhhrobot suppressed AstrBot plugin error result: "
+                    "event_key=%s target=%s",
+                    self.target.event_key,
+                    self.target.kind,
+                )
+            text = self._clean_text(raw_text).strip()
             if len(text) > self.max_reply_chars:
                 text = text[: self.max_reply_chars].rstrip()
             image_sources = self._message_chain_to_image_sources(message)
@@ -270,7 +287,7 @@ def build_comment_message(
     message.session_id = session_id
     message.message_id = message_id
     message.group = Group(
-        group_id=f"xhh-post:{link_id}",
+        group_id=str(link_id),
         group_name=link_title or f"小黑盒帖子 {link_id}",
     )
     message.sender = sender
@@ -316,3 +333,10 @@ def build_direct_message(
 def _namespaced_user(user_id: str) -> str:
     value = str(user_id or "unknown").strip()
     return value if value.startswith("xhh:") else f"xhh:{value}"
+
+
+def _strip_astrbot_plugin_error(text: str) -> tuple[str, bool]:
+    match = _ASTRBOT_PLUGIN_ERROR_RE.search(text)
+    if match is None:
+        return text, False
+    return text[: match.start()].rstrip(), True
