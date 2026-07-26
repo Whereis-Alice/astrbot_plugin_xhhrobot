@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import html
 import json
+import re
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -11,6 +12,12 @@ from typing import Any
 from urllib.parse import parse_qsl, unquote, urlparse
 
 import aiohttp
+from aiohttp_socks import (
+    ProxyConnectionError,
+    ProxyConnector,
+    ProxyError,
+    ProxyTimeoutError,
+)
 
 from .models import (
     AuthInfo,
@@ -60,6 +67,7 @@ class XhhClient:
         web_version: str,
         device_id: str,
         timeout_seconds: int = 20,
+        proxy_url: str = "",
         auth: AuthInfo | None = None,
         session: aiohttp.ClientSession | None = None,
     ) -> None:
@@ -69,6 +77,7 @@ class XhhClient:
         self.web_version = web_version
         self.device_id = device_id
         self.timeout_seconds = max(5, timeout_seconds)
+        self.proxy_url = self._validate_proxy_url(proxy_url)
         self.auth = auth
         self._session = session
         self._owns_session = session is None
@@ -77,9 +86,22 @@ class XhhClient:
     async def start(self) -> None:
         if self._session is None or self._session.closed:
             timeout = aiohttp.ClientTimeout(total=self.timeout_seconds)
-            self._session = aiohttp.ClientSession(
-                timeout=timeout, cookie_jar=aiohttp.CookieJar()
-            )
+            session_kwargs: dict[str, Any] = {
+                "timeout": timeout,
+                "cookie_jar": aiohttp.CookieJar(),
+            }
+            if self.proxy_url:
+                try:
+                    session_kwargs["connector"] = ProxyConnector.from_url(
+                        self.proxy_url,
+                        rdns=True,
+                    )
+                except (TypeError, ValueError) as exc:
+                    raise XhhError(
+                        "SOCKS5 家庭代理配置无效。",
+                        retryable=False,
+                    ) from exc
+            self._session = aiohttp.ClientSession(**session_kwargs)
             self._owns_session = True
 
     async def close(self) -> None:
@@ -1043,12 +1065,64 @@ class XhhClient:
                 return _JsonResponse(payload=payload, cookies=cookies)
         except XhhError:
             raise
-        except (asyncio.TimeoutError, aiohttp.ClientError) as exc:
+        except (
+            asyncio.TimeoutError,
+            aiohttp.ClientError,
+            ProxyConnectionError,
+            ProxyError,
+            ProxyTimeoutError,
+        ) as exc:
             raise XhhError(
-                f"请求小黑盒失败：{exc}",
+                f"请求小黑盒失败：{self._safe_network_error(exc)}",
                 retryable=True,
                 delivery_uncertain=write_request,
             ) from exc
+
+    @staticmethod
+    def _validate_proxy_url(proxy_url: str) -> str:
+        value = str(proxy_url or "").strip()
+        if not value:
+            return ""
+        try:
+            parsed = urlparse(value)
+            host = parsed.hostname
+            port = parsed.port
+        except (TypeError, ValueError):
+            raise ValueError("家庭代理地址无效，请使用 socks5://主机:端口。") from None
+        if (
+            parsed.scheme.lower() != "socks5"
+            or not host
+            or port is None
+            or not 1 <= port <= 65535
+            or parsed.path not in {"", "/"}
+            or parsed.params
+            or parsed.query
+            or parsed.fragment
+            or any(character.isspace() for character in value)
+        ):
+            raise ValueError("家庭代理地址无效，请使用 socks5://主机:端口。")
+        return value
+
+    def _safe_network_error(self, exc: BaseException) -> str:
+        message = str(exc) or exc.__class__.__name__
+        if not self.proxy_url:
+            return message
+
+        message = message.replace(self.proxy_url, "[SOCKS5 家庭代理]")
+        try:
+            parsed = urlparse(self.proxy_url)
+        except ValueError:
+            parsed = None
+        if parsed is not None:
+            for secret in (parsed.username, parsed.password):
+                if secret:
+                    message = message.replace(unquote(secret), "[已隐藏]")
+                    message = message.replace(secret, "[已隐藏]")
+        return re.sub(
+            r"(?i)(socks5://)[^/@\s]+@",
+            r"\1[已隐藏]@",
+            message,
+        )
 
     def _raise_for_api_failure(self, payload: Mapping[str, Any]) -> None:
         status = self._api_status(payload)

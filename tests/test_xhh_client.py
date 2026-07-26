@@ -5,9 +5,12 @@ import unittest
 from collections import deque
 from http.cookies import SimpleCookie
 from typing import Any
+from unittest.mock import patch
+
+from aiohttp_socks import ProxyConnectionError
 
 from astrbot_plugin_xhhrobot.models import AuthInfo, QrChallenge
-from astrbot_plugin_xhhrobot.xhh_client import XhhClient
+from astrbot_plugin_xhhrobot.xhh_client import XhhClient, XhhError
 
 
 class FakeResponse:
@@ -44,6 +47,15 @@ class FakeSession:
         return FakeRequestContext(self.responses.popleft())
 
 
+class FailingSession(FakeSession):
+    def __init__(self, message: str) -> None:
+        super().__init__([])
+        self.message = message
+
+    def request(self, method: str, url: str, **kwargs: Any) -> FakeRequestContext:
+        raise ProxyConnectionError(self.message)
+
+
 class XhhClientTests(unittest.IsolatedAsyncioTestCase):
     def make_client(
         self, responses: list[FakeResponse]
@@ -59,6 +71,105 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             session=session,  # type: ignore[arg-type]
         )
         return client, session
+
+    async def test_start_without_proxy_uses_plain_aiohttp_session(self) -> None:
+        created_session = FakeSession([])
+        client = XhhClient(
+            api_base_url="https://api.xiaoheihe.cn",
+            reply_base_url="https://workshopapi.xiaoheihe.cn",
+            version="999.0.4",
+            web_version="2.5",
+            device_id="device",
+        )
+
+        with (
+            patch(
+                "astrbot_plugin_xhhrobot.xhh_client.aiohttp.ClientSession",
+                return_value=created_session,
+            ) as session_factory,
+            patch(
+                "astrbot_plugin_xhhrobot.xhh_client.ProxyConnector.from_url"
+            ) as connector_factory,
+        ):
+            await client.start()
+
+        connector_factory.assert_not_called()
+        self.assertNotIn("connector", session_factory.call_args.kwargs)
+
+    async def test_start_with_proxy_uses_remote_dns_connector(self) -> None:
+        proxy_url = "socks5://xhhbot:secret@100.64.0.10:1080"
+        connector = object()
+        created_session = FakeSession([])
+        client = XhhClient(
+            api_base_url="https://api.xiaoheihe.cn",
+            reply_base_url="https://workshopapi.xiaoheihe.cn",
+            version="999.0.4",
+            web_version="2.5",
+            device_id="device",
+            proxy_url=proxy_url,
+        )
+
+        with (
+            patch(
+                "astrbot_plugin_xhhrobot.xhh_client.aiohttp.ClientSession",
+                return_value=created_session,
+            ) as session_factory,
+            patch(
+                "astrbot_plugin_xhhrobot.xhh_client.ProxyConnector.from_url",
+                return_value=connector,
+            ) as connector_factory,
+        ):
+            await client.start()
+
+        connector_factory.assert_called_once_with(proxy_url, rdns=True)
+        self.assertIs(session_factory.call_args.kwargs["connector"], connector)
+
+    def test_proxy_url_rejects_unsupported_or_incomplete_addresses(self) -> None:
+        invalid_urls = (
+            "http://127.0.0.1:1080",
+            "socks5h://127.0.0.1:1080",
+            "socks5://",
+            "socks5://127.0.0.1",
+            "socks5://127.0.0.1:0",
+            "socks5://127.0.0.1:1080/path",
+        )
+        for proxy_url in invalid_urls:
+            with (
+                self.subTest(proxy_url=proxy_url),
+                self.assertRaisesRegex(ValueError, "socks5://"),
+            ):
+                XhhClient(
+                    api_base_url="https://api.xiaoheihe.cn",
+                    reply_base_url="https://workshopapi.xiaoheihe.cn",
+                    version="999.0.4",
+                    web_version="2.5",
+                    device_id="device",
+                    proxy_url=proxy_url,
+                )
+
+    async def test_proxy_credentials_are_removed_from_network_errors(self) -> None:
+        proxy_url = "socks5://xhhbot:secret-value@100.64.0.10:1080"
+        session = FailingSession(
+            f"authentication failed for secret-value via {proxy_url}"
+        )
+        client = XhhClient(
+            api_base_url="https://api.xiaoheihe.cn",
+            reply_base_url="https://workshopapi.xiaoheihe.cn",
+            version="999.0.4",
+            web_version="2.5",
+            device_id="device",
+            proxy_url=proxy_url,
+            auth=AuthInfo(cookie="user_heybox_id=42; token=value", heybox_id="42"),
+            session=session,  # type: ignore[arg-type]
+        )
+
+        with self.assertRaises(XhhError) as raised:
+            await client.fetch_feed()
+
+        error = str(raised.exception)
+        self.assertNotIn(proxy_url, error)
+        self.assertNotIn("secret-value", error)
+        self.assertIn("[已隐藏]", error)
 
     async def test_fetch_mentions_parses_upstream_fields(self) -> None:
         client, session = self.make_client(

@@ -8,6 +8,7 @@
 - **自主巡帖评论**：定时浏览推荐流，由模型按人设自主选帖、阅读正文并决定评论或跳过。
 - **20 个 LLM 工具**：支持动态、搜索、帖子、评论、用户、话题、收藏、点赞、关注、私信和发帖等能力。
 - **扫码登录**：由 AstrBot 管理员发起二维码登录，Cookie、设备 ID、游标和任务队列保存在插件数据中。
+- **家庭网络出口**：可只让小黑盒请求通过 SOCKS5 代理，不改变 AstrBot、模型或云服务器其他流量。
 - **写操作保护**：写工具默认关闭，并提供管理员权限、用户/会话允许列表、原始消息确认词、冷却和重复写入拦截。
 - **故障隔离**：内置超时、指数退避、熔断、持久化队列和发送结果不确定保护。
 
@@ -29,6 +30,7 @@
 | `filters.allow_all_users` | 仅在确认效果和频率后再考虑开启。 |
 | `filters.reply_to_own_post_comments` | 默认开启；允许回复 bot 自己帖子下无需 `@` 的普通评论。 |
 | `auto_browse.enabled` | 默认关闭；先用 `/小黑盒逛帖 预览` 检查选帖和评论效果。 |
+| `connection.proxy_url` | 美国等境外云服务器建议填写家庭 SOCKS5；留空表示云服务器直连。 |
 
 配置页已经按“账号与登录、模型与人设、回复范围、轮询、自动巡帖、工具权限、通知、稳定性、高级连接”分组。每个短标签下方都有完整说明，关键安全项会直接显示提示。
 
@@ -49,6 +51,105 @@
 状态页会显示登录来源、后台任务、回复范围、队列和 LLM 工具状态。
 
 > 推荐把 `account.cookie` 留空。Cookie 等同账号凭据，不要发到群聊、日志、问题反馈或公开仓库。
+
+## 家庭网络出口
+
+AstrBot 在美国云服务器运行时，可以让本插件的扫码、读帖、发帖、评论和私信请求统一从家里网络访问小黑盒。插件不会代理 AstrBot 平台消息、LLM 请求或服务器其他程序；代理不可用时请求会失败，不会自动回退到美国直连。
+
+这只能降低登录地区突然变化带来的风险，不能保证账号不被风控。行为频率、设备 ID、登录状态和小黑盒自身规则仍会影响账号状态。不要使用免费或多人共享代理，也不要在家用路由器上把 `1080` 端口直接映射到公网。
+
+### 方案一：Tailscale 私网（推荐）
+
+先在家庭出口设备和云服务器上安装 Tailscale，并登录同一个 Tailnet。家庭宽带没有公网 IP 或处于 CGNAT 下也可以使用。家庭设备可选下面任一种部署。
+
+#### Windows 常开电脑
+
+下载 [GOST](https://github.com/go-gost/gost/releases) 官方 Windows 二进制，在仅当前用户可读的目录创建 `config.yaml`：
+
+```yaml
+services:
+  - name: xhh-home-socks
+    addr: 127.0.0.1:11080
+    handler:
+      type: socks5
+      auth:
+        username: xhhbot
+        password: 换成独立强密码
+      metadata:
+        notls: true
+    listener:
+      type: tcp
+```
+
+启动 GOST，并由 Tailscale 在 Tailnet 内转发 TCP 端口：
+
+```powershell
+.\gost.exe -C .\config.yaml
+tailscale serve --bg --tcp 1080 tcp://127.0.0.1:11080
+tailscale ip -4
+```
+
+将 GOST 注册为当前用户登录后的计划任务并配置失败重启。GOST 只监听回环地址，`1080` 只由 Tailscale Serve 提供给 Tailnet，不需要创建公网防火墙规则。作为出口的电脑必须保持开机、联网且不进入睡眠。
+
+#### OpenWrt 或 Linux
+
+在家庭设备安装 `microsocks`。OpenWrt 可先尝试 `opkg update && opkg install tailscale microsocks`；具体包名以固件软件源为准。查看设备的 Tailscale IPv4，并让 SOCKS5 只监听这个地址：
+
+```bash
+tailscale ip -4
+microsocks -i 100.x.x.x -p 1080 -u xhhbot -P '换成独立强密码'
+```
+
+请用 OpenWrt `procd`、`systemd` 或容器重启策略保持 `microsocks` 运行，并在 Tailscale ACL/家庭防火墙中只允许云服务器访问该端口。不要设置公网端口转发。
+
+#### 云服务器验证
+
+在云服务器使用家庭设备的 Tailscale IPv4 验证出口；输出应当是家里的公网 IP：
+
+```bash
+curl --proxy 'socks5h://xhhbot:密码@100.x.x.x:1080' https://api.ipify.org
+```
+
+随后在插件配置中填写并重载插件：
+
+```text
+connection.proxy_url = socks5://xhhbot:密码@100.x.x.x:1080
+```
+
+插件已固定使用代理端解析 DNS。用户名或密码含 `@`、`:`、`/` 等字符时，需要先做 URL 百分号编码。
+
+### 方案二：SSH 反向隧道
+
+不准备安装 Tailscale 时，可由家庭设备主动连向云服务器，适用于没有公网 IP 的家庭宽带。先让家庭 SOCKS5 仅监听本机：
+
+```bash
+microsocks -i 127.0.0.1 -p 1080
+```
+
+再从家庭设备建立反向隧道：
+
+```bash
+autossh -M 0 -N \
+  -o ServerAliveInterval=30 \
+  -o ServerAliveCountMax=3 \
+  -R 127.0.0.1:11080:127.0.0.1:1080 \
+  clouduser@你的云服务器
+```
+
+使用独立 SSH 密钥并通过 `systemd` 或 OpenWrt `procd` 保活。云服务器的 SSH 服务需允许 TCP 转发，但远端监听必须保留为 `127.0.0.1`。在云服务器验证：
+
+```bash
+curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
+```
+
+验证是家庭公网 IP 后，将插件配置设为 `socks5://127.0.0.1:11080` 并重载。
+
+### 账号稳定建议
+
+- 保持插件自动生成并持久化的 `account.device_id`，不要频繁清空插件数据或重新扫码。
+- 自动巡帖建议保持至少 180 分钟间隔、每天不超过 2 至 3 条评论，并保留随机浮动。
+- 家庭出口中断时先恢复代理，再执行 `/小黑盒检查`；不要临时在家庭出口与云服务器直连之间反复切换。
+- `/小黑盒状态` 只会显示代理是否配置，不会回显代理地址、用户名或密码。
 
 ## 自动回复规则
 
@@ -209,7 +310,7 @@ Bot：调用 xhh_publish_post，并返回 link_id 或错误。
 | `tools` | LLM 工具开关、权限、确认词、限速和内容长度。 |
 | `notifications` | AstrBot 主动告警目标与成功通知。 |
 | `reliability` | HTTP 超时、重试、熔断和持久化记录上限。 |
-| `connection` | 小黑盒接口地址与版本参数，通常保持默认。 |
+| `connection` | 可选家庭 SOCKS5 代理，以及小黑盒接口地址和版本参数。 |
 
 ## 数据与更新
 
@@ -220,7 +321,7 @@ Bot：调用 xhh_publish_post，并返回 link_id 或错误。
 
 ## 风险说明
 
-小黑盒接口不是面向第三方机器人的稳定公开 API，字段、签名、风控和发布限制可能变化。建议保持默认限速，从允许列表和测试账号开始，并关注 `/小黑盒状态` 与 AstrBot 日志。
+小黑盒接口不是面向第三方机器人的稳定公开 API，字段、签名、风控和发布限制可能变化。家庭代理也不能规避平台规则或保证账号安全。建议保持默认限速，从允许列表和测试账号开始，并关注 `/小黑盒状态` 与 AstrBot 日志。
 
 账号受限、Cookie 失效或接口变化时，插件会返回错误或暂停自动回复，不会让 AstrBot 主进程退出。写请求发出后如网络中断，结果会被标记为不确定，默认不会自动重发。
 

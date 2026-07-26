@@ -659,9 +659,16 @@
   "connection": {
     "type": "object",
     "description": "高级连接设置",
-    "hint": "以下参数用于适配小黑盒接口变化。普通部署请保持默认，错误地址会导致登录、读取和写操作全部不可用。",
+    "hint": "可让插件单独通过家庭 SOCKS5 出口访问小黑盒，也可适配接口变化。代理不会影响 AstrBot、模型或云服务器其他流量；错误配置会导致小黑盒功能不可用。",
     "obvious_hint": true,
     "items": {
+      "proxy_url": {
+        "type": "string",
+        "description": "家庭 SOCKS5 代理",
+        "default": "",
+        "hint": "留空时从云服务器直连。格式：socks5://用户:密码@主机:端口；推荐使用 Tailscale 私网地址，或云服务器本机的 SSH 反向隧道端口。禁止把 SOCKS5 端口直接暴露到公网。修改后请重载插件。",
+        "obvious_hint": true
+      },
       "api_base_url": {
         "type": "string",
         "description": "主接口地址",

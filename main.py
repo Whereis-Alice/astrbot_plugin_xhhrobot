@@ -139,6 +139,7 @@ class XhhRobotPlugin(Star):
             timeout_seconds=self._int_cfg(
                 "reliability.request_timeout_sec", 20, 5, 120
             ),
+            proxy_url=self._str_cfg("connection.proxy_url", ""),
             auth=self.auth,
         )
         await self.client.start()
@@ -1598,6 +1599,12 @@ class XhhRobotPlugin(Star):
             f"模型：{provider}",
             f"人设：{persona}",
             f"用户范围：{user_scope}",
+            "家庭代理："
+            + (
+                "已配置（仅小黑盒流量）"
+                if self._str_cfg("connection.proxy_url", "")
+                else "未配置（云服务器直连）"
+            ),
             "自己帖子普通评论："
             + (
                 "自动回复"
