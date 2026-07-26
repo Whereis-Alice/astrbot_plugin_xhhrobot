@@ -36,6 +36,7 @@ class FakeEvent:
 class FakeClient:
     def __init__(self) -> None:
         self.published: list[dict[str, Any]] = []
+        self.comments: list[dict[str, Any]] = []
         self.search_payload: dict[str, Any] = {"status": "ok", "result": {"items": []}}
 
     async def publish_post(self, **kwargs: Any) -> dict[str, Any]:
@@ -45,14 +46,36 @@ class FakeClient:
     async def search(self, query: str, **kwargs: Any) -> dict[str, Any]:
         return self.search_payload
 
+    async def create_comment(self, **kwargs: Any) -> dict[str, Any]:
+        self.comments.append(kwargs)
+        return {"status": "ok", "result": {"comment_id": 456}}
+
 
 class FakePlugin:
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
         self.client = FakeClient()
+        self.recorded_bot_comments: list[dict[str, Any]] = []
 
     async def _status_text(self) -> str:
         return "登录：已配置"
+
+    async def _record_bot_comment(self, **kwargs: Any) -> None:
+        self.recorded_bot_comments.append(kwargs)
+
+
+class FakeArchive:
+    def __init__(self) -> None:
+        self.stats_calls: list[dict[str, Any]] = []
+        self.search_calls: list[dict[str, Any]] = []
+
+    async def statistics(self, **kwargs: Any) -> dict[str, Any]:
+        self.stats_calls.append(kwargs)
+        return {"received": {"unique_comments": 7}, "bot": {"comment_records": 2}}
+
+    async def search(self, **kwargs: Any) -> dict[str, Any]:
+        self.search_calls.append(kwargs)
+        return {"matched_count": 1, "records": [{"direction": "received"}]}
 
 
 class FakeToolManager:
@@ -96,7 +119,7 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         tools = XhhToolRuntime(plugin).build_tools()
         by_name = {tool.name: tool for tool in tools}
 
-        self.assertEqual(len(tools), 20)
+        self.assertEqual(len(tools), 22)
         self.assertTrue(by_name["xhh_search"].active)
         self.assertFalse(by_name["xhh_publish_post"].active)
 
@@ -181,9 +204,38 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["data"]["result"]["link_id"], 123)
         self.assertEqual(plugin.client.published[0]["topic_ids"], ["7214"])
 
+    async def test_comment_tool_archives_successful_bot_comment(self) -> None:
+        plugin = FakePlugin(self.config())
+        runtime = XhhToolRuntime(plugin)
+
+        result = json.loads(
+            await runtime.execute(
+                "create_comment",
+                FakeEvent(admin=True, message="确认执行小黑盒操作"),
+                {
+                    "link_id": "123",
+                    "text": "工具发布的评论",
+                    "reply_id": "50",
+                    "root_id": "40",
+                    "confirm": True,
+                },
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(len(plugin.recorded_bot_comments), 1)
+        archived = plugin.recorded_bot_comments[0]
+        self.assertEqual(archived["kind"], "llm_tool")
+        self.assertEqual(archived["link_id"], 123)
+        self.assertEqual(archived["comment_id"], 456)
+        self.assertEqual(archived["target_comment_id"], 50)
+        self.assertEqual(archived["root_comment_id"], 40)
+
     async def test_allowlisted_non_admin_can_write_when_admin_only_is_off(self) -> None:
         plugin = FakePlugin(
-            self.config(write_admin_only=False, allowed_astrbot_user_ids=["allowed-user"])
+            self.config(
+                write_admin_only=False, allowed_astrbot_user_ids=["allowed-user"]
+            )
         )
         runtime = XhhToolRuntime(plugin)
         event = FakeEvent(
@@ -205,7 +257,9 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_non_allowlisted_non_admin_is_denied(self) -> None:
         plugin = FakePlugin(
-            self.config(write_admin_only=False, allowed_astrbot_user_ids=["someone-else"])
+            self.config(
+                write_admin_only=False, allowed_astrbot_user_ids=["someone-else"]
+            )
         )
         runtime = XhhToolRuntime(plugin)
         event = FakeEvent(admin=False, message="确认执行小黑盒操作")
@@ -286,13 +340,55 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result["ok"])
         self.assertIn("管理员", result["error"])
 
+    async def test_comment_archive_tools_require_admin_and_forward_filters(
+        self,
+    ) -> None:
+        plugin = FakePlugin(self.config())
+        plugin.comment_archive = FakeArchive()
+        runtime = XhhToolRuntime(plugin)
+
+        denied = json.loads(
+            await runtime.execute(
+                "comment_stats",
+                FakeEvent(admin=False),
+                {"keyword": "AstrBot"},
+            )
+        )
+        stats = json.loads(
+            await runtime.execute(
+                "comment_stats",
+                FakeEvent(admin=True),
+                {"keyword": "AstrBot", "link_id": "123", "source": "mention"},
+            )
+        )
+        search = json.loads(
+            await runtime.execute(
+                "search_comment_archive",
+                FakeEvent(admin=True),
+                {"direction": "bot", "bot_kind": "auto_reply", "limit": 9},
+            )
+        )
+
+        self.assertFalse(denied["ok"])
+        self.assertTrue(stats["ok"])
+        self.assertTrue(search["ok"])
+        self.assertEqual(plugin.comment_archive.stats_calls[0]["link_id"], 123)
+        self.assertEqual(plugin.comment_archive.stats_calls[0]["source"], "mention")
+        self.assertEqual(plugin.comment_archive.search_calls[0]["direction"], "bot")
+        self.assertEqual(
+            plugin.comment_archive.search_calls[0]["bot_kind"], "auto_reply"
+        )
+        self.assertEqual(plugin.comment_archive.search_calls[0]["limit"], 9)
+
     async def test_tool_call_reads_event_from_astrbot_context_wrapper(self) -> None:
         plugin = FakePlugin(self.config())
         runtime = XhhToolRuntime(plugin)
         tool = next(tool for tool in runtime.build_tools() if tool.name == "xhh_search")
         context = SimpleNamespace(context=SimpleNamespace(event=FakeEvent()))
 
-        result = json.loads(await tool.call(context, query="AstrBot", search_type="link"))
+        result = json.loads(
+            await tool.call(context, query="AstrBot", search_type="link")
+        )
 
         self.assertTrue(result["ok"])
         self.assertTrue(result["untrusted_external_content"])
@@ -305,11 +401,11 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         plugin._registered_tool_names = []
 
         plugin._register_llm_tools()
-        self.assertEqual(len(plugin.context.added), 20)
-        self.assertEqual(len(plugin._registered_tool_names), 20)
+        self.assertEqual(len(plugin.context.added), 22)
+        self.assertEqual(len(plugin._registered_tool_names), 22)
 
         plugin._unregister_llm_tools()
-        self.assertEqual(len(plugin.context.manager.removed), 20)
+        self.assertEqual(len(plugin.context.manager.removed), 22)
         self.assertEqual(plugin._registered_tool_names, [])
 
 

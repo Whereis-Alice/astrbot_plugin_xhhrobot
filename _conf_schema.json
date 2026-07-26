@@ -566,6 +566,45 @@
       }
     }
   },
+  "analytics": {
+    "type": "object",
+    "description": "评论归档与统计",
+    "hint": "使用插件数据目录中的 SQLite 自动归档收到的评论和 Bot 发出的评论，用于去重、统计和自然语言查询；不需要另行部署数据库。",
+    "obvious_hint": true,
+    "items": {
+      "enabled": {
+        "type": "bool",
+        "description": "启用评论归档",
+        "default": true,
+        "hint": "开启后记录新收到和新发出的评论。默认首次轮询只建立游标，因此不会导入启用前的历史评论；关闭后两个归档查询工具会返回不可用。",
+        "obvious_hint": true
+      },
+      "retention_days": {
+        "type": "int",
+        "description": "归档保留天数",
+        "default": 365,
+        "min": 0,
+        "max": 3650,
+        "hint": "按插件观察到评论的时间保留数据；0 表示永久保留。清理只影响统计归档，不影响小黑盒平台上的内容。"
+      },
+      "max_records": {
+        "type": "int",
+        "description": "每类归档记录上限",
+        "default": 100000,
+        "min": 1000,
+        "max": 1000000,
+        "hint": "收到的平台原始观察与 Bot 评论分别最多保留的记录数；达到上限后优先删除最旧记录，失去全部观察的去重评论会一并清理。"
+      },
+      "query_max_results": {
+        "type": "int",
+        "description": "单次明细查询上限",
+        "default": 50,
+        "min": 1,
+        "max": 200,
+        "hint": "xhh_search_comment_archive 单次最多返回的具体记录数。统计工具不受此项影响。"
+      }
+    }
+  },
   "notifications": {
     "type": "object",
     "description": "AstrBot 通知",

@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import tempfile
 import unittest
+from pathlib import Path
 
+from astrbot_plugin_xhhrobot.comment_archive import CommentArchive
 from astrbot_plugin_xhhrobot.main import XhhRobotPlugin
 from astrbot_plugin_xhhrobot.models import (
     AuthInfo,
@@ -146,6 +149,48 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.ignored, 1)
         self.assertEqual([item.message_id for item in due], [12])
 
+    async def test_poll_archives_duplicate_platform_comments_once(self) -> None:
+        first = Mention(
+            message_id=11,
+            comment_id=777,
+            root_comment_id=777,
+            link_id=500,
+            user_id=1,
+            comment_text="重复通知",
+        )
+        second = Mention(
+            message_id=12,
+            comment_id=777,
+            root_comment_id=777,
+            link_id=500,
+            user_id=1,
+            comment_text="重复通知",
+        )
+        plugin = await self.make_plugin(
+            {
+                "polling": {"page_size": 20, "max_pages_per_poll": 10},
+                "filters": {"allow_all_users": True},
+            },
+            [[second, first]],
+        )
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        plugin.comment_archive = CommentArchive(
+            Path(temp_dir.name) / "comments.sqlite3",
+            retention_days=0,
+        )
+        plugin._archive_error = ""
+        await plugin.comment_archive.initialize()
+        await plugin.store.set_initial_cursor(10)
+
+        result = await plugin._poll_mentions()
+        stats = await plugin.comment_archive.statistics(keyword="重复通知")
+
+        self.assertEqual(result.queued, 1)
+        self.assertEqual(stats["received"]["raw_observations"], 2)
+        self.assertEqual(stats["received"]["unique_comments"], 1)
+        self.assertEqual(stats["received"]["duplicate_observations"], 1)
+
     async def test_page_limit_does_not_advance_cursor_or_drop_backlog(self) -> None:
         plugin = await self.make_plugin(
             {
@@ -244,6 +289,14 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
         plugin.client = client
         plugin.auth = AuthInfo(cookie="cookie=value", heybox_id="999")
         plugin.context = RecordingNotificationContext()
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        plugin.comment_archive = CommentArchive(
+            Path(temp_dir.name) / "comments.sqlite3",
+            retention_days=0,
+        )
+        plugin._archive_error = ""
+        await plugin.comment_archive.initialize()
 
         async def generate_reply(*args: object) -> str:
             return "自动回复"
@@ -267,6 +320,10 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("根评论 ID：121", notification)
         self.assertIn("用户 ID：1", notification)
         self.assertNotIn("[小黑盒机器人]", notification)
+        archive_result = await plugin.comment_archive.search(direction="all")
+        self.assertEqual(archive_result["matched_count"], 2)
+        directions = {record["direction"] for record in archive_result["records"]}
+        self.assertEqual(directions, {"received", "bot"})
 
     async def test_ordinary_comment_on_someone_elses_post_is_skipped(self) -> None:
         backend = MemoryBackend()

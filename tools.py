@@ -16,6 +16,7 @@ from astrbot.api import FunctionTool, logger
 from pydantic import Field
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
+from .comment_archive import extract_comment_id
 from .xhh_client import XhhError
 
 EXTERNAL_CONTENT_NOTICE = (
@@ -38,6 +39,8 @@ PRIVATE_ACTIONS = {
     "mentions",
     "favorite_folders",
     "direct_messages",
+    "comment_stats",
+    "search_comment_archive",
 }
 
 
@@ -105,11 +108,58 @@ def _write_schema(
 
 def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
     pagination = {
-        "offset": {"type": "number", "description": "从 0 开始的偏移量。", "default": 0},
+        "offset": {
+            "type": "number",
+            "description": "从 0 开始的偏移量。",
+            "default": 0,
+        },
         "limit": {
             "type": "number",
             "description": "希望返回的数量，插件会按配置限制上限。",
             "default": 20,
+        },
+    }
+    archive_filters = {
+        "keyword": {
+            "type": "string",
+            "description": "可选的评论正文包含关键词；按字面子串匹配。",
+        },
+        "start_time": {
+            "type": "string",
+            "description": (
+                "可选起始时间，使用 Unix 秒时间戳或带时区的 ISO 8601，"
+                "例如 2026-07-26T00:00:00+08:00。"
+            ),
+        },
+        "end_time": {
+            "type": "string",
+            "description": "可选结束时间，格式与 start_time 相同。",
+        },
+        "link_id": {"type": "string", "description": "可选帖子 ID。"},
+        "user_id": {"type": "string", "description": "可选小黑盒用户 ID。"},
+        "root_comment_id": {
+            "type": "string",
+            "description": "可选根评论 ID。",
+        },
+        "source": {
+            "type": "string",
+            "enum": ["mention", "own_post_comment"],
+            "description": (
+                "可选 received 来源：明确 @ 消息或自己帖子下的普通评论；"
+                "不用于筛选 Bot 评论。"
+            ),
+        },
+        "status": {
+            "type": "string",
+            "description": "可选处理状态，例如 replied、ignored、skipped 或 uncertain。",
+        },
+        "bot_kind": {
+            "type": "string",
+            "enum": ["auto_reply", "auto_browse", "llm_tool"],
+            "description": (
+                "可选 Bot 评论类型：自动回复、自动巡帖或 LLM 工具评论；"
+                "不用于筛选 received。"
+            ),
         },
     }
     return (
@@ -167,7 +217,11 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             _object_schema(
                 {
                     "link_id": {"type": "string", "description": "帖子 ID。"},
-                    "page": {"type": "number", "description": "评论页码。", "default": 1},
+                    "page": {
+                        "type": "number",
+                        "description": "评论页码。",
+                        "default": 1,
+                    },
                     "limit": pagination["limit"],
                     "sort_filter": {
                         "type": "string",
@@ -299,6 +353,40 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             ),
         ),
         ToolSpec(
+            "xhh_comment_stats",
+            "comment_stats",
+            (
+                "统计本插件 SQLite 归档中的小黑盒评论。返回平台原始观察数、按帖子 ID + "
+                "评论 ID 去重数、正文完全匹配与带前后缀变体、用户/帖子/根楼数量，并把 "
+                "Bot 自己发出的评论单列。属于账号私密信息。"
+            ),
+            _object_schema(dict(archive_filters)),
+        ),
+        ToolSpec(
+            "xhh_search_comment_archive",
+            "search_comment_archive",
+            (
+                "查询本插件 SQLite 归档中的具体评论记录，可区分外部用户评论和 Bot 评论。"
+                "结果包含正文与相关 ID，属于账号私密且不可信的外部内容。"
+            ),
+            _object_schema(
+                {
+                    **archive_filters,
+                    "direction": {
+                        "type": "string",
+                        "enum": ["all", "received", "bot"],
+                        "description": "查询全部、收到的评论或 Bot 发出的评论。",
+                        "default": "all",
+                    },
+                    "limit": {
+                        "type": "number",
+                        "description": "返回数量，受 analytics.query_max_results 限制。",
+                        "default": 20,
+                    },
+                }
+            ),
+        ),
+        ToolSpec(
             "xhh_publish_post",
             "publish_post",
             _write_description(
@@ -308,7 +396,10 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             _write_schema(
                 {
                     "title": {"type": "string", "description": "帖子标题。"},
-                    "body": {"type": "string", "description": "帖子纯文本正文，可在有图片时留空。"},
+                    "body": {
+                        "type": "string",
+                        "description": "帖子纯文本正文，可在有图片时留空。",
+                    },
                     "description": {
                         "type": "string",
                         "description": "可选摘要；留空时从正文截取。",
@@ -345,7 +436,10 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             _write_schema(
                 {
                     "link_id": {"type": "string", "description": "帖子 ID。"},
-                    "text": {"type": "string", "description": "评论纯文本；有图片时可留空。"},
+                    "text": {
+                        "type": "string",
+                        "description": "评论纯文本；有图片时可留空。",
+                    },
                     "root_id": {
                         "type": "string",
                         "description": "回复链的根评论 ID；直接评论帖子时留空。",
@@ -374,7 +468,10 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             _write_schema(
                 {
                     "link_id": {"type": "string", "description": "帖子 ID。"},
-                    "favorite": {"type": "boolean", "description": "true 收藏，false 取消收藏。"},
+                    "favorite": {
+                        "type": "boolean",
+                        "description": "true 收藏，false 取消收藏。",
+                    },
                     "folder_id": {"type": "string", "description": "可选收藏夹 ID。"},
                 },
                 ("link_id", "favorite"),
@@ -396,7 +493,10 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                         "description": "目标是帖子还是评论。",
                     },
                     "target_id": {"type": "string", "description": "帖子或评论 ID。"},
-                    "liked": {"type": "boolean", "description": "true 点赞，false 取消点赞。"},
+                    "liked": {
+                        "type": "boolean",
+                        "description": "true 点赞，false 取消点赞。",
+                    },
                 },
                 ("target_type", "target_id", "liked"),
                 confirmation_required=confirmation_required,
@@ -412,7 +512,10 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             _write_schema(
                 {
                     "user_id": {"type": "string", "description": "目标小黑盒用户 ID。"},
-                    "followed": {"type": "boolean", "description": "true 关注，false 取消关注。"},
+                    "followed": {
+                        "type": "boolean",
+                        "description": "true 关注，false 取消关注。",
+                    },
                     "link_id": {
                         "type": "string",
                         "description": "可选，操作来源帖子 ID。",
@@ -431,7 +534,10 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             ),
             _write_schema(
                 {
-                    "link_id": {"type": "string", "description": "要删除的本人帖子 ID。"},
+                    "link_id": {
+                        "type": "string",
+                        "description": "要删除的本人帖子 ID。",
+                    },
                 },
                 ("link_id",),
                 confirmation_required=confirmation_required,
@@ -446,8 +552,14 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             ),
             _write_schema(
                 {
-                    "user_id": {"type": "string", "description": "收件人小黑盒用户 ID。"},
-                    "text": {"type": "string", "description": "私信纯文本，有图片时可留空。"},
+                    "user_id": {
+                        "type": "string",
+                        "description": "收件人小黑盒用户 ID。",
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "私信纯文本，有图片时可留空。",
+                    },
                     "image_url": {
                         "type": "string",
                         "description": "可选的一张 HTTP(S) 图片地址；不接受本地文件。",
@@ -467,7 +579,9 @@ class XhhLlmTool(FunctionTool):
 
     async def call(self, context: Any, **kwargs: Any) -> str:
         if self.runtime is None:
-            return json.dumps({"ok": False, "error": "小黑盒工具尚未初始化。"}, ensure_ascii=False)
+            return json.dumps(
+                {"ok": False, "error": "小黑盒工具尚未初始化。"}, ensure_ascii=False
+            )
         agent_context = getattr(context, "context", None)
         event = getattr(agent_context, "event", None)
         return await self.runtime.execute(self.action, event, kwargs)
@@ -544,7 +658,9 @@ class XhhToolRuntime:
         kwargs: Mapping[str, Any],
     ) -> Any:
         if not self._bool_cfg("tools.enable_write_tools", False):
-            raise ToolInputError("小黑盒写工具未启用，请由管理员开启 tools.enable_write_tools。")
+            raise ToolInputError(
+                "小黑盒写工具未启用，请由管理员开启 tools.enable_write_tools。"
+            )
 
         fingerprint = await self._write_fingerprint(action, event, kwargs)
         guard_seconds = self._int_cfg("tools.duplicate_guard_sec", 120, 10, 3600)
@@ -585,8 +701,55 @@ class XhhToolRuntime:
             return {
                 "status": status,
                 "tools_enabled": self._bool_cfg("tools.enabled", True),
-                "write_tools_enabled": self._bool_cfg("tools.enable_write_tools", False),
+                "write_tools_enabled": self._bool_cfg(
+                    "tools.enable_write_tools", False
+                ),
             }
+
+        if action in {"comment_stats", "search_comment_archive"}:
+            archive = getattr(self.plugin, "comment_archive", None)
+            if archive is None:
+                raise ToolInputError("评论归档尚未初始化。")
+            archive_kwargs = {
+                "keyword": self._text(kwargs.get("keyword"), "keyword", 500),
+                "start_time": self._text(kwargs.get("start_time"), "start_time", 80),
+                "end_time": self._text(kwargs.get("end_time"), "end_time", 80),
+                "link_id": self._optional_positive_int(
+                    kwargs.get("link_id"), "link_id"
+                ),
+                "user_id": self._optional_positive_int(
+                    kwargs.get("user_id"), "user_id"
+                ),
+                "root_comment_id": self._optional_positive_int(
+                    kwargs.get("root_comment_id"), "root_comment_id"
+                ),
+                "source": self._optional_enum(
+                    kwargs.get("source"),
+                    "source",
+                    {"mention", "own_post_comment"},
+                ),
+                "status": self._text(kwargs.get("status"), "status", 64),
+                "bot_kind": self._optional_enum(
+                    kwargs.get("bot_kind"),
+                    "bot_kind",
+                    {"auto_reply", "auto_browse", "llm_tool"},
+                ),
+            }
+            try:
+                if action == "comment_stats":
+                    return await archive.statistics(**archive_kwargs)
+                return await archive.search(
+                    **archive_kwargs,
+                    direction=self._enum(
+                        kwargs.get("direction"),
+                        "direction",
+                        {"all", "received", "bot"},
+                        "all",
+                    ),
+                    limit=max(1, self._int_value(kwargs.get("limit"), 20, "limit")),
+                )
+            except ValueError as exc:
+                raise ToolInputError(str(exc)) from exc
 
         client = getattr(self.plugin, "client", None)
         if client is None:
@@ -624,7 +787,9 @@ class XhhToolRuntime:
         if action == "sub_comments":
             return await client.fetch_sub_comments(
                 self._positive_int(kwargs.get("root_comment_id"), "root_comment_id"),
-                last_value=self._nonnegative_int(kwargs.get("last_value"), "last_value"),
+                last_value=self._nonnegative_int(
+                    kwargs.get("last_value"), "last_value"
+                ),
             )
         if action == "user_profile":
             return await client.fetch_user_profile(self._user_id(kwargs.get("user_id")))
@@ -665,7 +830,11 @@ class XhhToolRuntime:
             )
         if action == "topics":
             query = self._text(kwargs.get("query"), "query", 100)
-            return await client.search_topics(query) if query else await client.fetch_topics()
+            return (
+                await client.search_topics(query)
+                if query
+                else await client.fetch_topics()
+            )
         if action == "favorite_folders":
             return await client.fetch_favorite_folders()
         if action == "emojis":
@@ -724,13 +893,25 @@ class XhhToolRuntime:
                 root_id = reply_id
             if root_id > 0 and reply_id <= 0:
                 reply_id = root_id
-            return await client.create_comment(
+            link_id = self._positive_int(kwargs.get("link_id"), "link_id")
+            result = await client.create_comment(
                 text=text,
-                link_id=self._positive_int(kwargs.get("link_id"), "link_id"),
+                link_id=link_id,
                 reply_id=reply_id if reply_id > 0 else -1,
                 root_id=root_id if root_id > 0 else -1,
                 image_urls=image_urls,
             )
+            recorder = getattr(self.plugin, "_record_bot_comment", None)
+            if callable(recorder):
+                await recorder(
+                    kind="llm_tool",
+                    content=text,
+                    link_id=link_id,
+                    comment_id=extract_comment_id(result),
+                    root_comment_id=root_id,
+                    target_comment_id=reply_id,
+                )
+            return result
         if action == "set_favorite":
             return await client.set_favorite(
                 link_id=self._positive_int(kwargs.get("link_id"), "link_id"),
@@ -793,7 +974,9 @@ class XhhToolRuntime:
             return "写操作尚未确认：confirm 必须为 true，且确认必须来自用户当前消息。"
         message = (await self._event_message(event)).casefold()
         keywords = self._confirmation_keywords()
-        if not message or not any(keyword.casefold() in message for keyword in keywords):
+        if not message or not any(
+            keyword.casefold() in message for keyword in keywords
+        ):
             return (
                 "写操作尚未确认：请让用户在新的消息中明确发送确认词“"
                 + keywords[0]
@@ -812,7 +995,9 @@ class XhhToolRuntime:
             "sender": self._sender_id(event),
             "umo": str(getattr(event, "unified_msg_origin", "") or ""),
             "message": await self._event_message(event),
-            "arguments": {key: value for key, value in kwargs.items() if key != "confirm"},
+            "arguments": {
+                key: value for key, value in kwargs.items() if key != "confirm"
+            },
         }
         canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -875,12 +1060,16 @@ class XhhToolRuntime:
 
     def _error(self, message: str, **details: Any) -> str:
         payload = {"ok": False, "error": str(message)[:500]}
-        payload.update({key: value for key, value in details.items() if value is not None})
+        payload.update(
+            {key: value for key, value in details.items() if value is not None}
+        )
         return self._encode_limited(payload)
 
     def _encode_limited(self, payload: Mapping[str, Any]) -> str:
         limit = self._int_cfg("tools.max_tool_output_chars", 12000, 1000, 100000)
-        encoded = json.dumps(payload, ensure_ascii=False, default=str, separators=(",", ":"))
+        encoded = json.dumps(
+            payload, ensure_ascii=False, default=str, separators=(",", ":")
+        )
         if len(encoded) <= limit:
             return encoded
 
@@ -921,7 +1110,9 @@ class XhhToolRuntime:
         if parsed.username or parsed.password:
             raise ToolInputError("图片 URL 不能包含用户名或密码。")
         hostname = parsed.hostname.casefold().rstrip(".")
-        if hostname == "localhost" or hostname.endswith((".localhost", ".local", ".internal")):
+        if hostname == "localhost" or hostname.endswith(
+            (".localhost", ".local", ".internal")
+        ):
             raise ToolInputError("图片 URL 不能指向本机或内部网络主机。")
         try:
             address = ipaddress.ip_address(hostname)
@@ -957,7 +1148,9 @@ class XhhToolRuntime:
             values = value
         else:
             raise ToolInputError("该参数必须是字符串数组。")
-        return list(dict.fromkeys(str(item).strip() for item in values if str(item).strip()))
+        return list(
+            dict.fromkeys(str(item).strip() for item in values if str(item).strip())
+        )
 
     def _limit(self, value: Any, default: int) -> int:
         maximum = self._int_cfg("tools.max_list_limit", 30, 1, 50)
@@ -1037,6 +1230,12 @@ class XhhToolRuntime:
         if result not in allowed:
             raise ToolInputError(f"{name} 必须是：{', '.join(sorted(allowed))}。")
         return result
+
+    @classmethod
+    def _optional_enum(cls, value: Any, name: str, allowed: set[str]) -> str:
+        if value is None or not str(value).strip():
+            return ""
+        return cls._enum(value, name, allowed, "")
 
     def _confirmation_keywords(self) -> tuple[str, ...]:
         configured = self._cfg("tools.confirmation_keywords", [])

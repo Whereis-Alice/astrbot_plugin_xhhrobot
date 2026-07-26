@@ -27,6 +27,7 @@ from .auto_browse import (
     parse_selection,
     searchable_text,
 )
+from .comment_archive import CommentArchive, extract_comment_id
 from .models import (
     AuthInfo,
     FeedPost,
@@ -69,7 +70,7 @@ class CycleResult:
     skipped: int = 0
     uncertain: int = 0
 
-    def merge(self, other: "CycleResult") -> None:
+    def merge(self, other: CycleResult) -> None:
         for field_name in (
             "fetched",
             "queued",
@@ -101,6 +102,14 @@ class XhhRobotPlugin(Star):
                 "auto_browse.max_history_records", 500, 100, 5000
             ),
         )
+        self.comment_archive = CommentArchive(
+            self.data_dir / "comment_archive.sqlite3",
+            enabled=self._bool_cfg("analytics.enabled", True),
+            retention_days=self._int_cfg("analytics.retention_days", 365, 0, 3650),
+            max_records=self._int_cfg("analytics.max_records", 100000, 1000, 1000000),
+            query_max_results=self._int_cfg("analytics.query_max_results", 50, 1, 200),
+        )
+        self._archive_error = ""
         self.client: XhhClient | None = None
         self.auth: AuthInfo | None = None
         self._auth_source = "none"
@@ -124,6 +133,12 @@ class XhhRobotPlugin(Star):
 
     async def initialize(self) -> None:
         await self.store.initialize()
+        try:
+            await self.comment_archive.initialize()
+        except Exception as exc:
+            self._archive_error = str(exc)
+            self.comment_archive.enabled = False
+            logger.exception("%s comment archive initialization failed", PLUGIN_ID)
         device_id = await self._resolve_device_id()
         self.auth, self._auth_source = await self._load_auth()
         self.client = XhhClient(
@@ -194,7 +209,7 @@ class XhhRobotPlugin(Star):
             "/小黑盒测试 帖子ID 测试消息 - 只生成回复，不发布\n\n"
             "/小黑盒逛帖 预览 - 立即选帖并生成评论，但不发布\n"
             "/小黑盒逛帖 - 自动巡帖已启用时立即执行一次\n\n"
-            "自然语言工具：动态、搜索、帖子/评论、用户资料、话题、收藏、点赞、关注、私信和发帖。\n"
+            "自然语言工具：动态、搜索、帖子/评论、用户资料、话题、收藏、点赞、关注、私信、发帖和评论归档统计。\n"
             f"写工具默认关闭；{confirmation_help}\n"
             "自己帖子下的普通评论可无需 @ 自动回复，仍受用户允许范围控制。\n"
             "自动巡帖默认关闭；开启后会在无需逐条确认的情况下自主选择帖子并评论。"
@@ -721,8 +736,9 @@ class XhhRobotPlugin(Star):
                     reason=decision.reason,
                     comment_text=comment,
                 )
+                browse_event_key = f"auto_browse:{selected.link_id}:{uuid.uuid4().hex}"
                 try:
-                    await self.client.create_comment(
+                    comment_result = await self.client.create_comment(
                         text=comment,
                         link_id=selected.link_id,
                     )
@@ -736,6 +752,17 @@ class XhhRobotPlugin(Star):
                             reason="自动评论请求执行期间任务被停止，无法确认是否已发布。",
                             comment_text=comment,
                             evaluated=True,
+                        )
+                    )
+                    await asyncio.shield(
+                        self._record_bot_comment(
+                            kind="auto_browse",
+                            content=comment,
+                            link_id=selected.link_id,
+                            status="uncertain",
+                            reason="自动评论请求执行期间任务被停止，无法确认是否已发布。",
+                            target_user_id=selected.author_id,
+                            event_key=browse_event_key,
                         )
                     )
                     raise
@@ -752,6 +779,15 @@ class XhhRobotPlugin(Star):
                     )
                     if status == "uncertain":
                         result.uncertain += 1
+                        await self._record_bot_comment(
+                            kind="auto_browse",
+                            content=comment,
+                            link_id=selected.link_id,
+                            status="uncertain",
+                            reason=str(exc),
+                            target_user_id=selected.author_id,
+                            event_key=browse_event_key,
+                        )
                         await self._notify(
                             f"自动巡帖评论帖子 {selected.link_id} 的发送结果无法确认，"
                             "已停止重试以避免重复评论。"
@@ -775,6 +811,15 @@ class XhhRobotPlugin(Star):
                         evaluated=True,
                     )
                     result.uncertain += 1
+                    await self._record_bot_comment(
+                        kind="auto_browse",
+                        content=comment,
+                        link_id=selected.link_id,
+                        status="uncertain",
+                        reason=f"自动评论请求异常：{exc}",
+                        target_user_id=selected.author_id,
+                        event_key=browse_event_key,
+                    )
                     await self._notify(
                         f"自动巡帖评论帖子 {selected.link_id} 的发送结果无法确认，"
                         "已停止重试以避免重复评论。"
@@ -789,6 +834,14 @@ class XhhRobotPlugin(Star):
                     reason=decision.reason,
                     comment_text=comment,
                     evaluated=True,
+                )
+                await self._record_bot_comment(
+                    kind="auto_browse",
+                    content=comment,
+                    link_id=selected.link_id,
+                    comment_id=extract_comment_id(comment_result),
+                    target_user_id=selected.author_id,
+                    event_key=browse_event_key,
                 )
                 result.commented += 1
                 snapshot = await self.store.snapshot()
@@ -1092,6 +1145,12 @@ class XhhRobotPlugin(Star):
             (message_id for page in pages for message_id in page.message_ids),
             default=cursor,
         )
+        await self._archive_received(
+            [
+                *((mention, "queued", "") for mention in queued),
+                *((mention, "ignored", reason) for mention, reason in ignored),
+            ]
+        )
         queued_count, ignored_count = await self.store.ingest(
             newest_message_id=newest_id,
             queued=queued,
@@ -1129,6 +1188,7 @@ class XhhRobotPlugin(Star):
         eligibility_error = self._ineligible_reason(mention)
         if eligibility_error:
             await self.store.mark_skipped(mention.message_id, eligibility_error)
+            await self._archive_received_status(mention, "skipped", eligibility_error)
             return "skipped"
         try:
             include_post_context = self._bool_cfg("ai.include_post_context", True)
@@ -1140,16 +1200,20 @@ class XhhRobotPlugin(Star):
             if mention.source == "own_post_comment":
                 own_user_id = self.auth.heybox_id if self.auth is not None else ""
                 if not own_user_id or not fetched_post.author_id:
+                    reason = "无法确认帖子作者，未回复普通评论"
                     await self.store.mark_skipped(
                         mention.message_id,
-                        "无法确认帖子作者，未回复普通评论",
+                        reason,
                     )
+                    await self._archive_received_status(mention, "skipped", reason)
                     return "skipped"
                 if str(fetched_post.author_id) != str(own_user_id):
+                    reason = "普通评论不在机器人自己的帖子下"
                     await self.store.mark_skipped(
                         mention.message_id,
-                        "普通评论不在机器人自己的帖子下",
+                        reason,
                     )
+                    await self._archive_received_status(mention, "skipped", reason)
                     return "skipped"
             post = fetched_post if include_post_context else PostContext()
             history = await self.store.conversation_history(
@@ -1174,13 +1238,18 @@ class XhhRobotPlugin(Star):
 
         try:
             await self.store.mark_sending(mention.message_id)
+            await self._archive_received_status(mention, "sending")
         except asyncio.CancelledError:
+            reason = "任务在发出回帖请求前被停止。"
             await asyncio.shield(
                 self.store.defer(
                     mention.message_id,
-                    "任务在发出回帖请求前被停止。",
+                    reason,
                     delay_seconds=0,
                 )
+            )
+            await asyncio.shield(
+                self._archive_received_status(mention, "deferred", reason)
             )
             raise
         try:
@@ -1191,37 +1260,95 @@ class XhhRobotPlugin(Star):
                 root_id=mention.root_comment_id,
             )
         except asyncio.CancelledError:
+            reason = "回帖请求执行期间任务被停止，无法确认服务端是否已经发布。"
             await asyncio.shield(
                 self.store.mark_uncertain(
                     mention.message_id,
-                    "回帖请求执行期间任务被停止，无法确认服务端是否已经发布。",
+                    reason,
+                )
+            )
+            await asyncio.shield(
+                self._archive_received_status(mention, "uncertain", reason)
+            )
+            await asyncio.shield(
+                self._record_bot_comment(
+                    kind="auto_reply",
+                    content=reply_text,
+                    link_id=mention.link_id,
+                    status="uncertain",
+                    reason=reason,
+                    root_comment_id=mention.root_comment_id,
+                    target_comment_id=mention.comment_id,
+                    target_user_id=mention.user_id,
+                    source_message_id=mention.message_id,
+                    event_key=f"auto_reply:{mention.link_id}:{mention.comment_id}",
                 )
             )
             raise
         except XhhError as exc:
             if exc.delivery_uncertain:
                 await self.store.mark_uncertain(mention.message_id, str(exc))
+                await self._archive_received_status(mention, "uncertain", str(exc))
+                await self._record_bot_comment(
+                    kind="auto_reply",
+                    content=reply_text,
+                    link_id=mention.link_id,
+                    status="uncertain",
+                    reason=str(exc),
+                    root_comment_id=mention.root_comment_id,
+                    target_comment_id=mention.comment_id,
+                    target_user_id=mention.user_id,
+                    source_message_id=mention.message_id,
+                    event_key=f"auto_reply:{mention.link_id}:{mention.comment_id}",
+                )
                 await self._notify(
                     f"小黑盒消息 {mention.message_id} 的发送结果无法确认，已停止自动重试，避免重复回复。"
                 )
                 return "uncertain"
             if exc.auth_required:
                 await self.store.defer(mention.message_id, str(exc), delay_seconds=300)
+                await self._archive_received_status(mention, "auth_deferred", str(exc))
                 await self._set_auth_invalid(str(exc))
                 return "auth"
             if exc.terminal:
                 await self.store.mark_skipped(mention.message_id, str(exc))
+                await self._archive_received_status(mention, "skipped", str(exc))
                 return "skipped"
             await self._schedule_retry(mention, str(exc), retry_after=exc.retry_after)
             return "retry"
         except Exception as exc:
-            await self.store.mark_uncertain(mention.message_id, f"回帖请求异常：{exc}")
+            reason = f"回帖请求异常：{exc}"
+            await self.store.mark_uncertain(mention.message_id, reason)
+            await self._archive_received_status(mention, "uncertain", reason)
+            await self._record_bot_comment(
+                kind="auto_reply",
+                content=reply_text,
+                link_id=mention.link_id,
+                status="uncertain",
+                reason=reason,
+                root_comment_id=mention.root_comment_id,
+                target_comment_id=mention.comment_id,
+                target_user_id=mention.user_id,
+                source_message_id=mention.message_id,
+                event_key=f"auto_reply:{mention.link_id}:{mention.comment_id}",
+            )
             await self._notify(
                 f"小黑盒消息 {mention.message_id} 的发送结果无法确认，已停止自动重试，避免重复回复。"
             )
             return "uncertain"
 
         await self.store.mark_done(mention.message_id, reply_text)
+        await self._archive_received_status(mention, "replied")
+        await self._record_bot_comment(
+            kind="auto_reply",
+            content=reply_text,
+            link_id=mention.link_id,
+            root_comment_id=mention.root_comment_id,
+            target_comment_id=mention.comment_id,
+            target_user_id=mention.user_id,
+            source_message_id=mention.message_id,
+            event_key=f"auto_reply:{mention.link_id}:{mention.comment_id}",
+        )
         logger.info(
             "%s auto reply succeeded: source=%s message_id=%s link_id=%s "
             "comment_id=%s root_comment_id=%s user_id=%s comment=%r reply=%r",
@@ -1242,10 +1369,12 @@ class XhhRobotPlugin(Star):
     async def _handle_pre_send_error(self, mention: Mention, exc: XhhError) -> str:
         if exc.auth_required:
             await self.store.defer(mention.message_id, str(exc), delay_seconds=300)
+            await self._archive_received_status(mention, "auth_deferred", str(exc))
             await self._set_auth_invalid(str(exc))
             return "auth"
         if exc.terminal:
             await self.store.mark_skipped(mention.message_id, str(exc))
+            await self._archive_received_status(mention, "skipped", str(exc))
             return "skipped"
         await self._schedule_retry(mention, str(exc), retry_after=exc.retry_after)
         return "retry"
@@ -1272,6 +1401,7 @@ class XhhRobotPlugin(Star):
             max_attempts=self._int_cfg("reliability.max_retry_attempts", 3, 1, 20),
             delay_seconds=delay,
         )
+        await self._archive_received_status(mention, "retry", error)
         self._last_error = error
 
     async def _generate_reply(
@@ -1556,8 +1686,91 @@ class XhhRobotPlugin(Star):
         await self.put_kv_data(DEVICE_STORAGE_KEY, generated)
         return generated
 
+    async def _archive_received(
+        self,
+        records: list[tuple[Mention, str, str]],
+    ) -> None:
+        archive = getattr(self, "comment_archive", None)
+        if archive is None or not archive.enabled or not records:
+            return
+        try:
+            await archive.record_received(records)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self._archive_error = str(exc)
+            logger.warning("%s comment archive write failed: %r", PLUGIN_ID, exc)
+
+    async def _archive_received_status(
+        self,
+        mention: Mention,
+        status: str,
+        reason: str = "",
+    ) -> None:
+        await self._archive_received([(mention, status, reason)])
+
+    async def _record_bot_comment(
+        self,
+        *,
+        kind: str,
+        content: str,
+        link_id: int,
+        status: str = "sent",
+        reason: str = "",
+        comment_id: int = 0,
+        root_comment_id: int = 0,
+        target_comment_id: int = 0,
+        target_user_id: int | str = 0,
+        source_message_id: int = 0,
+        event_key: str = "",
+    ) -> None:
+        archive = getattr(self, "comment_archive", None)
+        if archive is None or not archive.enabled:
+            return
+        try:
+            await archive.record_bot_comment(
+                kind=kind,
+                content=content,
+                link_id=link_id,
+                status=status,
+                reason=reason,
+                comment_id=comment_id,
+                root_comment_id=root_comment_id,
+                target_comment_id=target_comment_id,
+                target_user_id=target_user_id,
+                source_message_id=source_message_id,
+                event_key=event_key,
+            )
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            self._archive_error = str(exc)
+            logger.warning("%s bot comment archive write failed: %r", PLUGIN_ID, exc)
+
+    async def _archive_overview(self) -> dict[str, int | bool]:
+        archive = getattr(self, "comment_archive", None)
+        if archive is None or not archive.enabled:
+            return {
+                "enabled": False,
+                "received_comments": 0,
+                "received_observations": 0,
+                "bot_comments": 0,
+            }
+        try:
+            return await archive.overview()
+        except Exception as exc:
+            self._archive_error = str(exc)
+            logger.warning("%s comment archive overview failed: %r", PLUGIN_ID, exc)
+            return {
+                "enabled": False,
+                "received_comments": 0,
+                "received_observations": 0,
+                "bot_comments": 0,
+            }
+
     async def _status_text(self) -> str:
         snapshot = await self.store.snapshot()
+        archive = await self._archive_overview()
         queue = snapshot["queue"]
         dead = snapshot["dead"]
         uncertain = sum(
@@ -1609,6 +1822,19 @@ class XhhRobotPlugin(Star):
             (
                 f"累计：已回复 {snapshot['stats']['replied']}，"
                 f"已忽略 {snapshot['stats']['ignored']}，已跳过 {snapshot['stats']['skipped']}"
+            ),
+            (
+                "评论归档："
+                + (
+                    f"原始观察 {archive['received_observations']}，"
+                    f"去重评论 {archive['received_comments']}，Bot 评论记录 {archive['bot_comments']}"
+                    if archive["enabled"]
+                    else (
+                        "不可用：" + str(getattr(self, "_archive_error", ""))[:160]
+                        if getattr(self, "_archive_error", "")
+                        else "已关闭"
+                    )
+                )
             ),
             f"模型：{provider}",
             f"人设：{persona}",
