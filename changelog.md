@@ -2,6 +2,18 @@
 
 本文件记录“小黑盒bot”的版本变化。使用方法、配置与部署说明请查看 [README.md](./README.md)。
 
+## v0.6.4 - 2026-07-26
+
+### 新增
+
+- 增加当前账号便捷读取工具：`xhh_get_notifications` 合并 `@` 与自己帖子下的评论/回复，`xhh_get_my_favorites` 读取已收藏帖子，`xhh_get_remote_drafts` 读取小黑盒服务端草稿；`xhh_status` 也会返回当前账号 ID 和昵称，便于复用 `xhh_get_user_activity` 查询自己的帖子、评论或动态。
+- `xhh_publish_post` 支持有序 `content_blocks` 富文本内容块，包含纯文本、安全 HTML 与图片；本地 `xhh_save_draft` / `post_drafts.sqlite3` 同步保存该结构，并自动迁移已有草稿库。
+
+### 安全与兼容
+
+- 富文本 HTML 使用允许列表，仅保留基础排版、强调、列表、引用、代码和公开 HTTP(S) 链接；拒绝脚本、样式、事件属性、私网或危险链接、内嵌图片和未知标签。
+- 保留 `body`、`image_urls`、旧版本地草稿和既有发帖流程的兼容性；入站帖子新增安全的有序内容块保留，同时继续提供纯文本正文和完整图片链。
+
 ## v0.6.3 - 2026-07-26
 
 ### 新增

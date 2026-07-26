@@ -315,8 +315,131 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(post.author_name, "机器人")
         self.assertEqual(post.body_text, "正文")
         self.assertEqual(post.image_urls, ("https://cdn.example/image.jpg",))
+        self.assertEqual(
+            post.content_blocks,
+            (
+                {"type": "text", "text": "正文"},
+                {"type": "image", "url": "https://cdn.example/image.jpg"},
+            ),
+        )
         self.assertEqual(post.topics, ("游戏",))
         self.assertEqual(post.tags, ("测试",))
+
+    async def test_fetch_notifications_merges_and_deduplicates_sources(self) -> None:
+        client, session = self.make_client(
+            [
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "messages": [
+                                {
+                                    "message_id": 101,
+                                    "comment_a_id": 51,
+                                    "linkid": 10,
+                                    "userid_a": 1,
+                                    "timestamp": 100,
+                                    "comment_a_text": "@ 我",
+                                }
+                            ]
+                        },
+                    }
+                ),
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "messages": [
+                                {
+                                    "message_id": 102,
+                                    "message_type": "1",
+                                    "comment_a_id": 51,
+                                    "linkid": 10,
+                                    "userid_a": 1,
+                                    "timestamp": 120,
+                                    "comment_a_text": "回复我",
+                                },
+                                {
+                                    "message_id": 103,
+                                    "message_type": "2",
+                                    "comment_a_id": 52,
+                                    "linkid": 10,
+                                    "userid_a": 2,
+                                    "timestamp": 200,
+                                    "comment_a_text": "另一条回复",
+                                },
+                            ]
+                        },
+                    }
+                ),
+            ]
+        )
+
+        data = await client.fetch_notifications(kind="all", limit=3)
+
+        self.assertEqual([item["message_id"] for item in data["items"]], [103, 102])
+        self.assertEqual(data["items"][1]["source"], "own_post_comment")
+        self.assertEqual(data["fetched_source_counts"]["mention"]["items"], 1)
+        self.assertEqual(
+            session.requests[0][2]["params"]["message_type"], "16"
+        )
+        self.assertNotIn("message_type", session.requests[1][2]["params"])
+
+    async def test_fetch_current_account_favorites_and_remote_drafts(self) -> None:
+        client, session = self.make_client(
+            [
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "total_page": 2,
+                        "result": [
+                            {
+                                "link": {
+                                    "linkid": 88,
+                                    "title": "收藏标题",
+                                    "description": "<p>收藏正文</p>",
+                                    "imgs": ["https://cdn.example/favorite.png"],
+                                }
+                            }
+                        ],
+                    }
+                ),
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "links": [
+                                {
+                                    "linkid": 99,
+                                    "title": "草稿标题",
+                                    "text": '[{"type":"text","text":"草稿正文"}]',
+                                }
+                            ]
+                        },
+                    }
+                ),
+            ]
+        )
+
+        favorites = await client.fetch_my_favorites(offset=3, limit=4)
+        drafts = await client.fetch_remote_drafts()
+
+        self.assertEqual(favorites["account_id"], "42")
+        self.assertEqual(favorites["total_page"], 2)
+        self.assertEqual(favorites["items"][0]["link_id"], "88")
+        self.assertEqual(favorites["items"][0]["description"], "收藏正文")
+        self.assertEqual(drafts["drafts"][0]["body_preview"], "草稿正文")
+        self.assertEqual(drafts["drafts"][0]["content_blocks"][0]["type"], "text")
+        self.assertEqual(
+            session.requests[0][1],
+            "https://api.xiaoheihe.cn/bbs/web/profile/favours",
+        )
+        self.assertEqual(session.requests[0][2]["params"]["userid"], "42")
+        self.assertEqual(session.requests[0][2]["params"]["offset"], "3")
+        self.assertEqual(
+            session.requests[1][1],
+            "https://api.xiaoheihe.cn/bbs/app/link/drafts",
+        )
 
     async def test_send_reply_uses_workshop_api_and_form_fields(self) -> None:
         client, session = self.make_client(
@@ -415,6 +538,40 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             content[1],
             {"type": "img", "url": "https://cdn.xiaoheihe.cn/copied.jpg"},
         )
+
+    async def test_publish_post_preserves_rich_block_order(self) -> None:
+        client, session = self.make_client(
+            [
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {"url": "https://cdn.xiaoheihe.cn/rich.jpg"},
+                    }
+                ),
+                FakeResponse({"status": "ok", "result": {"link_id": 322}}),
+            ]
+        )
+
+        await client.publish_post(
+            title="富文本标题",
+            body="",
+            content_blocks=[
+                {"type": "text", "text": "第一段"},
+                {"type": "html", "text": "<p><strong>重点</strong></p>"},
+                {"type": "image", "url": "https://images.example/rich.jpg"},
+            ],
+        )
+
+        content = json.loads(session.requests[1][2]["data"]["text"])
+        self.assertEqual(
+            content,
+            [
+                {"type": "html", "text": "第一段"},
+                {"type": "html", "text": "<p><strong>重点</strong></p>"},
+                {"type": "img", "url": "https://cdn.xiaoheihe.cn/rich.jpg"},
+            ],
+        )
+        self.assertEqual(session.requests[1][2]["data"]["words_count"], "6")
 
     async def test_search_profile_and_sub_comments_use_expected_parameters(
         self,

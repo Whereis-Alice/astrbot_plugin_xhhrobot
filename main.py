@@ -1820,6 +1820,7 @@ class XhhRobotPlugin(Star):
                     "topics": list(post.topics),
                     "tags": list(post.tags),
                     "image_urls": list(post.image_urls),
+                    "content_blocks": list(post.content_blocks),
                 },
             },
         )

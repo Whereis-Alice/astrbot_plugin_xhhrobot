@@ -10,6 +10,7 @@ from html.parser import HTMLParser
 from typing import Any
 
 from .media import extract_image_urls
+from .rich_content import content_blocks_plain_text
 
 _HTML_BLOCK_TAGS = frozenset(
     {
@@ -489,14 +490,16 @@ class PostContext:
     author_name: str = ""
     text_parts: tuple[str, ...] = ()
     image_urls: tuple[str, ...] = ()
+    content_blocks: tuple[dict[str, str], ...] = ()
     topics: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
 
     @property
     def body_text(self) -> str:
-        return "\n".join(
+        body = "\n".join(
             part.strip() for part in self.text_parts if part.strip()
         ).strip()
+        return body or content_blocks_plain_text(self.content_blocks)
 
 
 @dataclass(frozen=True, slots=True)

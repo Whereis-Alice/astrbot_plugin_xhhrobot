@@ -24,6 +24,7 @@ from .media import (
     ImagePayload,
     cos_authorization,
     cos_quote,
+    extract_image_urls,
     is_http_url,
     is_xhh_image_url,
     load_image_payload,
@@ -41,6 +42,14 @@ from .models import (
     QrChallenge,
     QrPollResult,
     ReplyReceipt,
+)
+from .rich_content import (
+    RichContentError,
+    content_blocks_image_sources,
+    content_blocks_plain_text,
+    normalize_rich_content_blocks,
+    parse_inbound_content_blocks,
+    platform_html_for_block,
 )
 from .signing import generate_xhh_token, get_request_keys
 
@@ -239,6 +248,105 @@ class XhhClient:
             allowed_message_types={"1", "2"},
         )
 
+    async def fetch_notifications(
+        self,
+        *,
+        kind: str = "all",
+        offset: int = 0,
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        """Merge mentions and replies to the current account into one feed.
+
+        The upstream message endpoint has separate views for mentions and comment
+        replies. Fetching from the beginning of each view lets the caller use one
+        stable, time-sorted offset across both sources.
+        """
+
+        normalized_kind = str(kind or "all").strip().lower()
+        if normalized_kind not in {"all", "mention", "comment"}:
+            raise XhhError("通知类型只能是 all、mention 或 comment。", retryable=False)
+
+        normalized_offset = max(0, self._to_int(offset))
+        normalized_limit = max(1, min(50, self._to_int(limit, 20)))
+        target_count = normalized_offset + normalized_limit
+        max_window = 200
+        if target_count > max_window:
+            raise XhhError(
+                f"通知分页单次最多读取前 {max_window} 条，请缩小 offset 或 limit。",
+                retryable=False,
+            )
+
+        async def collect(
+            fetch_page: Any,
+        ) -> tuple[list[Mention], int]:
+            items: list[Mention] = []
+            raw_count = 0
+            source_offset = 0
+            while len(items) < target_count:
+                request_limit = min(50, target_count - len(items))
+                page = await fetch_page(offset=source_offset, limit=request_limit)
+                items.extend(page.items)
+                raw_count += page.raw_count
+                if page.raw_count < request_limit:
+                    break
+                source_offset += request_limit
+            return items, raw_count
+
+        sources: list[tuple[str, Any]] = []
+        if normalized_kind in {"all", "mention"}:
+            sources.append(("mention", self.fetch_mentions_page))
+        if normalized_kind in {"all", "comment"}:
+            sources.append(("own_post_comment", self.fetch_comment_messages_page))
+
+        collected = await asyncio.gather(
+            *(collect(fetch_page) for _, fetch_page in sources)
+        )
+        fetched_counts = {
+            source: {
+                "items": len(items),
+                "raw_messages": raw_count,
+            }
+            for (source, _), (items, raw_count) in zip(sources, collected)
+        }
+
+        deduped: dict[tuple[Any, ...], Mention] = {}
+        for items, _ in collected:
+            for item in items:
+                if item.link_id > 0 and item.comment_id > 0:
+                    key = ("comment", item.link_id, item.comment_id)
+                elif item.message_id > 0:
+                    key = ("message", item.message_id)
+                else:
+                    key = (
+                        "fallback",
+                        item.source,
+                        item.user_id,
+                        item.message_time,
+                        item.comment_text,
+                    )
+                existing = deduped.get(key)
+                if existing is None or (item.message_time, item.message_id) > (
+                    existing.message_time,
+                    existing.message_id,
+                ):
+                    deduped[key] = item
+
+        ordered = sorted(
+            deduped.values(),
+            key=lambda item: (item.message_time, item.message_id, item.comment_id),
+            reverse=True,
+        )
+        page_items = ordered[normalized_offset : normalized_offset + normalized_limit]
+        return {
+            "kind": normalized_kind,
+            "offset": normalized_offset,
+            "limit": normalized_limit,
+            "items": [item.to_dict() for item in page_items],
+            "returned": len(page_items),
+            "available_in_window": len(ordered),
+            "fetched_source_counts": fetched_counts,
+        }
+
     @classmethod
     def parse_notification_page(
         cls,
@@ -288,34 +396,22 @@ class XhhClient:
                 "帖子详情响应中缺少 link 数据。", terminal=True, retryable=False
             )
 
-        text_parts: list[str] = []
-        image_urls: list[str] = []
-        raw_content = link.get("text")
-        content_items: Any = raw_content
-        if isinstance(raw_content, str):
-            try:
-                content_items = json.loads(raw_content)
-            except json.JSONDecodeError:
-                content_items = [{"type": "text", "text": raw_content}]
-        if isinstance(content_items, Mapping):
-            content_items = [content_items]
-        if isinstance(content_items, list):
-            for item in content_items:
-                if not isinstance(item, Mapping):
-                    if str(item).strip():
-                        text_parts.append(str(item).strip())
-                    continue
-                item_type = str(item.get("type") or "text").lower()
-                text = str(item.get("text") or "").strip()
-                url = self._normalise_media_url(
-                    str(item.get("url") or item.get("src") or "").strip()
-                )
-                if item_type in {"text", "html"} and text:
-                    text_parts.append(text)
-                elif url:
-                    image_urls.append(url)
-                elif text:
-                    text_parts.append(text)
+        content_blocks = list(parse_inbound_content_blocks(link.get("text")))
+        known_images = set(content_blocks_image_sources(content_blocks))
+        for image_url in extract_image_urls(link.get("text")):
+            image_url = self._normalise_media_url(image_url)
+            if image_url and image_url not in known_images:
+                content_blocks.append({"type": "image", "url": image_url})
+                known_images.add(image_url)
+        text_parts = [
+            content_blocks_plain_text([block])
+            for block in content_blocks
+            if block.get("type") != "image"
+        ]
+        image_urls = [
+            self._normalise_media_url(url)
+            for url in content_blocks_image_sources(content_blocks)
+        ]
 
         user = link.get("user") or link.get("author") or link.get("userinfo")
         user = user if isinstance(user, Mapping) else {}
@@ -333,8 +429,9 @@ class XhhClient:
             author_name=str(
                 user.get("username") or user.get("nickname") or user.get("name") or ""
             ).strip(),
-            text_parts=tuple(text_parts),
+            text_parts=tuple(part for part in text_parts if part),
             image_urls=tuple(dict.fromkeys(image_urls)),
+            content_blocks=tuple(content_blocks),
             topics=tuple(self._extract_names(link.get("topics"))),
             tags=tuple(self._extract_names(link.get("hashtags"))),
         )
@@ -679,6 +776,66 @@ class XhhClient:
             auth_required=True,
         )
         return response.payload
+
+    async def fetch_my_favorites(
+        self,
+        *,
+        offset: int = 0,
+        limit: int = 20,
+    ) -> dict[str, Any]:
+        user_id = self._current_auth_user_id()
+        normalized_offset = max(0, self._to_int(offset))
+        normalized_limit = max(1, min(50, self._to_int(limit, 20)))
+        response = await self._request_json(
+            "GET",
+            "/bbs/web/profile/favours",
+            params={
+                "userid": user_id,
+                "offset": str(normalized_offset),
+                "limit": str(normalized_limit),
+            },
+            auth_required=True,
+        )
+        result = self._result_mapping(response.payload)
+        items = self._first_mapping_list(
+            result.get("items"),
+            result.get("links"),
+            result.get("favours"),
+            result.get("result"),
+            response.payload.get("result"),
+            response.payload.get("items"),
+            response.payload.get("links"),
+            response.payload.get("favours"),
+        )
+        return {
+            "account_id": user_id,
+            "offset": normalized_offset,
+            "limit": normalized_limit,
+            "total_page": self._to_int(
+                result.get("total_page") or response.payload.get("total_page")
+            ),
+            "items": [self._summarize_profile_link(item) for item in items],
+        }
+
+    async def fetch_remote_drafts(self) -> dict[str, Any]:
+        user_id = self._current_auth_user_id()
+        response = await self._request_json(
+            "GET",
+            "/bbs/app/link/drafts",
+            auth_required=True,
+        )
+        result = self._result_mapping(response.payload)
+        items = self._first_mapping_list(
+            result.get("links"),
+            result.get("items"),
+            response.payload.get("result"),
+            response.payload.get("links"),
+        )
+        return {
+            "account_id": user_id,
+            "drafts": [self._summarize_remote_draft(item) for item in items],
+            "count": len(items),
+        }
 
     async def fetch_emojis(self) -> dict[str, Any]:
         response = await self._request_json(
@@ -1053,26 +1210,60 @@ class XhhClient:
         topic_ids: list[str] | None = None,
         hashtags: list[str] | None = None,
         image_urls: list[str] | None = None,
+        content_blocks: Sequence[Mapping[str, Any]] | None = None,
         allowed_local_roots: Sequence[Path] = (),
         max_local_image_bytes: int = 20 * 1024 * 1024,
     ) -> dict[str, Any]:
+        try:
+            blocks = normalize_rich_content_blocks(
+                content_blocks or [],
+                max_text_chars=100_000,
+            )
+        except RichContentError as exc:
+            raise XhhError(str(exc), retryable=False) from exc
+
+        if blocks and not body and blocks[0].get("type") == "image":
+            raise XhhError(
+                "使用 content_blocks 发帖时，第一项必须是 text 或 html 内容块。",
+                retryable=False,
+            )
+        if body:
+            blocks.insert(0, {"type": "text", "text": body})
+
+        content: list[dict[str, str]] = []
+        for block in blocks:
+            if block["type"] == "image":
+                copied = await self.prepare_image_sources(
+                    [block["url"]],
+                    allowed_local_roots=allowed_local_roots,
+                    max_local_image_bytes=max_local_image_bytes,
+                )
+                content.extend({"type": "img", "url": url} for url in copied)
+                continue
+            try:
+                content.append(
+                    {"type": "html", "text": platform_html_for_block(block)}
+                )
+            except RichContentError as exc:
+                raise XhhError(str(exc), retryable=False) from exc
+
         copied_images = await self.prepare_image_sources(
             image_urls or [],
             allowed_local_roots=allowed_local_roots,
             max_local_image_bytes=max_local_image_bytes,
         )
-        content: list[dict[str, str]] = []
-        if body:
-            escaped_body = html.escape(body).replace("\n", "<br>")
-            content.append({"type": "html", "text": escaped_body})
         content.extend({"type": "img", "url": url} for url in copied_images)
+        if not content:
+            raise XhhError("帖子正文和图片不能同时为空。", retryable=False)
+
+        content_text = content_blocks_plain_text(blocks)
         payload = await self._write_json(
             "/bbs/app/api/link/post",
             data={
                 "title": title,
-                "desc": (description or body)[:100],
+                "desc": (description or content_text or title)[:100],
                 "post_type": "1",
-                "words_count": str(len(body)),
+                "words_count": str(len(content_text)),
                 "topic_ids": ",".join(topic_ids or []),
                 "hashtags": json.dumps(
                     hashtags or [], ensure_ascii=False, separators=(",", ":")
@@ -1572,6 +1763,18 @@ class XhhClient:
             return {}
         return {morsel.key: morsel.value for morsel in self._session.cookie_jar}
 
+    def _current_auth_user_id(self) -> str:
+        user_id = str(
+            self.auth.heybox_id if self.auth is not None else ""
+        ).strip()
+        if not user_id:
+            raise XhhError(
+                "当前登录凭据缺少 heybox_id，请重新扫码登录。",
+                auth_required=True,
+                retryable=False,
+            )
+        return user_id
+
     @staticmethod
     def parse_cookie_header(header: str) -> dict[str, str]:
         parsed = SimpleCookie()
@@ -1591,6 +1794,13 @@ class XhhClient:
     def _result_mapping(payload: Mapping[str, Any]) -> Mapping[str, Any]:
         result = payload.get("result")
         return result if isinstance(result, Mapping) else {}
+
+    @staticmethod
+    def _first_mapping_list(*values: Any) -> list[Mapping[str, Any]]:
+        for value in values:
+            if isinstance(value, list):
+                return [item for item in value if isinstance(item, Mapping)]
+        return []
 
     @staticmethod
     def _api_status(payload: Mapping[str, Any]) -> str:
@@ -1619,6 +1829,92 @@ class XhhClient:
         if value.startswith("//"):
             return "https:" + value
         return value
+
+    @classmethod
+    def _summarize_profile_link(cls, raw: Mapping[str, Any]) -> dict[str, Any]:
+        link = raw.get("link")
+        link = link if isinstance(link, Mapping) else raw
+        raw_content = (
+            link.get("text")
+            or link.get("description")
+            or link.get("desc")
+            or ""
+        )
+        content_blocks = parse_inbound_content_blocks(raw_content)
+        return {
+            "link_id": str(
+                link.get("linkid")
+                or link.get("link_id")
+                or link.get("id")
+                or ""
+            ).strip(),
+            "title": str(link.get("title") or "").strip(),
+            "description": (
+                content_blocks_plain_text(content_blocks)
+                or cls._plain_text(raw_content)
+            )[:500],
+            "created_at": cls._to_int(
+                link.get("create_at")
+                or link.get("create_time")
+                or link.get("timestamp")
+            ),
+            "likes": cls._to_int(link.get("up") or link.get("like_num")),
+            "comment_count": cls._to_int(
+                link.get("comment_num") or link.get("comment_count")
+            ),
+            "topics": cls._extract_names(
+                link.get("topics") or link.get("topic") or []
+            ),
+            "image_urls": extract_image_urls(
+                [link.get("imgs"), link.get("images"), link.get("text")]
+            ),
+            "content_blocks": list(content_blocks),
+        }
+
+    @classmethod
+    def _summarize_remote_draft(cls, raw: Mapping[str, Any]) -> dict[str, Any]:
+        link = raw.get("link")
+        link = link if isinstance(link, Mapping) else raw
+        raw_text = link.get("text") or link.get("content") or ""
+        content_blocks = parse_inbound_content_blocks(raw_text)
+        topic = link.get("topic")
+        topic = topic if isinstance(topic, Mapping) else {}
+        return {
+            "link_id": str(
+                link.get("linkid")
+                or link.get("link_id")
+                or link.get("id")
+                or ""
+            ).strip(),
+            "title": str(link.get("title") or "").strip(),
+            "description": cls._plain_text(
+                link.get("description") or link.get("desc")
+            )[:500],
+            "body_preview": (
+                content_blocks_plain_text(content_blocks)
+                or cls._plain_text(raw_text)
+            )[:500],
+            "created_at": cls._to_int(
+                link.get("create_at")
+                or link.get("create_time")
+                or link.get("timestamp")
+            ),
+            "topic": str(topic.get("name") or link.get("topic_name") or "").strip(),
+            "image_urls": extract_image_urls(
+                [link.get("imgs"), link.get("images"), raw_text]
+            ),
+            "content_blocks": list(content_blocks),
+        }
+
+    @staticmethod
+    def _plain_text(value: Any) -> str:
+        text = html.unescape(str(value or ""))
+        text = re.sub(r"(?i)<br\\s*/?>", "\n", text)
+        text = re.sub(r"(?i)</p\\s*>", "\n", text)
+        text = re.sub(r"<[^>]+>", "", text)
+        text = re.sub(r"[ \t]+\n", "\n", text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        return text.strip()
 
     @classmethod
     def _extract_names(cls, value: Any) -> list[str]:

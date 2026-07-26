@@ -45,6 +45,9 @@ class FakeClient:
     def __init__(self) -> None:
         self.published: list[dict[str, Any]] = []
         self.comments: list[dict[str, Any]] = []
+        self.notifications_calls: list[dict[str, Any]] = []
+        self.favorites_calls: list[dict[str, Any]] = []
+        self.remote_drafts_calls = 0
         self.search_payload: dict[str, Any] = {"status": "ok", "result": {"items": []}}
 
     async def publish_post(self, **kwargs: Any) -> dict[str, Any]:
@@ -58,11 +61,26 @@ class FakeClient:
         self.comments.append(kwargs)
         return {"status": "ok", "result": {"comment_id": 456}}
 
+    async def fetch_notifications(self, **kwargs: Any) -> dict[str, Any]:
+        self.notifications_calls.append(kwargs)
+        return {"items": [{"message_id": 1, "source": "mention"}]}
+
+    async def fetch_my_favorites(self, **kwargs: Any) -> dict[str, Any]:
+        self.favorites_calls.append(kwargs)
+        return {"items": [{"link_id": "88", "title": "收藏帖子"}]}
+
+    async def fetch_remote_drafts(self) -> dict[str, Any]:
+        self.remote_drafts_calls += 1
+        return {"drafts": [{"link_id": "99", "title": "服务端草稿"}]}
+
 
 class FakePlugin:
     def __init__(self, config: dict[str, Any]) -> None:
         self.config = config
         self.client = FakeClient()
+        self.auth = SimpleNamespace(
+            heybox_id="42", nickname="tester", cookie="cookie-value"
+        )
         self.recorded_bot_comments: list[dict[str, Any]] = []
         self.local_roots: list[Path] = []
 
@@ -135,7 +153,7 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         tools = XhhToolRuntime(plugin).build_tools()
         by_name = {tool.name: tool for tool in tools}
 
-        self.assertEqual(len(tools), 22)
+        self.assertEqual(len(tools), 25)
         self.assertTrue(by_name["xhh_search"].active)
         self.assertFalse(by_name["xhh_publish_post"].active)
         self.assertNotIn("xhh_get_drafts", by_name)
@@ -151,7 +169,7 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         enabled = XhhToolRuntime(FakePlugin(self.config(enable_draft_tools=True)))
         by_name = {tool.name: tool for tool in enabled.build_tools()}
 
-        self.assertEqual(len(by_name), 25)
+        self.assertEqual(len(by_name), 28)
         self.assertTrue(by_name["xhh_get_drafts"].active)
         self.assertTrue(by_name["xhh_save_draft"].active)
         self.assertTrue(by_name["xhh_delete_draft"].active)
@@ -203,6 +221,38 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(denied_delete["ok"])
         self.assertIn("确认", denied_delete["error"])
         self.assertTrue(deleted["ok"])
+
+    async def test_current_account_convenience_tools_use_signed_in_account(self) -> None:
+        plugin = FakePlugin(self.config())
+        runtime = XhhToolRuntime(plugin)
+        event = FakeEvent(admin=True)
+
+        status = json.loads(await runtime.execute("status", event, {}))
+        notifications = json.loads(
+            await runtime.execute(
+                "notifications",
+                event,
+                {"kind": "comment", "offset": 2, "limit": 5},
+            )
+        )
+        favorites = json.loads(
+            await runtime.execute("my_favorites", event, {"offset": 3, "limit": 4})
+        )
+        remote_drafts = json.loads(
+            await runtime.execute("remote_drafts", event, {})
+        )
+
+        self.assertEqual(status["data"]["account"]["heybox_id"], "42")
+        self.assertTrue(status["data"]["account"]["logged_in"])
+        self.assertTrue(notifications["ok"])
+        self.assertEqual(
+            plugin.client.notifications_calls,
+            [{"kind": "comment", "offset": 2, "limit": 5}],
+        )
+        self.assertEqual(plugin.client.favorites_calls, [{"offset": 3, "limit": 4}])
+        self.assertEqual(favorites["data"]["items"][0]["link_id"], "88")
+        self.assertEqual(remote_drafts["data"]["drafts"][0]["link_id"], "99")
+        self.assertEqual(plugin.client.remote_drafts_calls, 1)
 
     async def test_build_tools_adapts_confirmation_schema(self) -> None:
         required_runtime = XhhToolRuntime(FakePlugin(self.config()))
@@ -343,6 +393,49 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["data"]["result"]["link_id"], 123)
         self.assertEqual(plugin.client.published[0]["topic_ids"], ["7214"])
+
+    async def test_publish_post_accepts_safe_ordered_rich_content_blocks(self) -> None:
+        plugin = FakePlugin(self.config(require_explicit_confirmation=False))
+        runtime = XhhToolRuntime(plugin)
+
+        result = json.loads(
+            await runtime.execute(
+                "publish_post",
+                FakeEvent(admin=True, message="发布带格式的帖子"),
+                {
+                    "title": "富文本标题",
+                    "content_blocks": [
+                        {"type": "text", "text": "第一段"},
+                        {"type": "html", "html": "<p><strong>重点</strong></p>"},
+                        {"type": "image", "url": "https://images.example/a.png"},
+                    ],
+                },
+            )
+        )
+        rejected = json.loads(
+            await runtime.execute(
+                "publish_post",
+                FakeEvent(admin=True, message="发布危险格式帖子"),
+                {
+                    "title": "富文本标题",
+                    "content_blocks": [
+                        {"type": "html", "html": "<script>alert(1)</script>"}
+                    ],
+                },
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            plugin.client.published[0]["content_blocks"],
+            [
+                {"type": "text", "text": "第一段"},
+                {"type": "html", "text": "<p><strong>重点</strong></p>"},
+                {"type": "image", "url": "https://images.example/a.png"},
+            ],
+        )
+        self.assertFalse(rejected["ok"])
+        self.assertIn("script", rejected["error"])
 
     async def test_comment_tool_archives_successful_bot_comment(self) -> None:
         plugin = FakePlugin(self.config())
@@ -541,11 +634,11 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         plugin._registered_tool_names = []
 
         plugin._register_llm_tools()
-        self.assertEqual(len(plugin.context.added), 22)
-        self.assertEqual(len(plugin._registered_tool_names), 22)
+        self.assertEqual(len(plugin.context.added), 25)
+        self.assertEqual(len(plugin._registered_tool_names), 25)
 
         plugin._unregister_llm_tools()
-        self.assertEqual(len(plugin.context.manager.removed), 22)
+        self.assertEqual(len(plugin.context.manager.removed), 25)
         self.assertEqual(plugin._registered_tool_names, [])
 
 

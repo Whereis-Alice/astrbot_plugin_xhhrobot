@@ -9,6 +9,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from .rich_content import content_blocks_plain_text
+
 
 class DraftStore:
     """Small SQLite-backed local draft box for LLM-authored posts."""
@@ -55,6 +57,7 @@ class DraftStore:
         topic_ids: Sequence[str] | None = None,
         hashtags: Sequence[str] | None = None,
         image_urls: Sequence[str] | None = None,
+        content_blocks: Sequence[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         await self.initialize()
         values = {
@@ -64,6 +67,11 @@ class DraftStore:
             "topic_ids": list(topic_ids) if topic_ids is not None else None,
             "hashtags": list(hashtags) if hashtags is not None else None,
             "image_urls": list(image_urls) if image_urls is not None else None,
+            "content_blocks": (
+                [dict(block) for block in content_blocks]
+                if content_blocks is not None
+                else None
+            ),
         }
         async with self._lock:
             return await asyncio.to_thread(self._save_sync, draft_id, values)
@@ -95,6 +103,7 @@ class DraftStore:
                     topic_ids TEXT NOT NULL DEFAULT '[]',
                     hashtags TEXT NOT NULL DEFAULT '[]',
                     image_urls TEXT NOT NULL DEFAULT '[]',
+                    content_blocks TEXT NOT NULL DEFAULT '[]',
                     created_at REAL NOT NULL,
                     updated_at REAL NOT NULL
                 );
@@ -103,6 +112,15 @@ class DraftStore:
                     ON post_drafts(updated_at DESC);
                 """
             )
+            columns = {
+                str(row["name"])
+                for row in connection.execute("PRAGMA table_info(post_drafts)")
+            }
+            if "content_blocks" not in columns:
+                connection.execute(
+                    "ALTER TABLE post_drafts "
+                    "ADD COLUMN content_blocks TEXT NOT NULL DEFAULT '[]'"
+                )
             connection.commit()
         finally:
             connection.close()
@@ -121,7 +139,8 @@ class DraftStore:
             total = connection.execute("SELECT COUNT(*) FROM post_drafts").fetchone()[0]
             rows = connection.execute(
                 """
-                SELECT draft_id, title, body, topic_ids, hashtags, image_urls, created_at, updated_at
+                SELECT draft_id, title, body, topic_ids, hashtags, image_urls, content_blocks,
+                       created_at, updated_at
                 FROM post_drafts
                 ORDER BY updated_at DESC, draft_id ASC
                 LIMIT ?
@@ -171,6 +190,7 @@ class DraftStore:
                 record["title"].strip()
                 or record["body"].strip()
                 or record["image_urls"]
+                or record["content_blocks"]
             ):
                 raise ValueError("草稿标题、正文和图片不能同时为空。")
 
@@ -182,8 +202,8 @@ class DraftStore:
                     """
                     INSERT INTO post_drafts (
                         draft_id, title, body, description, topic_ids, hashtags, image_urls,
-                        created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        content_blocks, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     self._record_values(record),
                 )
@@ -192,7 +212,7 @@ class DraftStore:
                     """
                     UPDATE post_drafts
                     SET title = ?, body = ?, description = ?, topic_ids = ?, hashtags = ?,
-                        image_urls = ?, updated_at = ?
+                        image_urls = ?, content_blocks = ?, updated_at = ?
                     WHERE draft_id = ?
                     """,
                     (
@@ -211,6 +231,11 @@ class DraftStore:
                         ),
                         json.dumps(
                             record["image_urls"],
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        ),
+                        json.dumps(
+                            record["content_blocks"],
                             ensure_ascii=False,
                             separators=(",", ":"),
                         ),
@@ -271,6 +296,7 @@ class DraftStore:
             "topic_ids": [],
             "hashtags": [],
             "image_urls": [],
+            "content_blocks": [],
             "created_at": 0.0,
             "updated_at": 0.0,
         }
@@ -285,6 +311,9 @@ class DraftStore:
             json.dumps(record["topic_ids"], ensure_ascii=False, separators=(",", ":")),
             json.dumps(record["hashtags"], ensure_ascii=False, separators=(",", ":")),
             json.dumps(record["image_urls"], ensure_ascii=False, separators=(",", ":")),
+            json.dumps(
+                record["content_blocks"], ensure_ascii=False, separators=(",", ":")
+            ),
             record["created_at"],
             record["updated_at"],
         )
@@ -299,13 +328,16 @@ class DraftStore:
             "topic_ids": _json_list(row["topic_ids"]),
             "hashtags": _json_list(row["hashtags"]),
             "image_urls": _json_list(row["image_urls"]),
+            "content_blocks": _json_blocks(row["content_blocks"]),
             "created_at": float(row["created_at"] or 0),
             "updated_at": float(row["updated_at"] or 0),
         }
 
     @staticmethod
     def _summary_from_row(row: sqlite3.Row) -> dict[str, Any]:
-        body = str(row["body"] or "").strip().replace("\n", " ")
+        blocks = _json_blocks(row["content_blocks"])
+        body = str(row["body"] or "").strip() or content_blocks_plain_text(blocks)
+        body = body.replace("\n", " ")
         image_urls = _json_list(row["image_urls"])
         return {
             "draft_id": str(row["draft_id"]),
@@ -314,6 +346,7 @@ class DraftStore:
             "topic_ids": _json_list(row["topic_ids"]),
             "hashtags": _json_list(row["hashtags"]),
             "image_count": len(image_urls),
+            "content_block_count": len(blocks),
             "created_at": float(row["created_at"] or 0),
             "updated_at": float(row["updated_at"] or 0),
         }
@@ -327,3 +360,26 @@ def _json_list(value: Any) -> list[str]:
     if not isinstance(parsed, list):
         return []
     return [str(item) for item in parsed if str(item).strip()]
+
+
+def _json_blocks(value: Any) -> list[dict[str, str]]:
+    try:
+        parsed = json.loads(str(value or "[]"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    if not isinstance(parsed, list):
+        return []
+    blocks: list[dict[str, str]] = []
+    for item in parsed:
+        if not isinstance(item, dict):
+            continue
+        item_type = str(item.get("type") or "").strip().lower()
+        if item_type in {"text", "html"}:
+            text = str(item.get("text") or "")
+            if text.strip():
+                blocks.append({"type": item_type, "text": text})
+        elif item_type == "image":
+            url = str(item.get("url") or "").strip()
+            if url:
+                blocks.append({"type": "image", "url": url})
+    return blocks

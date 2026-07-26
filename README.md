@@ -7,7 +7,7 @@
 - **标准事件回复**：把评论和私信作为 AstrBot 消息处理，沿用人设、会话历史、世界书与其他 LLM 请求钩子。
 - **评论与私信**：回复小黑盒 `@` 消息、bot 自己帖子下无需 `@` 的普通评论，以及可选的好友/陌生人私信。
 - **自主巡帖评论**：定时浏览推荐流，由模型按人设自主选帖、阅读正文并决定评论或跳过。
-- **LLM 工具**：默认提供 22 个动态、搜索、帖子、评论、用户、话题、收藏、点赞、关注、私信、发帖和归档工具；可单独开启 3 个本地草稿箱工具。
+- **LLM 工具**：默认提供 25 个动态、搜索、帖子、评论、用户、话题、当前账号通知/收藏/服务端草稿、点赞、关注、私信、发帖和归档工具；可单独开启 3 个本地 SQLite 草稿箱工具。
 - **消息数据库**：自动保存评论与私信，区分原始观察、去重评论、Bot 评论和处理状态，可在 WebUI 或通过工具统计查询。
 - **WebUI**：在插件页面扫码登录，查看运行状态、状态分布、分页筛选和消息详情。
 - **完整图片链**：收到的评论、帖子与私信图片可交给视觉模型；回复和写工具支持网络图、本地图片与多图私信。
@@ -266,7 +266,7 @@ curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
 | `xhh_get_post` | 获取帖子正文和评论。 |
 | `xhh_get_sub_comments` | 分页获取子评论。 |
 | `xhh_get_user_profile` | 获取用户公开资料。 |
-| `xhh_get_user_activity` | 获取用户帖子、评论和动态。 |
+| `xhh_get_user_activity` | 获取用户帖子、评论和动态；查询当前账号时可复用 `xhh_status` 返回的 `heybox_id`。 |
 | `xhh_get_user_relations` | 获取粉丝和关注列表。 |
 | `xhh_get_topics` | 获取话题列表或搜索发帖话题。 |
 | `xhh_get_emojis` | 获取小黑盒表情列表。 |
@@ -275,9 +275,12 @@ curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
 
 | 工具 | 能力 |
 | --- | --- |
-| `xhh_status` | 查看登录、后台队列和工具状态。 |
+| `xhh_status` | 查看登录、后台队列和工具状态，并返回当前登录账号的 ID 与昵称。 |
 | `xhh_get_mentions` | 获取当前账号收到的 `@` 消息。 |
+| `xhh_get_notifications` | 统一读取当前账号收到的 `@`、自己帖子下的评论和回复。 |
 | `xhh_get_favorite_folders` | 获取当前账号的收藏夹。 |
+| `xhh_get_my_favorites` | 读取当前登录账号已收藏的帖子内容，无需账号 ID 或收藏夹 ID。 |
+| `xhh_get_remote_drafts` | 读取当前登录账号在小黑盒服务端保存的草稿箱。 |
 | `xhh_get_direct_messages` | 获取最近私信会话或指定用户的私信历史。 |
 | `xhh_comment_stats` | 统计评论归档的原始观察、去重、正文匹配、用户、帖子和根楼数量，Bot 评论单列。 |
 | `xhh_search_comment_archive` | 按关键词、时间和相关 ID 查询收到或发出的具体评论记录。 |
@@ -289,14 +292,14 @@ curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
 
 | 工具 | 能力 |
 | --- | --- |
-| `xhh_publish_post` | 发布普通图文帖，最多两个话题、五个标签。 |
+| `xhh_publish_post` | 发布普通图文帖，最多两个话题、五个标签；支持有序富文本内容块。 |
 | `xhh_create_comment` | 评论帖子或回复评论。 |
 | `xhh_set_favorite` | 收藏或取消收藏。 |
 | `xhh_set_like` | 点赞或取消帖子/评论点赞。 |
 | `xhh_set_follow` | 关注或取消关注用户。 |
 | `xhh_delete_post` | 删除当前账号自己发布的帖子。 |
 | `xhh_send_direct_message` | 发送私信文本与多张网络/本地图片。 |
-| `xhh_save_draft` | 保存或更新插件本地的发帖草稿，不会发布到小黑盒。仅在草稿箱开启时注册。 |
+| `xhh_save_draft` | 保存或更新插件本地的发帖草稿及富文本内容块，不会发布到小黑盒。仅在草稿箱开启时注册。 |
 | `xhh_delete_draft` | 删除插件本地草稿，不会影响已发布帖子。仅在草稿箱开启时注册。 |
 
 除草稿读取外，写工具需要先开启 `tools.enable_write_tools`，修改后重载插件。
@@ -306,6 +309,34 @@ curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
 `tools.enable_draft_tools` 默认关闭。开启并重载后，模型才会看到 `xhh_get_drafts`、`xhh_save_draft` 和 `xhh_delete_draft`；关闭时三项工具不会注册，也不能通过直接调用绕过开关。
 
 草稿保存在 AstrBot 服务器插件数据目录的 `post_drafts.sqlite3`，不上传、不同步，也不会读取小黑盒 App 自己的草稿。读取草稿按私密读取权限处理；保存和删除同时要求 `tools.enable_write_tools=true`，并继续受管理员/允许列表、冷却、重复写入和 `tools.require_explicit_confirmation` 保护。保存现有 `draft_id` 时只更新本次提供的字段，传入空字符串或空数组可以清空对应字段。
+
+### 当前账号便捷读取
+
+当前账号相关工具均直接使用已登录 Cookie 中的账号，不接受模型传入的小黑盒账号 ID，且默认仅 AstrBot 管理员可调用：
+
+| 需求 | 工具 |
+| --- | --- |
+| 谁 `@` 了我、谁回复了我的帖子 | `xhh_get_notifications`，可用 `kind=all`、`mention` 或 `comment` 筛选。 |
+| 我收藏了哪些帖子 | `xhh_get_my_favorites`。 |
+| 小黑盒 App 服务端草稿 | `xhh_get_remote_drafts`。 |
+| 本插件本地发帖草稿 | `xhh_get_drafts`，需开启 `tools.enable_draft_tools`。 |
+| 我发过的帖子、评论或动态 | 先通过 `xhh_status` 取得 `heybox_id`，再复用 `xhh_get_user_activity`。 |
+
+服务端草稿和本地 SQLite 草稿互不同步：前者由小黑盒保存，后者只存在 AstrBot 服务器的 `post_drafts.sqlite3`。
+
+### 富文本内容块
+
+`xhh_publish_post` 和 `xhh_save_draft` 可选传入 `content_blocks`，按数组顺序发送或保存。旧的 `body` 和 `image_urls` 参数仍完全兼容；同时提供 `body` 时，它会排在内容块之前。
+
+```json
+[
+  {"type": "text", "text": "第一段纯文本"},
+  {"type": "html", "html": "<p><strong>重点</strong> <a href=\"https://example.com\">链接</a></p>"},
+  {"type": "image", "url": "https://example.com/image.jpg"}
+]
+```
+
+支持 `text`、`html`、`image` 三类内容块。HTML 仅允许段落、换行、强调、删除线、列表、引用、代码块和公开 HTTP(S) 链接；脚本、样式、事件属性、私网/危险链接、内嵌图片及未知标签会被拒绝。图片必须单独使用 `image` 块，仍经现有网络 URL / 本地文件 / Base64 校验和小黑盒 COS 上传链路。评论和私信仍保持纯文本加图片，未声明支持视频或卡片等未验证协议。
 
 ## 写操作确认
 
@@ -400,14 +431,14 @@ Bot：调用 xhh_publish_post，并返回 link_id 或错误。
 
 | 能力 | 本插件 | `astrbot_plugin_xiaoheihe_adapter` |
 | --- | --- | --- |
-| AstrBot 集成方式 | 普通插件后台轮询，构造标准事件，并注册 22 个基础 LLM 工具；可选开启本地草稿箱工具。 | 注册为小黑盒平台适配器，把消息提交为标准 AstrBot 事件。 |
+| AstrBot 集成方式 | 普通插件后台轮询，构造标准事件，并注册 25 个基础 LLM 工具；可选开启本地草稿箱工具。 | 注册为小黑盒平台适配器，把消息提交为标准 AstrBot 事件。 |
 | `@` 与帖子评论回复 | 支持，带持久化队列、重试和发送不确定保护。 | 支持，通过标准事件链交给 AstrBot 回复。 |
 | 私信 | 可轮询好友/陌生人私信并作为标准私聊事件自动回复，也可由工具主动发送。 | 可轮询好友、陌生人私信并作为标准事件自动处理。 |
 | 世界书等消息钩子 | 评论与私信经过标准消息链；自动巡帖仍是受控后台生成。 | 标准事件沿用 AstrBot 对话链和相关插件钩子。 |
 | 收到的图片 | 评论、被回复内容、帖子和私信图片组成 AstrBot `Image` 消息链。 | 支持图片消息组件。 |
 | 发出图片 | 网络图片转存、本地/Base64 图片上传 COS，支持评论和多图私信链。 | 支持本地图片上传到小黑盒 COS。 |
 | 登录与状态 | 管理命令与插件 WebUI 均可扫码；WebUI 还提供运行状态和数据库统计。 | 提供插件 WebUI 扫码登录页和状态页。 |
-| LLM 工具 | 22 个基础工具，含发帖、删帖、用户活动/关系、话题、收藏夹、私信和归档统计；草稿箱开启后额外 3 个本地草稿工具。 | 8 个，覆盖推荐、读帖、搜索、评论、收藏、点赞和关注。 |
+| LLM 工具 | 25 个基础工具，含发帖、删帖、用户活动/关系、统一通知、收藏内容、服务端草稿、话题、私信和归档统计；草稿箱开启后额外 3 个本地草稿工具。 | 8 个，覆盖推荐、读帖、搜索、评论、收藏、点赞和关注。 |
 | 自主巡帖 | 支持定时选帖、决策、评论、额度与风控保护。 | 提供模型逛帖工具，不负责定时自主评论。 |
 | 消息数据库 | SQLite 持久归档评论与私信，支持去重、统计、筛选和 WebUI 明细。 | 提供运行状态计数与内存去重。 |
 | 国际化 | 插件名称和 Page 标题提供中英文 i18n；配置和文档以中文为主。 | 带 AstrBot 插件 i18n 资源。 |
