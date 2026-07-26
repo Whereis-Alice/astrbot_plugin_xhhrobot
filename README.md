@@ -9,7 +9,7 @@
 - **20 个 LLM 工具**：支持动态、搜索、帖子、评论、用户、话题、收藏、点赞、关注、私信和发帖等能力。
 - **扫码登录**：由 AstrBot 管理员发起二维码登录，Cookie、设备 ID、游标和任务队列保存在插件数据中。
 - **家庭网络出口**：可只让小黑盒请求通过 SOCKS5 代理，不改变 AstrBot、模型或云服务器其他流量。
-- **写操作保护**：写工具默认关闭，并提供管理员权限、用户/会话允许列表、原始消息确认词、冷却和重复写入拦截。
+- **写操作保护**：写工具默认关闭，并提供管理员权限、用户/会话允许列表、可选逐次确认、冷却和重复写入拦截。
 - **故障隔离**：内置超时、指数退避、熔断、持久化队列和发送结果不确定保护。
 
 ## 快速开始
@@ -30,6 +30,7 @@
 | `filters.allow_all_users` | 仅在确认效果和频率后再考虑开启。 |
 | `filters.reply_to_own_post_comments` | 默认开启；允许回复 bot 自己帖子下无需 `@` 的普通评论。 |
 | `auto_browse.enabled` | 默认关闭；先用 `/小黑盒逛帖 预览` 检查选帖和评论效果。 |
+| `tools.require_explicit_confirmation` | 默认开启；不想每次确认时可关闭，重载插件后生效。 |
 | `connection.proxy_url` | 美国等境外云服务器建议填写家庭 SOCKS5；留空表示云服务器直连。 |
 
 配置页已经按“账号与登录、模型与人设、回复范围、轮询、自动巡帖、工具权限、通知、稳定性、高级连接”分组。每个短标签下方都有完整说明，关键安全项会直接显示提示。
@@ -166,6 +167,8 @@ curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
 
 > 后台回复直接调用 AstrBot 的 `context.llm_generate()`。`astrbot_plugin_worldbook` 的对话请求钩子不会自动注入这类后台调用；请在 `ai.persona_id` 选择包含核心设定的完整人设，并把必须遵守的规则放进 `ai.extra_system_prompt`。巡帖专用偏好可另写在 `auto_browse.extra_prompt`。
 
+成功的自动回复和自动巡帖评论都会写入 AstrBot 后台日志，包含相关 ID、对方评论或帖子标题，以及 Bot 实际发送的文本。填写 `notifications.umo` 后，还可把告警主动发送到指定会话；开启 `notifications.notify_on_reply` 时，成功回复通知会同时列出对方评论、Bot 回复及消息/帖子/评论/用户 ID。
+
 ## 自主巡帖
 
 自动巡帖默认关闭。启用 `auto_browse.enabled` 后，bot 会定时读取推荐流，先从摘要候选中选帖，再读取完整正文并独立决定评论或跳过。帖子内容被视为不可信输入，不能要求模型改变规则、调用工具或泄露提示词。
@@ -246,7 +249,7 @@ curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
 
 ## 写操作确认
 
-推荐分两轮完成写入：
+`tools.require_explicit_confirmation` 默认开启，推荐分两轮完成写入：
 
 ```text
 用户：按你现在的人设写一篇介绍 AstrBot 的小黑盒帖子，先给我预览，不要发布。
@@ -261,6 +264,8 @@ Bot：调用 xhh_publish_post，并返回 link_id 或错误。
 确认执行小黑盒操作：在帖子 123456 下评论“写得很清楚，谢谢分享”。
 ```
 
+不希望每次确认时，可关闭 `tools.require_explicit_confirmation` 并重载插件。写工具会从模型 schema 中移除 `confirm` 参数和确认提示；之后只要用户明确用自然语言要求执行，模型即可直接发帖、评论或进行其他写操作。管理员/允许列表、冷却和重复写入保护仍然有效。
+
 默认保护条件如下：
 
 | 配置项 | 默认值 | 作用 |
@@ -268,12 +273,12 @@ Bot：调用 xhh_publish_post，并返回 link_id 或错误。
 | `tools.enable_write_tools` | `false` | 不向模型注册写工具。 |
 | `tools.write_admin_only` | `true` | 仅 AstrBot 管理员可执行写操作。 |
 | `tools.private_tools_admin_only` | `true` | 仅管理员可读取账号私密信息。 |
-| `tools.require_explicit_confirmation` | `true` | 同时校验工具参数 `confirm=true` 与用户原始消息确认词。 |
+| `tools.require_explicit_confirmation` | `true` | 开启时同时校验 `confirm=true` 与用户原始消息确认词；可关闭。 |
 | `tools.confirmation_keywords` | 两个高强度短语 | 防止普通对话误触写入。 |
 | `tools.duplicate_guard_sec` | `120` | 拦截同一消息与参数的短期重复写入。 |
 | `tools.write_cooldown_sec` | `3` | 限制连续写操作频率。 |
 
-`confirm=true` 不能单独放行写操作。插件还会检查用户当前原始消息，模型无法在用户未确认时自行补一个参数完成发布。
+确认开关开启时，`confirm=true` 不能单独放行写操作。插件还会检查用户当前原始消息，模型无法在用户未确认时自行补一个参数完成发布。
 
 关闭管理员专用后，非管理员仍需命中 `tools.allowed_astrbot_user_ids` 或 `tools.allowed_umos`。列表留空不会放行；显式填写 `*` 才表示允许全部。
 
@@ -317,7 +322,8 @@ Bot：调用 xhh_publish_post，并返回 link_id 或错误。
 - 扫码凭据、设备 ID、两类消息游标、待处理队列、巡帖记录和失败记录使用 AstrBot 插件 KV 存储。
 - 停止或卸载插件不会主动删除登录凭据；使用 `/小黑盒退出` 清除扫码登录信息。
 - 默认不处理首次启用前已有的历史 `@` 或普通评论。确有需要时，在各自首次拉取前开启 `polling.process_existing_on_first_start`。
-- `tools.enabled` 和 `tools.enable_write_tools` 控制工具注册，修改后需要重载插件。
+- `tools.enabled`、`tools.enable_write_tools` 和 `tools.require_explicit_confirmation` 会影响工具注册或 schema，修改后需要重载插件。
+- 版本变化单独记录在 [changelog.md](./changelog.md)，README 不再堆叠更新历史。
 
 ## 风险说明
 

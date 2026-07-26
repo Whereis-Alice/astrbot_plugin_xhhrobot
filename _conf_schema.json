@@ -410,7 +410,7 @@
         "type": "bool",
         "description": "评论后发送通知",
         "default": true,
-        "hint": "成功自动评论后向 notifications.umo 发送帖子 ID 和评论预览；通知会话留空时只写日志。"
+        "hint": "成功自动评论后向 notifications.umo 发送帖子标题、Bot 评论、帖子 ID 和作者 ID；通知会话留空时只写日志。"
       },
       "max_history_records": {
         "type": "int",
@@ -425,7 +425,7 @@
   "tools": {
     "type": "object",
     "description": "自然语言工具与权限",
-    "hint": "读取工具默认注册；发帖、评论、点赞、收藏、关注、删帖和私信等写工具默认关闭，并受管理员权限与确认词双重保护。",
+    "hint": "读取工具默认注册；发帖、评论、点赞、收藏、关注、删帖和私信等写工具默认关闭。写工具始终受权限、限速和重复写入保护，是否逐次确认可在下方选择。",
     "obvious_hint": true,
     "items": {
       "enabled": {
@@ -438,7 +438,14 @@
         "type": "bool",
         "description": "启用写操作工具",
         "default": false,
-        "hint": "注册发帖、评论、收藏、点赞、关注、删帖和发送私信工具。开启后仍会检查调用权限和确认词；修改后需要重载插件。",
+        "hint": "注册发帖、评论、收藏、点赞、关注、删帖和发送私信工具。开启后仍会检查调用权限；是否逐次确认由下一项控制。修改后需要重载插件。",
+        "obvious_hint": true
+      },
+      "require_explicit_confirmation": {
+        "type": "bool",
+        "description": "每次写操作都要求确认",
+        "default": true,
+        "hint": "开启时，用户当前消息必须包含下方确认词，模型才可执行；关闭时，用户用自然语言明确要求发帖、评论等操作后即可直接执行，不再追加确认。权限、限速和重复写入保护不会关闭。修改后需要重载插件。",
         "obvious_hint": true
       },
       "write_admin_only": {
@@ -472,13 +479,6 @@
         "default": [],
         "hint": "填写完整 AstrBot UMO 会话 ID。填 * 表示所有会话；留空不会放行非管理员。"
       },
-      "require_explicit_confirmation": {
-        "type": "bool",
-        "description": "写操作要求明确确认",
-        "default": true,
-        "hint": "开启后，写工具必须同时收到 confirm=true，且用户当前原始消息包含下方确认词。强烈建议保持开启。",
-        "obvious_hint": true
-      },
       "confirmation_keywords": {
         "type": "list",
         "description": "写操作确认词",
@@ -489,7 +489,7 @@
           "确认执行小黑盒操作",
           "CONFIRM_XHH_WRITE"
         ],
-        "hint": "建议使用不易误触的完整短语。不要只填写“确认”“好”或“是”；模型自行生成确认词不会通过原始消息校验。",
+        "hint": "仅在“每次写操作都要求确认”开启时使用。建议使用不易误触的完整短语，不要只填写“确认”“好”或“是”；模型自行生成确认词不会通过原始消息校验。",
         "obvious_hint": true
       },
       "duplicate_guard_sec": {
@@ -569,7 +569,7 @@
   "notifications": {
     "type": "object",
     "description": "AstrBot 通知",
-    "hint": "可把登录失效、熔断和发送结果不确定等告警主动发送到指定 AstrBot 会话；留空时只写日志。",
+    "hint": "可把登录失效、熔断、发送结果不确定和成功回复详情主动发送到指定 AstrBot 会话；通知不添加固定前缀，留空时只写日志。",
     "items": {
       "umo": {
         "type": "string",
@@ -581,7 +581,7 @@
         "type": "bool",
         "description": "回复成功后通知",
         "default": false,
-        "hint": "每次小黑盒自动回复成功后，向上方会话发送一条 AstrBot 通知。"
+        "hint": "每次小黑盒自动回复成功后，发送对方评论、Bot 回复、消息 ID、帖子 ID、评论 ID 和用户 ID。"
       }
     }
   },

@@ -80,6 +80,14 @@ class RecordingReplyClient:
         self.sent.append(dict(kwargs))
 
 
+class RecordingNotificationContext:
+    def __init__(self) -> None:
+        self.sent: list[tuple[str, str]] = []
+
+    async def send_message(self, umo: str, chain: object) -> None:
+        self.sent.append((umo, chain.get_plain_text()))
+
+
 class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
     async def make_plugin(
         self, config: dict, pages: list[list[Mention]]
@@ -227,11 +235,15 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
                 "allow_all_users": True,
                 "reply_to_own_post_comments": True,
             },
-            "notifications": {"notify_on_reply": False},
+            "notifications": {
+                "umo": "test:FriendMessage:notify",
+                "notify_on_reply": True,
+            },
         }
         plugin.store = store
         plugin.client = client
         plugin.auth = AuthInfo(cookie="cookie=value", heybox_id="999")
+        plugin.context = RecordingNotificationContext()
 
         async def generate_reply(*args: object) -> str:
             return "自动回复"
@@ -242,6 +254,19 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(outcome, "replied")
         self.assertEqual(len(client.sent), 1)
         self.assertEqual(client.sent[0]["reply_id"], 121)
+        self.assertEqual(len(plugin.context.sent), 1)
+        umo, notification = plugin.context.sent[0]
+        self.assertEqual(umo, "test:FriendMessage:notify")
+        self.assertTrue(notification.startswith("小黑盒自动回复成功"))
+        self.assertIn("类型：自己帖子下的普通评论", notification)
+        self.assertIn("对方评论：\n普通评论", notification)
+        self.assertIn("Bot 回复：\n自动回复", notification)
+        self.assertIn("消息 ID：21", notification)
+        self.assertIn("帖子 ID：500", notification)
+        self.assertIn("评论 ID：121", notification)
+        self.assertIn("根评论 ID：121", notification)
+        self.assertIn("用户 ID：1", notification)
+        self.assertNotIn("[小黑盒机器人]", notification)
 
     async def test_ordinary_comment_on_someone_elses_post_is_skipped(self) -> None:
         backend = MemoryBackend()

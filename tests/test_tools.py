@@ -6,7 +6,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from astrbot_plugin_xhhrobot.main import XhhRobotPlugin
-from astrbot_plugin_xhhrobot.tools import XhhToolRuntime
+from astrbot_plugin_xhhrobot.tools import WRITE_ACTIONS, XhhToolRuntime
 
 
 class FakeEvent:
@@ -99,6 +99,47 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(tools), 20)
         self.assertTrue(by_name["xhh_search"].active)
         self.assertFalse(by_name["xhh_publish_post"].active)
+
+    async def test_build_tools_adapts_confirmation_schema(self) -> None:
+        required_runtime = XhhToolRuntime(FakePlugin(self.config()))
+        required_tools = [
+            tool
+            for tool in required_runtime.build_tools()
+            if tool.action in WRITE_ACTIONS
+        ]
+        self.assertEqual(len(required_tools), 7)
+        for tool in required_tools:
+            self.assertIn("confirm", tool.parameters["properties"])
+            self.assertIn("confirm", tool.parameters["required"])
+
+        direct_runtime = XhhToolRuntime(
+            FakePlugin(self.config(require_explicit_confirmation=False))
+        )
+        direct_tools = [
+            tool
+            for tool in direct_runtime.build_tools()
+            if tool.action in WRITE_ACTIONS
+        ]
+        self.assertEqual(len(direct_tools), 7)
+        for tool in direct_tools:
+            self.assertNotIn("confirm", tool.parameters["properties"])
+            self.assertNotIn("confirm", tool.parameters["required"])
+            self.assertIn("不要求额外确认", tool.description)
+
+    async def test_write_can_run_directly_when_confirmation_is_disabled(self) -> None:
+        plugin = FakePlugin(self.config(require_explicit_confirmation=False))
+        runtime = XhhToolRuntime(plugin)
+
+        result = json.loads(
+            await runtime.execute(
+                "publish_post",
+                FakeEvent(admin=True, message="直接发布这篇帖子"),
+                {"title": "标题", "body": "正文"},
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(len(plugin.client.published), 1)
 
     async def test_write_requires_phrase_in_original_user_message(self) -> None:
         plugin = FakePlugin(self.config())

@@ -78,15 +78,32 @@ def _confirm_property() -> dict[str, Any]:
     }
 
 
-def _write_description(description: str) -> str:
-    return (
-        description
-        + " 这是会改变小黑盒账号或公开内容的写操作。调用前先向用户复述目标与内容；"
-        "只有用户当前消息明确给出配置中的确认词后，才以 confirm=true 调用。"
+def _write_description(description: str, *, confirmation_required: bool) -> str:
+    base = description + " 这是会改变小黑盒账号或公开内容的写操作。"
+    if confirmation_required:
+        return (
+            base
+            + "调用前先向用户复述目标与内容；只有用户当前消息明确给出配置中的确认词后，"
+            "才以 confirm=true 调用。"
+        )
+    return base + "当前配置不要求额外确认；用户明确要求执行时可直接调用。"
+
+
+def _write_schema(
+    properties: dict[str, Any],
+    required: tuple[str, ...],
+    *,
+    confirmation_required: bool,
+) -> dict[str, Any]:
+    if not confirmation_required:
+        return _object_schema(properties, required)
+    return _object_schema(
+        {**properties, "confirm": _confirm_property()},
+        (*required, "confirm"),
     )
 
 
-def tool_specs() -> tuple[ToolSpec, ...]:
+def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
     pagination = {
         "offset": {"type": "number", "description": "从 0 开始的偏移量。", "default": 0},
         "limit": {
@@ -284,8 +301,11 @@ def tool_specs() -> tuple[ToolSpec, ...]:
         ToolSpec(
             "xhh_publish_post",
             "publish_post",
-            _write_description("发布一篇小黑盒普通图文帖。先用 xhh_get_topics 取得最多两个 topic_id。"),
-            _object_schema(
+            _write_description(
+                "发布一篇小黑盒普通图文帖。先用 xhh_get_topics 取得最多两个 topic_id。",
+                confirmation_required=confirmation_required,
+            ),
+            _write_schema(
                 {
                     "title": {"type": "string", "description": "帖子标题。"},
                     "body": {"type": "string", "description": "帖子纯文本正文，可在有图片时留空。"},
@@ -310,16 +330,19 @@ def tool_specs() -> tuple[ToolSpec, ...]:
                         "items": {"type": "string"},
                         "description": "可选 HTTP(S) 图片地址；不接受本地文件。",
                     },
-                    "confirm": _confirm_property(),
                 },
-                ("title", "confirm"),
+                ("title",),
+                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
             "xhh_create_comment",
             "create_comment",
-            _write_description("评论帖子，或通过 root_id/reply_id 回复指定评论。"),
-            _object_schema(
+            _write_description(
+                "评论帖子，或通过 root_id/reply_id 回复指定评论。",
+                confirmation_required=confirmation_required,
+            ),
+            _write_schema(
                 {
                     "link_id": {"type": "string", "description": "帖子 ID。"},
                     "text": {"type": "string", "description": "评论纯文本；有图片时可留空。"},
@@ -336,30 +359,36 @@ def tool_specs() -> tuple[ToolSpec, ...]:
                         "items": {"type": "string"},
                         "description": "可选 HTTP(S) 图片地址；不接受本地文件。",
                     },
-                    "confirm": _confirm_property(),
                 },
-                ("link_id", "confirm"),
+                ("link_id",),
+                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
             "xhh_set_favorite",
             "set_favorite",
-            _write_description("收藏或取消收藏指定帖子。收藏前可读取收藏夹取得 folder_id。"),
-            _object_schema(
+            _write_description(
+                "收藏或取消收藏指定帖子。收藏前可读取收藏夹取得 folder_id。",
+                confirmation_required=confirmation_required,
+            ),
+            _write_schema(
                 {
                     "link_id": {"type": "string", "description": "帖子 ID。"},
                     "favorite": {"type": "boolean", "description": "true 收藏，false 取消收藏。"},
                     "folder_id": {"type": "string", "description": "可选收藏夹 ID。"},
-                    "confirm": _confirm_property(),
                 },
-                ("link_id", "favorite", "confirm"),
+                ("link_id", "favorite"),
+                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
             "xhh_set_like",
             "set_like",
-            _write_description("点赞或取消点赞一个帖子或评论。"),
-            _object_schema(
+            _write_description(
+                "点赞或取消点赞一个帖子或评论。",
+                confirmation_required=confirmation_required,
+            ),
+            _write_schema(
                 {
                     "target_type": {
                         "type": "string",
@@ -368,16 +397,19 @@ def tool_specs() -> tuple[ToolSpec, ...]:
                     },
                     "target_id": {"type": "string", "description": "帖子或评论 ID。"},
                     "liked": {"type": "boolean", "description": "true 点赞，false 取消点赞。"},
-                    "confirm": _confirm_property(),
                 },
-                ("target_type", "target_id", "liked", "confirm"),
+                ("target_type", "target_id", "liked"),
+                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
             "xhh_set_follow",
             "set_follow",
-            _write_description("关注或取消关注一个小黑盒用户。"),
-            _object_schema(
+            _write_description(
+                "关注或取消关注一个小黑盒用户。",
+                confirmation_required=confirmation_required,
+            ),
+            _write_schema(
                 {
                     "user_id": {"type": "string", "description": "目标小黑盒用户 ID。"},
                     "followed": {"type": "boolean", "description": "true 关注，false 取消关注。"},
@@ -385,28 +417,34 @@ def tool_specs() -> tuple[ToolSpec, ...]:
                         "type": "string",
                         "description": "可选，操作来源帖子 ID。",
                     },
-                    "confirm": _confirm_property(),
                 },
-                ("user_id", "followed", "confirm"),
+                ("user_id", "followed"),
+                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
             "xhh_delete_post",
             "delete_post",
-            _write_description("删除当前登录账号自己发布的帖子。删除不可撤销。"),
-            _object_schema(
+            _write_description(
+                "删除当前登录账号自己发布的帖子。删除不可撤销。",
+                confirmation_required=confirmation_required,
+            ),
+            _write_schema(
                 {
                     "link_id": {"type": "string", "description": "要删除的本人帖子 ID。"},
-                    "confirm": _confirm_property(),
                 },
-                ("link_id", "confirm"),
+                ("link_id",),
+                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
             "xhh_send_direct_message",
             "send_direct_message",
-            _write_description("向指定小黑盒用户发送私信文本和至多一张网络图片。"),
-            _object_schema(
+            _write_description(
+                "向指定小黑盒用户发送私信文本和至多一张网络图片。",
+                confirmation_required=confirmation_required,
+            ),
+            _write_schema(
                 {
                     "user_id": {"type": "string", "description": "收件人小黑盒用户 ID。"},
                     "text": {"type": "string", "description": "私信纯文本，有图片时可留空。"},
@@ -414,9 +452,9 @@ def tool_specs() -> tuple[ToolSpec, ...]:
                         "type": "string",
                         "description": "可选的一张 HTTP(S) 图片地址；不接受本地文件。",
                     },
-                    "confirm": _confirm_property(),
                 },
-                ("user_id", "confirm"),
+                ("user_id",),
+                confirmation_required=confirmation_required,
             ),
         ),
     )
@@ -444,6 +482,9 @@ class XhhToolRuntime:
 
     def build_tools(self) -> list[FunctionTool]:
         write_enabled = self._bool_cfg("tools.enable_write_tools", False)
+        confirmation_required = self._bool_cfg(
+            "tools.require_explicit_confirmation", True
+        )
         return [
             XhhLlmTool(
                 name=spec.name,
@@ -453,7 +494,7 @@ class XhhToolRuntime:
                 action=spec.action,
                 active=not spec.is_write or write_enabled,
             )
-            for spec in tool_specs()
+            for spec in tool_specs(confirmation_required=confirmation_required)
         ]
 
     async def execute(self, action: str, event: Any, kwargs: Mapping[str, Any]) -> str:

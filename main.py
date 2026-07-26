@@ -177,6 +177,11 @@ class XhhRobotPlugin(Star):
     @filter.command("小黑盒帮助", alias={"xhh帮助", "xhh_help"})
     async def xhh_help(self, event: AstrMessageEvent):
         """查看小黑盒机器人管理命令。"""
+        confirmation_help = (
+            "开启后还需在用户原消息中包含配置的确认词。"
+            if self._bool_cfg("tools.require_explicit_confirmation", True)
+            else "当前已关闭逐次确认，用户明确要求时可直接执行。"
+        )
         yield event.plain_result(
             "小黑盒机器人命令：\n"
             "/小黑盒状态 - 查看登录、队列和运行状态\n"
@@ -190,7 +195,7 @@ class XhhRobotPlugin(Star):
             "/小黑盒逛帖 预览 - 立即选帖并生成评论，但不发布\n"
             "/小黑盒逛帖 - 自动巡帖已启用时立即执行一次\n\n"
             "自然语言工具：动态、搜索、帖子/评论、用户资料、话题、收藏、点赞、关注、私信和发帖。\n"
-            "写工具默认关闭；开启后，用户原消息还需包含“确认执行小黑盒操作”。\n"
+            f"写工具默认关闭；{confirmation_help}\n"
             "自己帖子下的普通评论可无需 @ 自动回复，仍受用户允许范围控制。\n"
             "自动巡帖默认关闭；开启后会在无需逐条确认的情况下自主选择帖子并评论。"
         )
@@ -795,14 +800,20 @@ class XhhRobotPlugin(Star):
                     ]
                 result.notes.append(f"已评论帖子 {selected.link_id}：{comment[:300]}")
                 logger.info(
-                    "%s auto commented: link_id=%s author_id=%s",
+                    "%s auto comment succeeded: link_id=%s author_id=%s title=%r comment=%r",
                     PLUGIN_ID,
                     selected.link_id,
                     selected.author_id,
+                    post.title or selected.title,
+                    comment,
                 )
                 if self._bool_cfg("auto_browse.notify_on_comment", True):
                     await self._notify(
-                        f"自动巡帖已评论帖子 {selected.link_id}：{comment[:300]}"
+                        "小黑盒自动评论成功\n\n"
+                        f"帖子：{post.title or selected.title or '[无标题]'}\n\n"
+                        f"Bot 评论：\n{comment}\n\n"
+                        f"帖子 ID：{selected.link_id}\n"
+                        f"作者 ID：{selected.author_id}"
                     )
                 if remaining and result.commented < max_comments:
                     await self._wait_or_stop(
@@ -1212,17 +1223,20 @@ class XhhRobotPlugin(Star):
 
         await self.store.mark_done(mention.message_id, reply_text)
         logger.info(
-            "%s replied: message_id=%s link_id=%s comment_id=%s user_id=%s",
+            "%s auto reply succeeded: source=%s message_id=%s link_id=%s "
+            "comment_id=%s root_comment_id=%s user_id=%s comment=%r reply=%r",
             PLUGIN_ID,
+            mention.source,
             mention.message_id,
             mention.link_id,
             mention.comment_id,
+            mention.root_comment_id,
             mention.user_id,
+            mention.comment_text,
+            reply_text,
         )
         if self._bool_cfg("notifications.notify_on_reply", False):
-            await self._notify(
-                f"小黑盒已回复消息 {mention.message_id}（帖子 {mention.link_id}，用户 {mention.user_id}）。"
-            )
+            await self._notify(self._reply_success_notification(mention, reply_text))
         return "replied"
 
     async def _handle_pre_send_error(self, mention: Mention, exc: XhhError) -> str:
@@ -1620,6 +1634,12 @@ class XhhRobotPlugin(Star):
                     if self._bool_cfg("tools.enable_write_tools", False)
                     else "已关闭"
                 )
+                + "；逐次确认："
+                + (
+                    "已开启"
+                    if self._bool_cfg("tools.require_explicit_confirmation", True)
+                    else "已关闭"
+                )
             ),
             (
                 f"自动巡帖：{browse_mode}；24 小时额度 {browse_used}/{browse_limit}；"
@@ -1645,11 +1665,26 @@ class XhhRobotPlugin(Star):
         if not umo:
             return
         try:
-            await self.context.send_message(
-                umo, MessageChain().message("[小黑盒机器人] " + text)
-            )
+            await self.context.send_message(umo, MessageChain().message(text))
         except Exception as exc:
             logger.warning("%s notification failed: %r", PLUGIN_ID, exc)
+
+    @staticmethod
+    def _reply_success_notification(mention: Mention, reply_text: str) -> str:
+        source = (
+            "自己帖子下的普通评论" if mention.source == "own_post_comment" else "@ 消息"
+        )
+        return (
+            "小黑盒自动回复成功\n\n"
+            f"类型：{source}\n\n"
+            f"对方评论：\n{mention.comment_text or '[空评论]'}\n\n"
+            f"Bot 回复：\n{reply_text or '[空回复]'}\n\n"
+            f"消息 ID：{mention.message_id}\n"
+            f"帖子 ID：{mention.link_id}\n"
+            f"评论 ID：{mention.comment_id}\n"
+            f"根评论 ID：{mention.root_comment_id}\n"
+            f"用户 ID：{mention.user_id}"
+        )
 
     def _register_llm_tools(self) -> None:
         self._unregister_llm_tools()
