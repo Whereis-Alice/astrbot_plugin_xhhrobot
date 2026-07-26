@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -178,6 +179,19 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(routes), 7)
         self.assertTrue(all(route[0].startswith(f"/{PLUGIN_ID}/") for route in routes))
+
+    def test_dashboard_loads_bridge_before_inline_application(self) -> None:
+        page = (
+            Path(__file__).parents[1] / "pages" / "dashboard" / "index.html"
+        ).read_text(encoding="utf-8")
+        bridge_tag = '<script src="/api/plugin/page/bridge-sdk.js"></script>'
+        application_marker = "<script>\n      let bridge = null;"
+
+        self.assertIn(bridge_tag, page)
+        self.assertIn(application_marker, page)
+        self.assertLess(page.index(bridge_tag), page.index(application_marker))
+        self.assertIn("const pageBridge = await getBridge();", page)
+        self.assertNotIn("const bridge = window.AstrBotPluginPage;", page)
 
 
 if __name__ == "__main__":

@@ -2,6 +2,14 @@
 
 本文件记录“小黑盒bot”的版本变化。使用方法、配置与部署说明请查看 [README.md](./README.md)。
 
+## v0.6.1 - 2026-07-26
+
+### 修复
+
+- WebUI 在 AstrBot 自动注入 Bridge SDK 晚于页面内联脚本时，不再缓存未定义的 Bridge 对象。
+- 页面会在应用脚本前显式加载官方 Bridge SDK，并在初始化与 API 调用时重新获取和校验 Bridge，避免运行状态页停在骨架屏并提示 `Cannot read properties of undefined (reading 'ready')`。
+- 增加 Bridge 加载顺序回归测试，并在 SDK 加载失败时显示可操作的版本与刷新提示。
+
 ## v0.6.0 - 2026-07-26
 
 ### 新增

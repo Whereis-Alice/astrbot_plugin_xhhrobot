@@ -998,8 +998,9 @@
 
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+    <script src="/api/plugin/page/bridge-sdk.js"></script>
     <script>
-      const bridge = window.AstrBotPluginPage;
+      let bridge = null;
       const state = {
         activeTab: "status",
         dataset: "comments",
@@ -1069,9 +1070,30 @@
           .join("");
       }
 
+      async function getBridge(timeoutMs = 5000) {
+        if (bridge) return bridge;
+        const deadline = Date.now() + timeoutMs;
+        while (!window.AstrBotPluginPage && Date.now() < deadline) {
+          await new Promise((resolve) => window.setTimeout(resolve, 50));
+        }
+        const candidate = window.AstrBotPluginPage;
+        if (
+          !candidate ||
+          typeof candidate.ready !== "function" ||
+          typeof candidate.apiGet !== "function" ||
+          typeof candidate.apiPost !== "function"
+        ) {
+          throw new Error(
+            "AstrBot 页面 Bridge 加载失败，请刷新页面并确认 AstrBot 版本不低于 4.24.5",
+          );
+        }
+        bridge = candidate;
+        return bridge;
+      }
+
       async function getApi(endpoint, params = {}) {
-        if (!bridge) throw new Error("AstrBot 页面 Bridge 不可用");
-        const result = await bridge.apiGet(endpoint, params);
+        const pageBridge = await getBridge();
+        const result = await pageBridge.apiGet(endpoint, params);
         if (!result || result.ok === false) {
           throw new Error(result?.error || "请求失败");
         }
@@ -1079,8 +1101,8 @@
       }
 
       async function postApi(endpoint, body = {}) {
-        if (!bridge) throw new Error("AstrBot 页面 Bridge 不可用");
-        const result = await bridge.apiPost(endpoint, body);
+        const pageBridge = await getBridge();
+        const result = await pageBridge.apiPost(endpoint, body);
         if (!result || result.ok === false) {
           throw new Error(result?.error || "请求失败");
         }
@@ -1645,12 +1667,13 @@
         bindEvents();
         updateFilterOptions();
         try {
-          const context = await bridge.ready();
+          const pageBridge = await getBridge();
+          const context = await pageBridge.ready();
           byId("brandMeta").textContent = "AstrBot 插件";
           if (context?.isDark) {
             document.documentElement.dataset.theme = "dark";
           }
-          bridge.onContext?.((nextContext) => {
+          pageBridge.onContext?.((nextContext) => {
             document.documentElement.dataset.theme = nextContext?.isDark
               ? "dark"
               : "light";
