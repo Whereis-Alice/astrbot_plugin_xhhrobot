@@ -1,14 +1,16 @@
 # AstrBot 小黑盒bot
 
-在 AstrBot 内完成小黑盒扫码登录、人设自动回复、自主巡帖、评论归档统计，并把社区读取与写入能力注册为 LLM 工具。插件独立运行，不需要额外部署 `xhhRobot`、Go 服务、HTTP 桥接或数据库服务；评论归档使用插件自带的 SQLite。
+在 AstrBot 内完成小黑盒扫码登录、人设与世界书回复、私信自动回复、自主巡帖和消息统计，并把社区读取与写入能力注册为 LLM 工具。插件独立运行，不需要额外部署 `xhhRobot`、Go 服务、HTTP 桥接或数据库服务；评论与私信记录使用插件自带的 SQLite。
 
 ## 功能概览
 
-- **人设自动回复**：回复小黑盒 `@` 消息，也可自动回复 bot 自己帖子下无需 `@` 的普通评论。
+- **标准事件回复**：把评论和私信作为 AstrBot 消息处理，沿用人设、会话历史、世界书与其他 LLM 请求钩子。
+- **评论与私信**：回复小黑盒 `@` 消息、bot 自己帖子下无需 `@` 的普通评论，以及可选的好友/陌生人私信。
 - **自主巡帖评论**：定时浏览推荐流，由模型按人设自主选帖、阅读正文并决定评论或跳过。
 - **22 个 LLM 工具**：支持动态、搜索、帖子、评论、用户、话题、收藏、点赞、关注、私信、发帖和评论归档查询。
-- **评论归档统计**：自动保存收到与发出的评论，区分平台原始通知、去重评论和 Bot 评论，可用自然语言统计或查明细。
-- **扫码登录**：由 AstrBot 管理员发起二维码登录，Cookie、设备 ID、游标和任务队列保存在插件数据中。
+- **消息数据库**：自动保存评论与私信，区分原始观察、去重评论、Bot 评论和处理状态，可在 WebUI 或通过工具统计查询。
+- **WebUI**：在插件页面扫码登录，查看运行状态、状态分布、分页筛选和消息详情。
+- **完整图片链**：收到的评论、帖子与私信图片可交给视觉模型；回复和写工具支持网络图、本地图片与多图私信。
 - **家庭网络出口**：可只让小黑盒请求通过 SOCKS5 代理，不改变 AstrBot、模型或云服务器其他流量。
 - **写操作保护**：写工具默认关闭，并提供管理员权限、用户/会话允许列表、可选逐次确认、冷却和重复写入拦截。
 - **故障隔离**：内置超时、指数退避、熔断、持久化队列和发送结果不确定保护。
@@ -19,7 +21,7 @@
 
 在 AstrBot WebUI 的插件市场中安装本插件，或把 `astrbot_plugin_xhhrobot` 文件夹放入 AstrBot 的 `data/plugins/`，然后安装 `requirements.txt` 中的依赖并重载插件。
 
-支持 AstrBot `>=4.16,<5`，需要 Python 3.10 或更高版本。
+支持 AstrBot `>=4.24.5,<5`，需要 Python 3.10 或更高版本。较早版本没有完整的插件 Pages 与页面 i18n 能力。
 
 ### 2. 完成基础配置
 
@@ -27,19 +29,22 @@
 | --- | --- |
 | `ai.provider_id` | 选择用于小黑盒回复的文本模型。 |
 | `ai.persona_id` | 选择 bot 已有的人设；留空时可使用 `ai.session_umo` 对应的默认人设。 |
+| `event_bridge.enabled` | 建议保持开启，让评论和私信经过标准事件、世界书和消息钩子。 |
 | `filters.allowed_user_ids` | 先填写测试账号的小黑盒用户 ID。 |
 | `filters.allow_all_users` | 仅在确认效果和频率后再考虑开启。 |
 | `filters.reply_to_own_post_comments` | 默认开启；允许回复 bot 自己帖子下无需 `@` 的普通评论。 |
 | `auto_browse.enabled` | 默认关闭；先用 `/小黑盒逛帖 预览` 检查选帖和评论效果。 |
-| `analytics.enabled` | 默认开启；使用内置 SQLite 归档新评论并提供去重统计。 |
+| `direct_messages.enabled` | 默认关闭；确认允许范围后再开启私信自动回复。 |
+| `analytics.enabled` | 默认开启；使用内置 SQLite 归档评论并提供去重统计。 |
+| `webui.show_message_content` | 不希望管理员页面显示正文时关闭，统计和 ID 仍保留。 |
 | `tools.require_explicit_confirmation` | 默认开启；不想每次确认时可关闭，重载插件后生效。 |
 | `connection.proxy_url` | 美国等境外云服务器建议填写家庭 SOCKS5；留空表示云服务器直连。 |
 
-配置页已经按“账号与登录、模型与人设、回复范围、轮询、自动巡帖、工具权限、通知、稳定性、高级连接”分组。每个短标签下方都有完整说明，关键安全项会直接显示提示。
+配置页按账号、人设、标准事件、回复范围、私信、巡帖、工具、图片、统计、WebUI、通知、稳定性和连接分组。每个短标签下方都有完整说明，关键安全项会直接显示提示。
 
 ### 3. 扫码登录
 
-在 AstrBot 已连接的平台中，由管理员发送：
+可以打开 AstrBot 插件详情中的“小黑盒bot”页面，进入“扫码登录”标签生成二维码。也可以在 AstrBot 已连接的平台中，由管理员发送：
 
 ```text
 /小黑盒登录
@@ -51,7 +56,7 @@
 /小黑盒状态
 ```
 
-状态页会显示登录来源、后台任务、回复范围、队列和 LLM 工具状态。
+命令状态会显示登录来源、后台任务、回复范围、队列和 LLM 工具状态；插件页面还会显示评论/私信统计与消息明细。
 
 > 推荐把 `account.cookie` 留空。Cookie 等同账号凭据，不要发到群聊、日志、问题反馈或公开仓库。
 
@@ -167,13 +172,26 @@ curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
 
 `allowed_user_ids`、`allow_all_users` 和 `blocked_user_ids` 同时作用于以上两种自动回复。默认允许列表为空，因此刚安装时不会回复任何用户。
 
-> 后台回复直接调用 AstrBot 的 `context.llm_generate()`。`astrbot_plugin_worldbook` 的对话请求钩子不会自动注入这类后台调用；请在 `ai.persona_id` 选择包含核心设定的完整人设，并把必须遵守的规则放进 `ai.extra_system_prompt`。巡帖专用偏好可另写在 `auto_browse.extra_prompt`。
+`event_bridge.enabled` 默认开启。评论会进入 `post!帖子ID` 会话，私信会进入 `dm!用户ID` 会话，并经过 AstrBot 正常消息链。因此 `astrbot_plugin_worldbook` 在 `on_llm_request` 中注入的规则可以继续生效，通常不需要复制一份完整人设。若某条世界书规则限定了平台、会话或触发词，需要把新的 `xhhrobot` 平台与会话标识纳入条件。`ai.extra_system_prompt` 只需放小黑盒专用限制。
+
+外部小黑盒用户 ID 会加上 `xhh:` 命名空间，不能冒充 AstrBot 管理员。小黑盒消息默认也不能调用本插件的账号工具；只有明确开启高风险项 `event_bridge.allow_llm_tools` 才会放行。
 
 成功的自动回复和自动巡帖评论都会写入 AstrBot 后台日志，包含相关 ID、对方评论或帖子标题，以及 Bot 实际发送的文本。填写 `notifications.umo` 后，还可把告警主动发送到指定会话；开启 `notifications.notify_on_reply` 时，成功回复通知会同时列出对方评论、Bot 回复及消息/帖子/评论/用户 ID。
 
-## 评论归档与统计
+## 私信自动回复
 
-`analytics.enabled` 默认开启。插件会在自己的数据目录创建 `comment_archive.sqlite3`，不需要 MySQL、PostgreSQL 或其他数据库服务。归档分为两类：
+私信自动回复默认关闭。开启 `direct_messages.enabled` 后，插件会随机间隔轮询好友私信；`direct_messages.reply_to_strangers` 可额外处理陌生人入口。私信与评论共用 `filters.allowed_user_ids`、`filters.allow_all_users` 和 `filters.blocked_user_ids`。
+
+首次启用默认只建立基线，不回复当前已有的历史私信。可配置静默时段、全局与单用户 24 小时上限、单用户冷却和单轮提交数量。文本与多张图片会按小黑盒消息链分开发送；中途失败会标记为“结果不确定”，不会自动整链重发。
+
+## 消息归档、统计与 WebUI
+
+插件在自己的数据目录使用两个 SQLite 文件，不需要 MySQL、PostgreSQL 或其他数据库服务：
+
+- `comment_archive.sqlite3`：保存收到的评论、平台观察记录和 Bot 发出的评论；由 `analytics.enabled` 控制。
+- `direct_messages.sqlite3`：保存私信基线、待处理队列、回复正文与发送状态。
+
+评论归档分为两类：
 
 - `received`：从 `@` 和自己帖子普通评论入口收到的外部用户评论。
 - `bot`：自动回复、自动巡帖和 `xhh_create_comment` 发出的 Bot 评论。
@@ -191,7 +209,11 @@ curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
 
 `xhh_comment_stats` 返回聚合结果；Bot 部分会再区分确认发送与发送结果不确定。`xhh_search_comment_archive` 返回具体正文和 ID。两者属于账号私密工具，默认仅 AstrBot 管理员可调用。时间筛选接受 Unix 秒时间戳或带时区的 ISO 8601；无时区值按 UTC 解释。
 
-归档只记录插件启用后实际观察到的消息，不会抓取小黑盒全部历史评论。首次轮询默认只建立游标，不导入旧消息；只有事先开启 `polling.process_existing_on_first_start` 才会处理并归档首次可见的历史页。`analytics.retention_days` 默认保留 365 天，设为 `0` 表示永久保留；`analytics.max_records` 同时限制原始观察和 Bot 评论的容量。
+插件页面的“消息数据库”标签会显示去重评论、原始观察、Bot 评论、私信记录、独立用户、图片消息和各处理状态，并支持按数据集、关键词、方向、来源、状态、用户 ID、帖子 ID 分页筛选。点击一行可查看双方正文和相关 ID。关闭 `webui.show_message_content` 后只返回隐藏占位、字符数、ID、时间和状态。
+
+浏览器只通过 AstrBot 登录态保护的插件 API 查询数据，不会收到 SQLite 路径、Cookie 或代理凭据。页面不能绕过 `analytics.enabled` 读取已关闭的评论归档。
+
+归档只记录插件启用后实际观察到的消息，不会抓取小黑盒全部历史。评论和私信首次轮询默认只建立游标/基线；确需处理当前可见历史时，分别提前开启 `polling.process_existing_on_first_start` 或 `direct_messages.process_existing_on_first_start`。`analytics.retention_days` 默认保留 365 天，设为 `0` 表示永久保留。
 
 ## 自主巡帖
 
@@ -227,6 +249,7 @@ curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
 查一下用户 98765 最近发布了什么。
 搜索可以发帖的“数码硬件”话题，告诉我 topic_id。
 统计评论归档里包含“AstrBot”的评论，排除 Bot 自己发出的内容。
+给用户 98765 发送文字和这两张图片。
 ```
 
 模型会根据问题选择工具。小黑盒返回的帖子、评论、用户资料和私信会被标记为不可信外部内容，并按配置限制返回长度。
@@ -270,7 +293,7 @@ curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
 | `xhh_set_like` | 点赞或取消帖子/评论点赞。 |
 | `xhh_set_follow` | 关注或取消关注用户。 |
 | `xhh_delete_post` | 删除当前账号自己发布的帖子。 |
-| `xhh_send_direct_message` | 发送私信文本和一张网络图片。 |
+| `xhh_send_direct_message` | 发送私信文本与多张网络/本地图片。 |
 
 写工具需要先开启 `tools.enable_write_tools`，修改后重载插件。
 
@@ -309,7 +332,9 @@ Bot：调用 xhh_publish_post，并返回 link_id 或错误。
 
 关闭管理员专用后，非管理员仍需命中 `tools.allowed_astrbot_user_ids` 或 `tools.allowed_umos`。列表留空不会放行；显式填写 `*` 才表示允许全部。
 
-发帖、评论和私信只接受 HTTP(S) 图片 URL，不接受云服务器本地文件路径。插件会拒绝回环、私有和保留 IP，并先通过小黑盒图片转存接口取得可发布 URL。
+发帖、评论和私信支持公开 HTTP(S) 图片、Base64 图片以及允许目录中的本地图片。网络图片会先经小黑盒转存，本地图片会校验格式、大小和真实路径后上传到小黑盒 COS。
+
+本地路径只允许 AstrBot 管理员通过写工具使用；标准事件回复可使用 AstrBot 或图片插件生成的本地图片。允许范围默认为插件数据目录和可选的系统临时目录，也可在 `media.allowed_local_roots` 添加云服务器目录。不要把 `/`、`C:\\` 或整个用户目录加入允许范围。
 
 ## 管理命令
 
@@ -336,45 +361,47 @@ Bot：调用 xhh_publish_post，并返回 link_id 或错误。
 | --- | --- |
 | `account` | 扫码超时、可选手动 Cookie、小黑盒用户 ID 和设备 ID。 |
 | `ai` | 回复模型、人设、社区约束、帖子上下文、图片和生成限制。 |
+| `event_bridge` | 标准事件、世界书链路、并发和外部消息工具隔离。 |
 | `filters` | 普通评论回复开关、自动回复允许范围与屏蔽列表。 |
 | `polling` | `@`/普通评论独立游标、分页、回复间隔和首次历史消息策略。 |
+| `direct_messages` | 私信开关、陌生人入口、轮询、静默时段、额度和冷却。 |
 | `auto_browse` | 自主巡帖开关、频率、额度、内容筛选、作者冷却和评论限制。 |
 | `tools` | LLM 工具开关、权限、确认词、限速和内容长度。 |
-| `analytics` | SQLite 评论归档开关、保留时间、容量和明细查询上限。 |
+| `media` | 回复图片数量、本地图大小和允许上传目录。 |
+| `analytics` | SQLite 消息保留时间、容量和评论查询上限。 |
+| `webui` | 插件页面 API、正文显示和单页读取上限。 |
 | `notifications` | AstrBot 主动告警目标与成功通知。 |
 | `reliability` | HTTP 超时、重试、熔断和持久化记录上限。 |
 | `connection` | 可选家庭 SOCKS5 代理，以及小黑盒接口地址和版本参数。 |
 
 ## 数据与更新
 
-- 扫码凭据、设备 ID、两类消息游标、待处理队列、巡帖记录和失败记录使用 AstrBot 插件 KV 存储。
-- 评论归档保存在插件数据目录的 `comment_archive.sqlite3`；数据库、WAL 文件、Cookie 和代理配置不会包含在发布安装包中。
-- 停止或卸载插件不会主动删除登录凭据；使用 `/小黑盒退出` 清除扫码登录信息，但不会删除评论归档。需要彻底清除统计数据时，应先停止插件，再删除其数据目录中的 SQLite 主文件及同名 `-wal`、`-shm` 文件。
+- 扫码凭据、设备 ID、评论游标、待处理队列、巡帖记录和失败记录使用 AstrBot 插件 KV 存储。
+- 评论和私信分别保存在 `comment_archive.sqlite3` 与 `direct_messages.sqlite3`；数据库、WAL/SHM 文件、Cookie 和代理配置不会包含在发布安装包中。
+- 停止或卸载插件不会主动删除登录凭据和统计。`/小黑盒退出` 只清除扫码凭据；彻底清除统计时应先停止插件，再删除两个 SQLite 主文件及同名 `-wal`、`-shm` 文件。
 - 默认不处理首次启用前已有的历史 `@` 或普通评论。确有需要时，在各自首次拉取前开启 `polling.process_existing_on_first_start`。
-- `tools.enabled`、`tools.enable_write_tools` 和 `tools.require_explicit_confirmation` 会影响工具注册或 schema，修改后需要重载插件；修改 `analytics` 配置也应重载。
+- `tools.enabled`、`tools.enable_write_tools` 和 `tools.require_explicit_confirmation` 会影响工具注册或 schema，修改后需要重载插件；修改归档或 WebUI 开关也建议重载。
 - 版本变化单独记录在 [changelog.md](./changelog.md)，README 不再堆叠更新历史。
 
 ## 与参考项目的关系
 
-本插件并不包含参考项目的全部能力，两者侧重点不同。与 [advent259141/astrbot_plugin_xiaoheihe_adapter](https://github.com/advent259141/astrbot_plugin_xiaoheihe_adapter) 当前公开版本对比如下：
+本插件仍是普通 AstrBot 插件，不注册新的平台适配器；但评论和私信会构造标准 AstrBot 事件。与 [advent259141/astrbot_plugin_xiaoheihe_adapter](https://github.com/advent259141/astrbot_plugin_xiaoheihe_adapter) 当前公开版本对比如下：
 
 | 能力 | 本插件 | `astrbot_plugin_xiaoheihe_adapter` |
 | --- | --- | --- |
-| AstrBot 集成方式 | 普通插件后台轮询，直接生成人设回复并注册工具。 | 注册为小黑盒平台适配器，把消息提交为标准 AstrBot 事件。 |
+| AstrBot 集成方式 | 普通插件后台轮询，构造标准事件，并注册 22 个 LLM 工具。 | 注册为小黑盒平台适配器，把消息提交为标准 AstrBot 事件。 |
 | `@` 与帖子评论回复 | 支持，带持久化队列、重试和发送不确定保护。 | 支持，通过标准事件链交给 AstrBot 回复。 |
-| 私信 | 可由 LLM 工具读取历史和主动发送；不会后台自动回复。 | 可轮询好友、陌生人私信并作为标准事件自动处理。 |
-| 世界书等消息钩子 | 后台 `llm_generate()` 不会自动经过世界书的对话请求钩子。 | 标准事件更适合沿用 AstrBot 对话链和相关插件钩子。 |
-| 收到的图片 | 可把帖子正文图片 URL 传给后台回复模型。 | 可把消息、被回复评论和帖子图片组成 AstrBot `Image` 消息组件。 |
-| 发出图片 | 发帖、评论、私信支持 HTTP(S) 图片并经小黑盒转存。 | 还支持本地图片上传到小黑盒 COS。 |
-| 登录与状态 | AstrBot 管理命令扫码、查看文本状态。 | 提供插件 WebUI 扫码登录页和状态页。 |
+| 私信 | 可轮询好友/陌生人私信并作为标准私聊事件自动回复，也可由工具主动发送。 | 可轮询好友、陌生人私信并作为标准事件自动处理。 |
+| 世界书等消息钩子 | 评论与私信经过标准消息链；自动巡帖仍是受控后台生成。 | 标准事件沿用 AstrBot 对话链和相关插件钩子。 |
+| 收到的图片 | 评论、被回复内容、帖子和私信图片组成 AstrBot `Image` 消息链。 | 支持图片消息组件。 |
+| 发出图片 | 网络图片转存、本地/Base64 图片上传 COS，支持评论和多图私信链。 | 支持本地图片上传到小黑盒 COS。 |
+| 登录与状态 | 管理命令与插件 WebUI 均可扫码；WebUI 还提供运行状态和数据库统计。 | 提供插件 WebUI 扫码登录页和状态页。 |
 | LLM 工具 | 22 个，含发帖、删帖、用户活动/关系、话题、收藏夹、私信和归档统计。 | 8 个，覆盖推荐、读帖、搜索、评论、收藏、点赞和关注。 |
 | 自主巡帖 | 支持定时选帖、决策、评论、额度与风控保护。 | 提供模型逛帖工具，不负责定时自主评论。 |
-| 评论数据库 | SQLite 持久归档、去重、统计和明细查询。 | 提供运行状态计数与内存去重，不是完整评论归档。 |
-| 国际化 | 当前以中文配置和文档为主。 | 带 AstrBot 插件 i18n 资源。 |
+| 消息数据库 | SQLite 持久归档评论与私信，支持去重、统计、筛选和 WebUI 明细。 | 提供运行状态计数与内存去重。 |
+| 国际化 | 插件名称和 Page 标题提供中英文 i18n；配置和文档以中文为主。 | 带 AstrBot 插件 i18n 资源。 |
 
-参考适配器值得继续借鉴的方向是：可选标准平台事件模式、私信自动对话、完整图片消息链与本地图片上传、WebUI 登录/状态页和 i18n。标准事件模式若后续加入，必须和现有后台自动回复互斥，否则同一评论可能被回复两次。
-
-本项目的协议和接口流程参考 [SomeOvO/xhhRobot](https://github.com/SomeOvO/xhhRobot)；平台事件、私信、图片与 WebUI 设计参考 [advent259141/astrbot_plugin_xiaoheihe_adapter](https://github.com/advent259141/astrbot_plugin_xiaoheihe_adapter)。本插件不打包、不启动这些项目，也没有复制其运行时依赖。
+本项目的协议和接口流程参考 [SomeOvO/xhhRobot](https://github.com/SomeOvO/xhhRobot)；平台事件、私信、图片上传与 WebUI 设计参考 [advent259141/astrbot_plugin_xiaoheihe_adapter](https://github.com/advent259141/astrbot_plugin_xiaoheihe_adapter)。本插件不打包或启动这些项目。具体代码来源边界与许可证见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
 
 ## 风险说明
 

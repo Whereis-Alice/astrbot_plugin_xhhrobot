@@ -5,7 +5,6 @@ import hashlib
 import secrets
 import time
 
-
 SIGNING_ALPHABET = "AB45STUVWZEFGJ6CH01D237IXYPQRKLMN89"
 TOKEN_SEEDS = ("唉？！云朵！", "哒哒哒哒哒，好想玩原神", "云！原！神！")
 
@@ -82,7 +81,9 @@ def generate_nonce(timestamp: int | None = None) -> str:
     return hashlib.md5(f"{now}{random_value}".encode("ascii")).hexdigest().upper()
 
 
-def get_request_keys(request_path: str, timestamp: int | None = None) -> tuple[str, str, int]:
+def get_request_keys(
+    request_path: str, timestamp: int | None = None
+) -> tuple[str, str, int]:
     now = int(timestamp if timestamp is not None else time.time())
     nonce = generate_nonce(now)
     return build_hkey(request_path, now, nonce), nonce, now
@@ -95,4 +96,3 @@ def generate_xhh_token(timestamp: int | None = None) -> str:
         raw.extend(hashlib.md5(seed.encode("utf-8")).digest())
     raw.append(0)
     return base64.b64encode(bytes(raw)).decode("ascii")
-

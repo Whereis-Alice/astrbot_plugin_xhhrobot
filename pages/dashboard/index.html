@@ -1,0 +1,1668 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>小黑盒bot</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f5f7f8;
+        --surface: #ffffff;
+        --surface-alt: #eef2f3;
+        --text: #172126;
+        --muted: #647178;
+        --line: #d8e0e3;
+        --strong-line: #b9c5ca;
+        --green: #157347;
+        --green-soft: #e6f4ec;
+        --blue: #1769aa;
+        --blue-soft: #e7f1f9;
+        --amber: #9a5b00;
+        --amber-soft: #fff2d8;
+        --red: #b42318;
+        --red-soft: #fdecea;
+        --shadow: 0 1px 2px rgb(23 33 38 / 8%);
+        font-family:
+          Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui,
+          sans-serif;
+      }
+
+      html[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #111719;
+        --surface: #182124;
+        --surface-alt: #202b2f;
+        --text: #edf2f3;
+        --muted: #a9b6ba;
+        --line: #334145;
+        --strong-line: #526267;
+        --green: #62c790;
+        --green-soft: #173a29;
+        --blue: #75b9e7;
+        --blue-soft: #173348;
+        --amber: #efba5a;
+        --amber-soft: #413114;
+        --red: #ff8d85;
+        --red-soft: #481d1a;
+        --shadow: none;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background: var(--bg);
+        color: var(--text);
+        font-size: 14px;
+        line-height: 1.5;
+      }
+
+      button,
+      input,
+      select {
+        font: inherit;
+        letter-spacing: 0;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .app-header {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        border-bottom: 1px solid var(--line);
+        background: color-mix(in srgb, var(--surface) 94%, transparent);
+        backdrop-filter: blur(10px);
+      }
+
+      .header-inner,
+      .main {
+        width: min(1240px, 100%);
+        margin: 0 auto;
+        padding-inline: 24px;
+      }
+
+      .header-top {
+        min-height: 68px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .brand {
+        min-width: 0;
+      }
+
+      .brand h1 {
+        margin: 0;
+        font-size: 22px;
+        line-height: 1.2;
+        letter-spacing: 0;
+      }
+
+      .brand-meta {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-shrink: 0;
+      }
+
+      .tabs {
+        display: flex;
+        gap: 24px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+
+      .tabs::-webkit-scrollbar {
+        display: none;
+      }
+
+      .tab {
+        min-height: 44px;
+        padding: 0 2px;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: var(--muted);
+        white-space: nowrap;
+      }
+
+      .tab[aria-selected="true"] {
+        border-bottom-color: var(--green);
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .main {
+        padding-top: 24px;
+        padding-bottom: 48px;
+      }
+
+      .panel[hidden] {
+        display: none;
+      }
+
+      .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      .toolbar h2 {
+        margin: 0;
+        font-size: 18px;
+        letter-spacing: 0;
+      }
+
+      .toolbar-note {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .button {
+        min-height: 36px;
+        padding: 7px 14px;
+        border: 1px solid var(--strong-line);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--text);
+      }
+
+      .button:hover:not(:disabled) {
+        border-color: var(--green);
+      }
+
+      .button.primary {
+        border-color: var(--green);
+        background: var(--green);
+        color: #ffffff;
+      }
+
+      .button.danger {
+        border-color: var(--red);
+        color: var(--red);
+      }
+
+      .button.compact {
+        min-height: 32px;
+        padding: 5px 10px;
+      }
+
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 26px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        background: var(--surface-alt);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+
+      .status-badge.good {
+        background: var(--green-soft);
+        color: var(--green);
+      }
+
+      .status-badge.warn {
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+
+      .status-badge.bad {
+        background: var(--red-soft);
+        color: var(--red);
+      }
+
+      .status-badge.info {
+        background: var(--blue-soft);
+        color: var(--blue);
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .metric {
+        min-height: 96px;
+        padding: 15px 16px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface);
+        box-shadow: var(--shadow);
+      }
+
+      .metric-label {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .metric-value {
+        margin-top: 8px;
+        font-size: 25px;
+        font-weight: 700;
+        line-height: 1;
+        overflow-wrap: anywhere;
+      }
+
+      .metric-foot {
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .section-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+      }
+
+      .section {
+        min-width: 0;
+        border-top: 2px solid var(--line);
+        padding-top: 14px;
+      }
+
+      .section h3 {
+        margin: 0 0 12px;
+        font-size: 14px;
+        letter-spacing: 0;
+      }
+
+      .kv-list {
+        margin: 0;
+      }
+
+      .kv-row {
+        display: grid;
+        grid-template-columns: minmax(100px, 0.8fr) minmax(0, 1.2fr);
+        gap: 12px;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .kv-row dt {
+        color: var(--muted);
+      }
+
+      .kv-row dd {
+        margin: 0;
+        text-align: right;
+        overflow-wrap: anywhere;
+      }
+
+      .alert {
+        margin-top: 18px;
+        padding: 12px 14px;
+        border-left: 3px solid var(--amber);
+        background: var(--amber-soft);
+        color: var(--amber);
+      }
+
+      .alert.bad {
+        border-left-color: var(--red);
+        background: var(--red-soft);
+        color: var(--red);
+      }
+
+      .login-layout {
+        display: grid;
+        grid-template-columns: minmax(280px, 430px) minmax(0, 1fr);
+        gap: 40px;
+        align-items: start;
+      }
+
+      .qr-area {
+        min-height: 390px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface);
+      }
+
+      .qr-area img {
+        display: block;
+        width: min(320px, calc(100% - 36px));
+        aspect-ratio: 1;
+        object-fit: contain;
+        image-rendering: crisp-edges;
+      }
+
+      .qr-placeholder {
+        padding: 28px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .login-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 18px;
+      }
+
+      .login-status {
+        padding-top: 6px;
+      }
+
+      .login-status h3 {
+        margin: 0 0 18px;
+        font-size: 18px;
+      }
+
+      .dataset-control {
+        display: inline-grid;
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+        padding: 3px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface-alt);
+      }
+
+      .dataset-control button {
+        min-height: 32px;
+        padding: 5px 12px;
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        color: var(--muted);
+      }
+
+      .dataset-control button[aria-pressed="true"] {
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: var(--shadow);
+        font-weight: 600;
+      }
+
+      .filters {
+        display: grid;
+        grid-template-columns: 2fr repeat(4, minmax(120px, 1fr));
+        gap: 12px;
+        align-items: end;
+        margin: 18px 0;
+        padding: 16px 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .field {
+        min-width: 0;
+      }
+
+      .field label {
+        display: block;
+        margin-bottom: 5px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .field input,
+      .field select {
+        width: 100%;
+        min-height: 36px;
+        padding: 7px 9px;
+        border: 1px solid var(--strong-line);
+        border-radius: 5px;
+        outline: none;
+        background: var(--surface);
+        color: var(--text);
+      }
+
+      .field input:focus,
+      .field select:focus {
+        border-color: var(--green);
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 18%, transparent);
+      }
+
+      .filter-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      .distribution {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 24px;
+        margin: 20px 0;
+      }
+
+      .distribution h3 {
+        margin: 0 0 12px;
+        font-size: 14px;
+      }
+
+      .bar-row {
+        display: grid;
+        grid-template-columns: minmax(90px, 0.8fr) minmax(100px, 2fr) 52px;
+        align-items: center;
+        gap: 10px;
+        min-height: 30px;
+      }
+
+      .bar-label {
+        color: var(--muted);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .bar-track {
+        height: 7px;
+        overflow: hidden;
+        border-radius: 4px;
+        background: var(--surface-alt);
+      }
+
+      .bar-fill {
+        height: 100%;
+        min-width: 2px;
+        background: var(--blue);
+      }
+
+      .bar-count {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .table-wrap {
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: var(--surface);
+      }
+
+      table {
+        width: 100%;
+        min-width: 900px;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+
+      th,
+      td {
+        padding: 11px 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--surface-alt);
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      tbody tr {
+        cursor: pointer;
+      }
+
+      tbody tr:hover {
+        background: color-mix(in srgb, var(--blue-soft) 55%, var(--surface));
+      }
+
+      tbody tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .cell-main {
+        display: -webkit-box;
+        overflow: hidden;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow-wrap: anywhere;
+      }
+
+      .cell-sub {
+        margin-top: 3px;
+        color: var(--muted);
+        font-size: 12px;
+        overflow-wrap: anywhere;
+      }
+
+      .empty {
+        min-height: 180px;
+        display: grid;
+        place-items: center;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .empty[hidden] {
+        display: none;
+      }
+
+      .pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .pagination-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      dialog {
+        width: min(760px, calc(100% - 32px));
+        max-height: calc(100vh - 48px);
+        padding: 0;
+        border: 1px solid var(--strong-line);
+        border-radius: 7px;
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: 0 18px 48px rgb(0 0 0 / 22%);
+      }
+
+      dialog::backdrop {
+        background: rgb(17 23 25 / 52%);
+      }
+
+      .dialog-header {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 18px;
+        border-bottom: 1px solid var(--line);
+        background: var(--surface);
+      }
+
+      .dialog-header h2 {
+        margin: 0;
+        font-size: 17px;
+      }
+
+      .dialog-body {
+        padding: 18px;
+        overflow: auto;
+      }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px 24px;
+        margin-bottom: 20px;
+      }
+
+      .detail-item span {
+        display: block;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .detail-item strong {
+        display: block;
+        margin-top: 3px;
+        font-weight: 500;
+        overflow-wrap: anywhere;
+      }
+
+      .message-block {
+        margin-top: 16px;
+      }
+
+      .message-block h3 {
+        margin: 0 0 7px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .message-content {
+        margin: 0;
+        padding: 12px;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        background: var(--surface-alt);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        font-family: inherit;
+      }
+
+      .toast {
+        position: fixed;
+        right: 20px;
+        bottom: 20px;
+        z-index: 50;
+        max-width: min(420px, calc(100% - 40px));
+        padding: 11px 14px;
+        border: 1px solid var(--strong-line);
+        border-radius: 6px;
+        background: var(--surface);
+        color: var(--text);
+        box-shadow: 0 8px 24px rgb(0 0 0 / 16%);
+      }
+
+      .toast.error {
+        border-color: var(--red);
+        color: var(--red);
+      }
+
+      .skeleton {
+        color: transparent !important;
+        border-radius: 4px;
+        background: var(--surface-alt);
+      }
+
+      @media (max-width: 980px) {
+        .metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .section-grid,
+        .distribution {
+          grid-template-columns: 1fr;
+        }
+
+        .login-layout {
+          grid-template-columns: 1fr;
+        }
+
+        .filters {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .field.keyword {
+          grid-column: 1 / -1;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .header-inner,
+        .main {
+          padding-inline: 14px;
+        }
+
+        .header-top {
+          align-items: flex-start;
+          padding: 14px 0 10px;
+        }
+
+        .brand h1 {
+          font-size: 19px;
+        }
+
+        .header-actions .toolbar-note {
+          display: none;
+        }
+
+        .tabs {
+          gap: 18px;
+        }
+
+        .main {
+          padding-top: 18px;
+        }
+
+        .toolbar {
+          align-items: flex-start;
+        }
+
+        .metrics {
+          grid-template-columns: 1fr 1fr;
+          gap: 9px;
+        }
+
+        .metric {
+          min-height: 88px;
+          padding: 13px;
+        }
+
+        .metric-value {
+          font-size: 21px;
+        }
+
+        .filters {
+          grid-template-columns: 1fr;
+        }
+
+        .field.keyword {
+          grid-column: auto;
+        }
+
+        .dataset-control {
+          width: 100%;
+        }
+
+        .filter-actions,
+        .filter-actions .button {
+          width: 100%;
+        }
+
+        .pagination {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .pagination-actions {
+          width: 100%;
+        }
+
+        .pagination-actions .button {
+          flex: 1;
+        }
+
+        .detail-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="app-header">
+      <div class="header-inner">
+        <div class="header-top">
+          <div class="brand">
+            <h1>小黑盒bot</h1>
+            <div class="brand-meta" id="brandMeta">AstrBot 插件</div>
+          </div>
+          <div class="header-actions">
+            <span class="toolbar-note" id="lastRefresh">尚未刷新</span>
+            <span class="status-badge" id="globalBadge">连接中</span>
+            <button class="button compact" id="refreshButton" type="button">刷新</button>
+          </div>
+        </div>
+        <nav class="tabs" aria-label="页面">
+          <button class="tab" type="button" data-tab="status" aria-selected="true">
+            运行状态
+          </button>
+          <button class="tab" type="button" data-tab="login" aria-selected="false">
+            扫码登录
+          </button>
+          <button class="tab" type="button" data-tab="database" aria-selected="false">
+            消息数据库
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="panel" id="statusPanel" data-panel="status">
+        <div class="toolbar">
+          <div>
+            <h2>运行状态</h2>
+            <div class="toolbar-note" id="runtimeNote">正在读取插件状态</div>
+          </div>
+        </div>
+
+        <div class="metrics" id="runtimeMetrics">
+          <div class="metric">
+            <div class="metric-label">账号</div>
+            <div class="metric-value skeleton">读取中</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">待处理</div>
+            <div class="metric-value skeleton">0</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">评论归档</div>
+            <div class="metric-value skeleton">0</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">私信归档</div>
+            <div class="metric-value skeleton">0</div>
+          </div>
+        </div>
+
+        <div class="section-grid">
+          <section class="section">
+            <h3>账号与连接</h3>
+            <dl class="kv-list" id="accountStatus"></dl>
+          </section>
+          <section class="section">
+            <h3>事件与队列</h3>
+            <dl class="kv-list" id="eventStatus"></dl>
+          </section>
+          <section class="section">
+            <h3>自动处理</h3>
+            <dl class="kv-list" id="featureStatus"></dl>
+          </section>
+        </div>
+        <div id="runtimeAlert"></div>
+      </section>
+
+      <section class="panel" id="loginPanel" data-panel="login" hidden>
+        <div class="toolbar">
+          <div>
+            <h2>扫码登录</h2>
+            <div class="toolbar-note" id="loginSummary">正在读取登录会话</div>
+          </div>
+        </div>
+        <div class="login-layout">
+          <div>
+            <div class="qr-area" id="qrArea">
+              <div class="qr-placeholder">点击“生成二维码”开始登录</div>
+            </div>
+            <div class="login-actions">
+              <button class="button primary" id="startLoginButton" type="button">
+                生成二维码
+              </button>
+              <button class="button danger" id="clearLoginButton" type="button">
+                清除登录
+              </button>
+            </div>
+          </div>
+          <section class="login-status">
+            <h3 id="loginStateTitle">未登录</h3>
+            <dl class="kv-list" id="loginDetails"></dl>
+            <div id="loginMessage"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="panel" id="databasePanel" data-panel="database" hidden>
+        <div class="toolbar">
+          <div>
+            <h2>消息数据库</h2>
+            <div class="toolbar-note" id="databaseSummary">正在读取 SQLite 统计</div>
+          </div>
+        </div>
+
+        <div class="metrics" id="databaseMetrics"></div>
+
+        <div class="distribution">
+          <section class="section">
+            <h3>评论处理状态</h3>
+            <div id="commentDistribution"></div>
+          </section>
+          <section class="section">
+            <h3>私信处理状态</h3>
+            <div id="dmDistribution"></div>
+          </section>
+        </div>
+
+        <div class="dataset-control" aria-label="数据库">
+          <button type="button" data-dataset="comments" aria-pressed="true">
+            评论
+          </button>
+          <button type="button" data-dataset="direct_messages" aria-pressed="false">
+            私信
+          </button>
+        </div>
+
+        <form class="filters" id="filterForm">
+          <div class="field keyword">
+            <label for="keywordInput">关键词</label>
+            <input id="keywordInput" name="keyword" type="search" maxlength="500" />
+          </div>
+          <div class="field" id="directionField">
+            <label for="directionSelect">方向</label>
+            <select id="directionSelect" name="direction">
+              <option value="all">全部</option>
+              <option value="received">收到</option>
+              <option value="bot">Bot 发出</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="sourceSelect">来源</label>
+            <select id="sourceSelect" name="source"></select>
+          </div>
+          <div class="field">
+            <label for="statusSelect">状态</label>
+            <select id="statusSelect" name="status"></select>
+          </div>
+          <div class="field" id="idField">
+            <label for="idInput" id="idLabel">用户 ID</label>
+            <input id="idInput" name="user_id" inputmode="numeric" />
+          </div>
+          <div class="field" id="linkIdField">
+            <label for="linkIdInput">帖子 ID</label>
+            <input id="linkIdInput" name="link_id" inputmode="numeric" />
+          </div>
+          <div class="filter-actions">
+            <button class="button primary" type="submit">查询</button>
+            <button class="button" type="button" id="resetFiltersButton">重置</button>
+          </div>
+        </form>
+
+        <div class="table-wrap">
+          <table aria-label="消息明细">
+            <colgroup>
+              <col style="width: 15%" />
+              <col style="width: 17%" />
+              <col style="width: 18%" />
+              <col style="width: 36%" />
+              <col style="width: 14%" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>类型</th>
+                <th>时间</th>
+                <th>用户 / 帖子</th>
+                <th>消息内容</th>
+                <th>状态</th>
+              </tr>
+            </thead>
+            <tbody id="messageRows"></tbody>
+          </table>
+          <div class="empty" id="messageEmpty">正在读取消息</div>
+        </div>
+        <div class="pagination">
+          <div class="toolbar-note" id="paginationText">0 条记录</div>
+          <div class="pagination-actions">
+            <button class="button compact" type="button" id="previousPageButton">
+              上一页
+            </button>
+            <button class="button compact" type="button" id="nextPageButton">
+              下一页
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="detailDialog">
+      <div class="dialog-header">
+        <h2>消息详情</h2>
+        <button class="button compact" type="button" id="closeDialogButton">关闭</button>
+      </div>
+      <div class="dialog-body" id="detailBody"></div>
+    </dialog>
+
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+    <script>
+      const bridge = window.AstrBotPluginPage;
+      const state = {
+        activeTab: "status",
+        dataset: "comments",
+        offset: 0,
+        limit: 30,
+        total: 0,
+        records: [],
+        status: null,
+        analytics: null,
+        loginPollTimer: null,
+      };
+
+      const byId = (id) => document.getElementById(id);
+      const escapeHtml = (value) =>
+        String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+
+      function fmtNumber(value) {
+        return new Intl.NumberFormat("zh-CN").format(Number(value || 0));
+      }
+
+      function fmtTime(value) {
+        if (!value) return "无";
+        const date =
+          typeof value === "number"
+            ? new Date(value * 1000)
+            : new Date(String(value));
+        if (Number.isNaN(date.getTime())) return String(value);
+        return date.toLocaleString("zh-CN", { hour12: false });
+      }
+
+      function fmtDuration(seconds) {
+        const total = Math.max(0, Number(seconds || 0));
+        const days = Math.floor(total / 86400);
+        const hours = Math.floor((total % 86400) / 3600);
+        const minutes = Math.floor((total % 3600) / 60);
+        if (days) return `${days} 天 ${hours} 小时`;
+        if (hours) return `${hours} 小时 ${minutes} 分钟`;
+        return `${minutes} 分钟`;
+      }
+
+      function showToast(message, error = false) {
+        const toast = byId("toast");
+        toast.textContent = message;
+        toast.className = error ? "toast error" : "toast";
+        toast.hidden = false;
+        window.clearTimeout(showToast.timer);
+        showToast.timer = window.setTimeout(() => {
+          toast.hidden = true;
+        }, 4200);
+      }
+
+      function badge(label, tone = "") {
+        return `<span class="status-badge ${tone}">${escapeHtml(label)}</span>`;
+      }
+
+      function kvRows(items) {
+        return items
+          .map(
+            ([label, value]) =>
+              `<div class="kv-row"><dt>${escapeHtml(label)}</dt><dd>${value}</dd></div>`,
+          )
+          .join("");
+      }
+
+      async function getApi(endpoint, params = {}) {
+        if (!bridge) throw new Error("AstrBot 页面 Bridge 不可用");
+        const result = await bridge.apiGet(endpoint, params);
+        if (!result || result.ok === false) {
+          throw new Error(result?.error || "请求失败");
+        }
+        return result;
+      }
+
+      async function postApi(endpoint, body = {}) {
+        if (!bridge) throw new Error("AstrBot 页面 Bridge 不可用");
+        const result = await bridge.apiPost(endpoint, body);
+        if (!result || result.ok === false) {
+          throw new Error(result?.error || "请求失败");
+        }
+        return result;
+      }
+
+      function setGlobalBadge(status) {
+        const badgeElement = byId("globalBadge");
+        const account = status?.account || {};
+        const runtime = status?.runtime || {};
+        if (account.state === "invalid") {
+          badgeElement.textContent = "登录失效";
+          badgeElement.className = "status-badge bad";
+        } else if (account.state !== "authenticated") {
+          badgeElement.textContent = "未登录";
+          badgeElement.className = "status-badge warn";
+        } else if (!runtime.worker_running) {
+          badgeElement.textContent = "已登录 / 未运行";
+          badgeElement.className = "status-badge info";
+        } else {
+          badgeElement.textContent = "运行中";
+          badgeElement.className = "status-badge good";
+        }
+      }
+
+      function renderRuntime(status) {
+        state.status = status;
+        setGlobalBadge(status);
+        const runtime = status.runtime || {};
+        const account = status.account || {};
+        const events = status.events || {};
+        const comments = status.comments || {};
+        const dms = status.direct_messages || {};
+        const features = status.features || {};
+
+        const accountLabel =
+          account.state === "authenticated"
+            ? account.nickname || account.heybox_id || "已登录"
+            : account.state === "invalid"
+              ? "已失效"
+              : "未登录";
+        byId("runtimeMetrics").innerHTML = [
+          ["账号", accountLabel, account.source || "none"],
+          ["待处理", fmtNumber(events.queue_total), `处理中 ${fmtNumber(events.in_flight)}`],
+          [
+            "评论归档",
+            fmtNumber(comments.received_comments),
+            `Bot 评论 ${fmtNumber(comments.bot_comments)}`,
+          ],
+          [
+            "私信归档",
+            fmtNumber(dms.total),
+            `已发送 ${fmtNumber(dms.status_counts?.sent)}`,
+          ],
+        ]
+          .map(
+            ([label, value, foot]) =>
+              `<div class="metric"><div class="metric-label">${escapeHtml(label)}</div><div class="metric-value">${escapeHtml(value)}</div><div class="metric-foot">${escapeHtml(foot)}</div></div>`,
+          )
+          .join("");
+
+        byId("runtimeNote").textContent = runtime.worker_running
+          ? `已运行 ${fmtDuration(runtime.uptime_seconds)}`
+          : runtime.paused
+            ? "后台任务已手动停止"
+            : "后台任务未运行";
+
+        byId("accountStatus").innerHTML = kvRows([
+          ["登录状态", badge(accountLabel, account.state === "authenticated" ? "good" : account.state === "invalid" ? "bad" : "warn")],
+          ["小黑盒 ID", escapeHtml(account.heybox_id || "无")],
+          ["凭据来源", escapeHtml(account.source || "none")],
+          ["家庭代理", badge(account.proxy_configured ? "已配置" : "未配置", account.proxy_configured ? "good" : "warn")],
+          ["最近成功", escapeHtml(fmtTime(runtime.last_success_at))],
+        ]);
+
+        byId("eventStatus").innerHTML = kvRows([
+          ["标准事件", badge(events.bridge_enabled ? "启用" : "兼容模式", events.bridge_enabled ? "good" : "warn")],
+          ["事件并行", `${fmtNumber(events.in_flight)} / ${fmtNumber(events.max_in_flight)}`],
+          ["待处理队列", fmtNumber(events.queue_total)],
+          ["失败记录", fmtNumber(events.dead_total)],
+          ["发送不确定", badge(fmtNumber(events.uncertain_total), events.uncertain_total ? "bad" : "good")],
+        ]);
+
+        byId("featureStatus").innerHTML = kvRows([
+          ["自己帖子评论", badge(features.reply_to_own_post_comments ? "启用" : "关闭", features.reply_to_own_post_comments ? "good" : "")],
+          ["私信自动回复", badge(dms.enabled ? "启用" : "关闭", dms.enabled ? "good" : "")],
+          ["自动巡帖", badge(features.auto_browse ? "启用" : "关闭", features.auto_browse ? "warn" : "")],
+          ["LLM 工具", badge(features.llm_tools ? "启用" : "关闭", features.llm_tools ? "info" : "")],
+          ["写工具", badge(features.write_tools ? "启用" : "关闭", features.write_tools ? "warn" : "")],
+          ["世界书钩子", badge(features.worldbook_hooks ? "可用" : "不可用", features.worldbook_hooks ? "good" : "warn")],
+        ]);
+
+        const alertContainer = byId("runtimeAlert");
+        const errors = [runtime.last_error, dms.last_error].filter(Boolean);
+        if (errors.length) {
+          alertContainer.innerHTML = `<div class="alert bad">${escapeHtml(errors.join("；"))}</div>`;
+        } else if (runtime.suspended_until > Date.now() / 1000) {
+          alertContainer.innerHTML = `<div class="alert">熔断暂停至 ${escapeHtml(fmtTime(runtime.suspended_until))}</div>`;
+        } else {
+          alertContainer.innerHTML = "";
+        }
+      }
+
+      function renderMetricCards(analytics) {
+        const comments = analytics?.comments || {};
+        const received = comments.received || {};
+        const bot = comments.bot || {};
+        const dms = analytics?.direct_messages || {};
+        byId("databaseMetrics").innerHTML = [
+          ["去重评论", received.unique_comments, `原始观察 ${fmtNumber(received.raw_observations)}`],
+          ["Bot 评论", bot.comment_records, `确认发送 ${fmtNumber(bot.confirmed_sent)}`],
+          ["私信记录", dms.total, `用户 ${fmtNumber(dms.unique_users)}`],
+          ["私信已发送", dms.status_counts?.sent, `含图片 ${fmtNumber(dms.with_images)}`],
+        ]
+          .map(
+            ([label, value, foot]) =>
+              `<div class="metric"><div class="metric-label">${escapeHtml(label)}</div><div class="metric-value">${fmtNumber(value)}</div><div class="metric-foot">${escapeHtml(foot)}</div></div>`,
+          )
+          .join("");
+        byId("databaseSummary").textContent = `统计生成于 ${fmtTime(analytics.generated_at)}`;
+      }
+
+      function renderDistribution(elementId, counts) {
+        const entries = Object.entries(counts || {}).sort((a, b) => b[1] - a[1]);
+        const container = byId(elementId);
+        if (!entries.length) {
+          container.innerHTML = '<div class="toolbar-note">暂无记录</div>';
+          return;
+        }
+        const maximum = Math.max(...entries.map(([, count]) => Number(count || 0)), 1);
+        container.innerHTML = entries
+          .map(([label, count]) => {
+            const width = Math.max(2, (Number(count || 0) / maximum) * 100);
+            const readableLabel = statusLabel(label);
+            return `<div class="bar-row"><div class="bar-label" title="${escapeHtml(readableLabel)}">${escapeHtml(readableLabel)}</div><div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div><div class="bar-count">${fmtNumber(count)}</div></div>`;
+          })
+          .join("");
+      }
+
+      function renderAnalytics(analytics) {
+        state.analytics = analytics;
+        renderMetricCards(analytics);
+        const receivedCounts = analytics.comments?.received?.status_counts || {};
+        const botCounts = analytics.comments?.bot?.status_counts || {};
+        const commentCounts = { ...receivedCounts };
+        for (const [key, value] of Object.entries(botCounts)) {
+          commentCounts[`bot:${key}`] = value;
+        }
+        renderDistribution("commentDistribution", commentCounts);
+        renderDistribution(
+          "dmDistribution",
+          analytics.direct_messages?.status_counts || {},
+        );
+      }
+
+      function updateFilterOptions() {
+        const isComments = state.dataset === "comments";
+        byId("directionField").hidden = !isComments;
+        byId("linkIdField").hidden = !isComments;
+        byId("sourceSelect").innerHTML = isComments
+          ? '<option value="">全部</option><option value="mention">@ 消息</option><option value="own_post_comment">自己帖子评论</option>'
+          : '<option value="">全部</option><option value="direct_message">好友私信</option><option value="stranger_direct_message">陌生人私信</option>';
+        byId("statusSelect").innerHTML = isComments
+          ? '<option value="">全部</option><option value="queued">已入队</option><option value="dispatched">已提交</option><option value="sending">发送中</option><option value="replied">已回复</option><option value="ignored">已忽略</option><option value="skipped">已跳过</option><option value="retry">待重试</option><option value="uncertain">结果不确定</option><option value="sent">Bot 已发送</option>'
+          : '<option value="">全部</option><option value="baseline">首次基线</option><option value="pending">待处理</option><option value="dispatched">已提交</option><option value="sending">发送中</option><option value="sent">已发送</option><option value="skipped">已跳过</option><option value="failed">失败</option><option value="uncertain">结果不确定</option>';
+      }
+
+      function messageTime(record) {
+        return (
+          record.last_seen_at ||
+          record.updated_at ||
+          record.created_at ||
+          record.occurred_at ||
+          record.delivered_at
+        );
+      }
+
+      function messageType(record) {
+        if (record.dataset === "direct_messages") {
+          return record.source === "stranger_direct_message" ? "陌生人私信" : "好友私信";
+        }
+        if (record.direction === "bot") {
+          const kinds = {
+            auto_reply: "自动回复",
+            auto_browse: "自动巡帖",
+            llm_tool: "工具评论",
+          };
+          return kinds[record.kind] || "Bot 评论";
+        }
+        return (record.sources || []).includes("own_post_comment")
+          ? "自己帖子评论"
+          : "@ 消息";
+      }
+
+      function messageIdentity(record) {
+        if (record.dataset === "direct_messages") {
+          return {
+            main: record.user_name || record.user_id || "未知用户",
+            sub: `用户 ${record.user_id || "无"} / 消息 ${record.message_id || "无"}`,
+          };
+        }
+        return {
+          main:
+            record.direction === "bot"
+              ? `帖子 ${record.link_id || "无"}`
+              : `用户 ${record.user_id || "无"}`,
+          sub: `帖子 ${record.link_id || "无"} / 评论 ${record.comment_id || "无"}`,
+        };
+      }
+
+      function statusTone(status) {
+        if (["sent", "replied", "commented"].includes(status)) return "good";
+        if (["uncertain", "failed"].includes(status)) return "bad";
+        if (["pending", "dispatched", "sending", "retry"].includes(status)) return "info";
+        if (["skipped", "baseline", "ignored"].includes(status)) return "warn";
+        return "";
+      }
+
+      function sourceLabel(source) {
+        return {
+          received: "收到",
+          bot: "Bot 发出",
+          mention: "@ 消息",
+          own_post_comment: "自己帖子评论",
+          direct_message: "好友私信",
+          stranger_direct_message: "陌生人私信",
+        }[source] || source || "";
+      }
+
+      function statusLabel(status) {
+        const labels = {
+          baseline: "首次基线",
+          pending: "待处理",
+          queued: "已入队",
+          dispatched: "已提交",
+          sending: "发送中",
+          replied: "已回复",
+          commented: "已评论",
+          sent: "已发送",
+          ignored: "已忽略",
+          skipped: "已跳过",
+          retry: "待重试",
+          failed: "失败",
+          uncertain: "结果不确定",
+          auth_deferred: "等待重新登录",
+          dry_run: "仅预览",
+        };
+        const value = String(status || "未知");
+        if (value.startsWith("bot:")) {
+          const nested = value.slice(4);
+          return `Bot: ${labels[nested] || nested}`;
+        }
+        return labels[value] || value;
+      }
+
+      function renderMessages(result) {
+        state.records = result.records || [];
+        state.total = Number(result.matched_count ?? result.total ?? 0);
+        const rows = byId("messageRows");
+        const empty = byId("messageEmpty");
+        rows.innerHTML = "";
+        if (!state.records.length) {
+          empty.hidden = false;
+          empty.textContent = state.total ? "当前页没有记录" : "没有匹配的消息";
+        } else {
+          empty.hidden = true;
+          rows.innerHTML = state.records
+            .map((record, index) => {
+              const identity = messageIdentity(record);
+              const content = record.content || record.reply_text || "[空消息]";
+              const imageCount = Number(record.image_count || record.reply_image_count || 0);
+              const flow =
+                record.dataset === "direct_messages"
+                  ? "收到"
+                  : sourceLabel(record.direction || record.source);
+              return `<tr data-record-index="${index}" tabindex="0"><td><div class="cell-main">${escapeHtml(messageType(record))}</div><div class="cell-sub">${escapeHtml(flow)}</div></td><td><div class="cell-main">${escapeHtml(fmtTime(messageTime(record)))}</div><div class="cell-sub">${escapeHtml(record.event_key || "")}</div></td><td><div class="cell-main">${escapeHtml(identity.main)}</div><div class="cell-sub">${escapeHtml(identity.sub)}</div></td><td><div class="cell-main">${escapeHtml(content)}</div><div class="cell-sub">${imageCount ? `${imageCount} 张图片` : ""}</div></td><td>${badge(statusLabel(record.status), statusTone(record.status))}</td></tr>`;
+            })
+            .join("");
+        }
+        const start = state.total ? state.offset + 1 : 0;
+        const end = Math.min(state.offset + state.records.length, state.total);
+        byId("paginationText").textContent = `${fmtNumber(state.total)} 条记录，显示 ${fmtNumber(start)}-${fmtNumber(end)}`;
+        byId("previousPageButton").disabled = state.offset <= 0;
+        byId("nextPageButton").disabled =
+          state.offset + state.records.length >= state.total || !state.records.length;
+      }
+
+      function filterParams() {
+        const form = new FormData(byId("filterForm"));
+        const params = {
+          dataset: state.dataset,
+          limit: state.limit,
+          offset: state.offset,
+        };
+        for (const [key, value] of form.entries()) {
+          const text = String(value || "").trim();
+          if (text) params[key] = text;
+        }
+        return params;
+      }
+
+      async function loadMessages() {
+        byId("messageEmpty").hidden = false;
+        byId("messageEmpty").textContent = "正在读取消息";
+        byId("messageRows").innerHTML = "";
+        try {
+          const result = await getApi("analytics/messages", filterParams());
+          renderMessages(result);
+        } catch (error) {
+          byId("messageEmpty").hidden = false;
+          byId("messageEmpty").textContent = error.message;
+          showToast(error.message, true);
+        }
+      }
+
+      async function loadStatus() {
+        try {
+          const status = await getApi("status");
+          renderRuntime(status);
+          byId("lastRefresh").textContent = `刷新于 ${new Date().toLocaleTimeString("zh-CN", { hour12: false })}`;
+        } catch (error) {
+          byId("globalBadge").textContent = "连接失败";
+          byId("globalBadge").className = "status-badge bad";
+          showToast(error.message, true);
+        }
+      }
+
+      async function loadAnalytics() {
+        try {
+          const analytics = await getApi("analytics/summary");
+          renderAnalytics(analytics);
+        } catch (error) {
+          byId("databaseSummary").textContent = error.message;
+          showToast(error.message, true);
+        }
+      }
+
+      function loginStateLabel(stateName) {
+        return {
+          idle: "未开始",
+          waiting: "等待扫码",
+          authenticated: "已登录",
+          invalid: "登录失效",
+          failed: "登录失败",
+          cancelled: "已取消",
+          logged_out: "未登录",
+        }[stateName] || stateName || "未知";
+      }
+
+      function renderLogin(payload) {
+        const account = payload.account || {};
+        const stateName = payload.state || "idle";
+        byId("loginStateTitle").textContent = loginStateLabel(stateName);
+        byId("loginSummary").textContent = payload.message || loginStateLabel(stateName);
+        byId("loginDetails").innerHTML = kvRows([
+          ["状态", badge(loginStateLabel(stateName), stateName === "authenticated" ? "good" : stateName === "waiting" ? "info" : stateName === "failed" || stateName === "invalid" ? "bad" : "warn")],
+          ["账号昵称", escapeHtml(account.nickname || "无")],
+          ["小黑盒 ID", escapeHtml(account.heybox_id || "无")],
+          ["凭据来源", escapeHtml(account.source || "none")],
+          ["开始时间", escapeHtml(fmtTime(payload.started_at))],
+          ["二维码过期", escapeHtml(fmtTime(payload.expires_at))],
+        ]);
+        byId("loginMessage").innerHTML = payload.message
+          ? `<div class="alert ${stateName === "failed" || stateName === "invalid" ? "bad" : ""}">${escapeHtml(payload.message)}</div>`
+          : "";
+
+        if (payload.qr_image) {
+          byId("qrArea").innerHTML = `<img src="${payload.qr_image}" alt="小黑盒登录二维码" />`;
+        } else if (stateName === "authenticated") {
+          byId("qrArea").innerHTML = '<div class="qr-placeholder"><span class="status-badge good">当前账号已登录</span></div>';
+        } else if (stateName !== "waiting") {
+          byId("qrArea").innerHTML =
+            '<div class="qr-placeholder">点击“生成二维码”开始登录</div>';
+        }
+
+        if (stateName === "waiting") {
+          startLoginPolling();
+        } else {
+          stopLoginPolling();
+        }
+      }
+
+      async function loadLoginSession() {
+        try {
+          renderLogin(await getApi("login/session"));
+        } catch (error) {
+          byId("loginSummary").textContent = error.message;
+          showToast(error.message, true);
+        }
+      }
+
+      async function startLogin() {
+        const button = byId("startLoginButton");
+        button.disabled = true;
+        try {
+          renderLogin(await postApi("login/start", {}));
+        } catch (error) {
+          showToast(error.message, true);
+        } finally {
+          button.disabled = false;
+        }
+      }
+
+      async function pollLogin() {
+        try {
+          const payload = await getApi("login/poll");
+          renderLogin(payload);
+          if (payload.state === "authenticated") {
+            showToast("小黑盒登录成功");
+            await loadStatus();
+          }
+        } catch (error) {
+          stopLoginPolling();
+          showToast(error.message, true);
+        }
+      }
+
+      function startLoginPolling() {
+        if (state.loginPollTimer) return;
+        state.loginPollTimer = window.setInterval(pollLogin, 2000);
+      }
+
+      function stopLoginPolling() {
+        if (!state.loginPollTimer) return;
+        window.clearInterval(state.loginPollTimer);
+        state.loginPollTimer = null;
+      }
+
+      async function clearLogin() {
+        if (!window.confirm("清除插件保存的小黑盒扫码登录凭据？")) return;
+        try {
+          renderLogin(await postApi("login/clear", {}));
+          showToast("登录凭据已清除");
+          await loadStatus();
+        } catch (error) {
+          showToast(error.message, true);
+        }
+      }
+
+      function openDetail(record) {
+        const identity = messageIdentity(record);
+        const fields = [
+          ["类型", messageType(record)],
+          ["方向 / 来源", sourceLabel(record.direction || record.source) || "无"],
+          ["状态", statusLabel(record.status)],
+          ["状态原因", record.status_reason || "无"],
+          ["时间", fmtTime(messageTime(record))],
+          ["用户", identity.main],
+          ["用户 ID", record.user_id || record.target_user_id || "无"],
+          ["帖子 ID", record.link_id || "无"],
+          ["评论 ID", record.comment_id || "无"],
+          ["根评论 ID", record.root_comment_id || "无"],
+          ["消息 ID", record.message_id || (record.message_ids || []).join(", ") || "无"],
+          ["事件键", record.event_key || "无"],
+          ["尝试次数", record.attempts ?? "无"],
+          ["观察次数", record.seen_count ?? "无"],
+        ];
+        const blocks = [
+          ["对方消息 / 评论", record.content],
+          ["Bot 回复", record.reply_text],
+          ["状态详情", record.status_reason],
+        ].filter(([, value]) => value);
+        byId("detailBody").innerHTML =
+          `<div class="detail-grid">${fields
+            .map(
+              ([label, value]) =>
+                `<div class="detail-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`,
+            )
+            .join("")}</div>` +
+          blocks
+            .map(
+              ([label, value]) =>
+                `<section class="message-block"><h3>${escapeHtml(label)}</h3><pre class="message-content">${escapeHtml(value)}</pre></section>`,
+            )
+            .join("");
+        byId("detailDialog").showModal();
+      }
+
+      function switchTab(tabName) {
+        state.activeTab = tabName;
+        document.querySelectorAll(".tab").forEach((tab) => {
+          tab.setAttribute(
+            "aria-selected",
+            String(tab.dataset.tab === tabName),
+          );
+        });
+        document.querySelectorAll("[data-panel]").forEach((panel) => {
+          panel.hidden = panel.dataset.panel !== tabName;
+        });
+        if (tabName === "login") loadLoginSession();
+        if (tabName === "database") {
+          loadAnalytics();
+          loadMessages();
+        }
+      }
+
+      function bindEvents() {
+        document.querySelectorAll(".tab").forEach((tab) => {
+          tab.addEventListener("click", () => switchTab(tab.dataset.tab));
+        });
+        document.querySelectorAll("[data-dataset]").forEach((button) => {
+          button.addEventListener("click", () => {
+            state.dataset = button.dataset.dataset;
+            state.offset = 0;
+            document.querySelectorAll("[data-dataset]").forEach((item) => {
+              item.setAttribute(
+                "aria-pressed",
+                String(item.dataset.dataset === state.dataset),
+              );
+            });
+            byId("filterForm").reset();
+            updateFilterOptions();
+            loadMessages();
+          });
+        });
+        byId("refreshButton").addEventListener("click", async () => {
+          const button = byId("refreshButton");
+          button.disabled = true;
+          await Promise.all([loadStatus(), loadAnalytics()]);
+          if (state.activeTab === "database") await loadMessages();
+          button.disabled = false;
+        });
+        byId("startLoginButton").addEventListener("click", startLogin);
+        byId("clearLoginButton").addEventListener("click", clearLogin);
+        byId("filterForm").addEventListener("submit", (event) => {
+          event.preventDefault();
+          state.offset = 0;
+          loadMessages();
+        });
+        byId("resetFiltersButton").addEventListener("click", () => {
+          byId("filterForm").reset();
+          updateFilterOptions();
+          state.offset = 0;
+          loadMessages();
+        });
+        byId("previousPageButton").addEventListener("click", () => {
+          state.offset = Math.max(0, state.offset - state.limit);
+          loadMessages();
+        });
+        byId("nextPageButton").addEventListener("click", () => {
+          state.offset += state.limit;
+          loadMessages();
+        });
+        byId("messageRows").addEventListener("click", (event) => {
+          const row = event.target.closest("tr[data-record-index]");
+          if (row) openDetail(state.records[Number(row.dataset.recordIndex)]);
+        });
+        byId("messageRows").addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          const row = event.target.closest("tr[data-record-index]");
+          if (row) {
+            event.preventDefault();
+            openDetail(state.records[Number(row.dataset.recordIndex)]);
+          }
+        });
+        byId("closeDialogButton").addEventListener("click", () => {
+          byId("detailDialog").close();
+        });
+      }
+
+      async function initialize() {
+        bindEvents();
+        updateFilterOptions();
+        try {
+          const context = await bridge.ready();
+          byId("brandMeta").textContent = "AstrBot 插件";
+          if (context?.isDark) {
+            document.documentElement.dataset.theme = "dark";
+          }
+          bridge.onContext?.((nextContext) => {
+            document.documentElement.dataset.theme = nextContext?.isDark
+              ? "dark"
+              : "light";
+          });
+        } catch (error) {
+          showToast(error.message, true);
+          return;
+        }
+        await Promise.all([loadStatus(), loadAnalytics()]);
+      }
+
+      initialize();
+    </script>
+  </body>
+</html>

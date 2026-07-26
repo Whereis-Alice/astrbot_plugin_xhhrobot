@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import time
 from dataclasses import asdict, dataclass, field
 from typing import Any, Mapping
+
+from .media import extract_image_urls
 
 
 def _as_int(value: Any) -> int:
@@ -38,6 +43,12 @@ class Mention:
     user_id: int
     comment_text: str
     source: str = "mention"
+    user_name: str = ""
+    message_time: int = 0
+    link_title: str = ""
+    replied_text: str = ""
+    image_urls: tuple[str, ...] = ()
+    replied_image_urls: tuple[str, ...] = ()
 
     @classmethod
     def from_mapping(
@@ -102,6 +113,36 @@ class Mention:
                 or ""
             ).strip(),
             source=str(source or "mention"),
+            user_name=str(
+                user.get("username") or user.get("nickname") or user.get("name") or ""
+            ).strip(),
+            message_time=_timestamp(
+                value.get("timestamp") or value.get("time") or value.get("create_time")
+            ),
+            link_title=str(link.get("title") or value.get("link_title") or "").strip(),
+            replied_text=str(value.get("comment_b_text") or "").strip(),
+            image_urls=tuple(
+                extract_image_urls(
+                    [
+                        value.get("imgs"),
+                        value.get("images"),
+                        value.get("comment_a_imgs"),
+                        value.get("comment_images"),
+                        value.get("comment_a_text"),
+                        value.get("comment_text"),
+                        value.get("content"),
+                    ]
+                )
+            ),
+            replied_image_urls=tuple(
+                extract_image_urls(
+                    [
+                        value.get("comment_b_imgs"),
+                        value.get("reply_imgs"),
+                        value.get("comment_b_text"),
+                    ]
+                )
+            ),
         )
 
     @classmethod
@@ -114,6 +155,12 @@ class Mention:
             user_id=_as_int(value.get("user_id")),
             comment_text=str(value.get("comment_text") or "").strip(),
             source=str(value.get("source") or "mention"),
+            user_name=str(value.get("user_name") or "").strip(),
+            message_time=_as_int(value.get("message_time")),
+            link_title=str(value.get("link_title") or "").strip(),
+            replied_text=str(value.get("replied_text") or "").strip(),
+            image_urls=_string_tuple(value.get("image_urls")),
+            replied_image_urls=_string_tuple(value.get("replied_image_urls")),
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -126,6 +173,197 @@ class Mention:
     @property
     def target_key(self) -> tuple[int, int]:
         return self.link_id, self.comment_id
+
+
+@dataclass(frozen=True, slots=True)
+class DirectConversation:
+    user_id: str
+    user_name: str = ""
+    source: str = "direct_message"
+    marker: str = ""
+
+    @classmethod
+    def from_mapping(
+        cls,
+        value: Mapping[str, Any],
+        *,
+        source: str,
+    ) -> "DirectConversation | None":
+        user = _mapping(
+            value.get("user_a")
+            or value.get("user")
+            or value.get("recipient_info")
+            or value.get("sender_info")
+        )
+        user_id = _first_text(
+            _user_id(user),
+            value.get("to_user_id"),
+            value.get("target_user_id"),
+            value.get("user_id"),
+            value.get("userid"),
+            value.get("message_id")
+            if str(value.get("entry") or "") == "message"
+            else "",
+        )
+        if not user_id:
+            return None
+        marker_source = {
+            "message_id": value.get("last_message_id") or value.get("message_id"),
+            "seq": value.get("seq") or value.get("msg_seq"),
+            "time": value.get("update_time")
+            or value.get("timestamp")
+            or value.get("time"),
+            "text": value.get("content") or value.get("msg") or value.get("text"),
+            "img": value.get("img") or value.get("imgs"),
+        }
+        marker = hashlib.sha256(
+            json.dumps(
+                marker_source, ensure_ascii=False, sort_keys=True, default=str
+            ).encode("utf-8")
+        ).hexdigest()[:24]
+        return cls(
+            user_id=user_id,
+            user_name=_first_text(
+                user.get("username"),
+                user.get("nickname"),
+                user.get("name"),
+                user_id,
+            ),
+            source=str(source or "direct_message"),
+            marker=marker,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class DirectMessage:
+    event_key: str
+    message_id: str
+    user_id: str
+    user_name: str
+    text: str
+    image_urls: tuple[str, ...]
+    timestamp: int
+    source: str = "direct_message"
+
+    @classmethod
+    def from_mapping(
+        cls,
+        value: Mapping[str, Any],
+        *,
+        conversation: DirectConversation,
+        self_user_id: str,
+    ) -> "DirectMessage | None":
+        sender = _mapping(
+            value.get("sender")
+            or value.get("sender_info")
+            or value.get("user")
+            or value.get("user_a")
+        )
+        sender_id = _first_text(
+            value.get("sender_id"),
+            value.get("from_user_id"),
+            value.get("from_uid"),
+            _user_id(sender),
+        )
+        outgoing = bool(
+            value.get("is_self")
+            or value.get("is_mine")
+            or value.get("from_self")
+            or str(value.get("direction") or "").casefold()
+            in {"out", "outgoing", "send", "sent"}
+        )
+        if outgoing or (sender_id and self_user_id and sender_id == self_user_id):
+            return None
+
+        text = str(
+            value.get("content")
+            or value.get("msg")
+            or value.get("text")
+            or value.get("message")
+            or ""
+        ).strip()
+        image_urls = tuple(
+            extract_image_urls(
+                [
+                    value.get("img"),
+                    value.get("imgs"),
+                    value.get("image"),
+                    value.get("images"),
+                    value.get("content"),
+                ]
+            )
+        )
+        if not text and not image_urls:
+            return None
+
+        message_id = _first_text(
+            value.get("msg_id"),
+            value.get("message_id"),
+            value.get("id"),
+            value.get("_id"),
+            value.get("seq"),
+            value.get("msg_seq"),
+            value.get("sequence"),
+        )
+        if not message_id:
+            digest_source = {
+                "sender": sender_id or conversation.user_id,
+                "time": _timestamp(
+                    value.get("send_time")
+                    or value.get("timestamp")
+                    or value.get("time")
+                ),
+                "text": text,
+                "images": image_urls,
+            }
+            message_id = hashlib.sha256(
+                json.dumps(
+                    digest_source,
+                    ensure_ascii=False,
+                    sort_keys=True,
+                    default=str,
+                ).encode("utf-8")
+            ).hexdigest()[:20]
+        event_key = f"{conversation.source}:{conversation.user_id}:{message_id}"
+        return cls(
+            event_key=event_key,
+            message_id=message_id,
+            user_id=conversation.user_id,
+            user_name=_first_text(
+                sender.get("username"),
+                sender.get("nickname"),
+                sender.get("name"),
+                conversation.user_name,
+                conversation.user_id,
+            ),
+            text=text,
+            image_urls=image_urls,
+            timestamp=_timestamp(
+                value.get("send_time")
+                or value.get("timestamp")
+                or value.get("time")
+                or value.get("update_time")
+                or value.get("created_at")
+                or value.get("create_time")
+            ),
+            source=conversation.source,
+        )
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, Any]) -> "DirectMessage":
+        return cls(
+            event_key=str(value.get("event_key") or ""),
+            message_id=str(value.get("message_id") or ""),
+            user_id=str(value.get("user_id") or ""),
+            user_name=str(value.get("user_name") or ""),
+            text=str(value.get("text") or ""),
+            image_urls=_string_tuple(value.get("image_urls")),
+            timestamp=_as_int(value.get("timestamp")),
+            source=str(value.get("source") or "direct_message"),
+        )
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -173,6 +411,53 @@ class FeedPost:
     comments: int = 0
     topics: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
+
+
+def _mapping(value: Any) -> Mapping[str, Any]:
+    return value if isinstance(value, Mapping) else {}
+
+
+def _first_text(*values: Any) -> str:
+    for value in values:
+        text = str(value or "").strip()
+        if text:
+            return text
+    return ""
+
+
+def _user_id(value: Mapping[str, Any]) -> str:
+    return _first_text(
+        value.get("heybox_id"),
+        value.get("user_heybox_id"),
+        value.get("userid"),
+        value.get("user_id"),
+        value.get("uid"),
+        value.get("id"),
+    )
+
+
+def _timestamp(value: Any) -> int:
+    try:
+        timestamp = int(float(value or 0))
+    except (TypeError, ValueError):
+        timestamp = 0
+    if timestamp > 100_000_000_000:
+        timestamp //= 1000
+    return timestamp if timestamp > 0 else int(time.time())
+
+
+def _string_tuple(value: Any) -> tuple[str, ...]:
+    if isinstance(value, str):
+        values = [value]
+    elif isinstance(value, (list, tuple, set)):
+        values = list(value)
+    else:
+        values = []
+    return tuple(
+        dict.fromkeys(
+            str(item or "").strip() for item in values if str(item or "").strip()
+        )
+    )
 
 
 @dataclass(frozen=True, slots=True)

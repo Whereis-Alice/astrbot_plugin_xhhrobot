@@ -151,6 +151,7 @@ class CommentArchive:
         status: str = "",
         bot_kind: str = "",
         limit: int = 20,
+        offset: int = 0,
     ) -> dict[str, Any]:
         self._require_enabled()
         direction = str(direction or "all").strip().lower()
@@ -169,6 +170,7 @@ class CommentArchive:
             "status": str(status or "").strip(),
             "bot_kind": str(bot_kind or "").strip(),
             "limit": max(1, min(self.query_max_results, int(limit or 20))),
+            "offset": max(0, int(offset or 0)),
         }
         await self.initialize()
         async with self._lock:
@@ -655,7 +657,9 @@ class CommentArchive:
                 key=lambda item: (float(item["_sort_at"]), int(item["_sort_id"])),
                 reverse=True,
             )
-            records = records[: int(filters["limit"])]
+            offset = int(filters["offset"])
+            limit = int(filters["limit"])
+            records = records[offset : offset + limit]
             for record in records:
                 record.pop("_sort_at", None)
                 record.pop("_sort_id", None)
@@ -663,6 +667,8 @@ class CommentArchive:
                 "filters": _public_filters(filters),
                 "matched_count": matched_count,
                 "returned_count": len(records),
+                "limit": limit,
+                "offset": offset,
                 "records": records,
                 "counting_note": "received 与 bot 分开标记；received 的 seen_count 是当前筛选范围内的平台观察数。",
             }

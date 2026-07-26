@@ -1,0 +1,318 @@
+from __future__ import annotations
+
+import asyncio
+from collections.abc import Awaitable, Callable, Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from astrbot.api.event import AstrMessageEvent, MessageChain
+from astrbot.api.message_components import (
+    At,
+    AtAll,
+    File,
+    Image,
+    Json,
+    Plain,
+    Record,
+    Reply,
+    Video,
+)
+from astrbot.api.platform import (
+    AstrBotMessage,
+    Group,
+    MessageMember,
+    MessageType,
+    PlatformMetadata,
+)
+
+from .media import is_http_url, unique_strings
+from .xhh_client import XhhClient
+
+XHH_PLATFORM_ID = "xhhrobot"
+XHH_PLATFORM_META = PlatformMetadata(
+    name=XHH_PLATFORM_ID,
+    description="小黑盒bot 标准事件桥",
+    id=XHH_PLATFORM_ID,
+    adapter_display_name="小黑盒bot",
+    support_streaming_message=False,
+    support_proactive_message=False,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class EventTarget:
+    kind: str
+    source: str
+    event_key: str
+    raw_user_id: str
+    link_id: int = 0
+    comment_id: int = 0
+    root_comment_id: int = 0
+
+
+@dataclass(frozen=True, slots=True)
+class DeliveryResult:
+    status: str
+    text: str = ""
+    image_sources: tuple[str, ...] = ()
+    error: BaseException | None = None
+
+
+DeliveryCallback = Callable[[str, list[str]], Awaitable[None]]
+ErrorCallback = Callable[[BaseException, str, list[str]], Awaitable[None]]
+
+
+class XhhMessageEvent(AstrMessageEvent):
+    def __init__(
+        self,
+        *,
+        message_obj: AstrBotMessage,
+        target: EventTarget,
+        client: XhhClient,
+        max_reply_chars: int,
+        max_outgoing_images: int,
+        max_local_image_bytes: int,
+        allowed_local_roots: Sequence[Path],
+        direct_message_cooldown_seconds: int,
+        clean_text: Callable[[str], str],
+        on_send_start: DeliveryCallback,
+        on_sent: DeliveryCallback,
+        on_send_error: ErrorCallback,
+        on_empty: Callable[[], Awaitable[None]],
+    ) -> None:
+        super().__init__(
+            message_str=message_obj.message_str,
+            message_obj=message_obj,
+            platform_meta=XHH_PLATFORM_META,
+            session_id=message_obj.session_id,
+        )
+        self.target = target
+        self.client = client
+        self.max_reply_chars = max(1, int(max_reply_chars))
+        self.max_outgoing_images = max(0, int(max_outgoing_images))
+        self.max_local_image_bytes = max(1, int(max_local_image_bytes))
+        self.allowed_local_roots = tuple(Path(path) for path in allowed_local_roots)
+        self.direct_message_cooldown_seconds = max(
+            0, int(direct_message_cooldown_seconds)
+        )
+        self._clean_text = clean_text
+        self._on_send_start = on_send_start
+        self._on_sent = on_sent
+        self._on_send_error = on_send_error
+        self._on_empty = on_empty
+        self._send_lock = asyncio.Lock()
+        self._delivery_started = False
+        self.delivery_future: asyncio.Future[DeliveryResult] = (
+            asyncio.get_running_loop().create_future()
+        )
+
+    async def send(self, message: MessageChain) -> None:
+        async with self._send_lock:
+            if self._delivery_started:
+                await super().send(message)
+                return
+            self._delivery_started = True
+
+            text = self._clean_text(self._message_chain_to_text(message)).strip()
+            if len(text) > self.max_reply_chars:
+                text = text[: self.max_reply_chars].rstrip()
+            image_sources = self._message_chain_to_image_sources(message)
+            if self.max_outgoing_images >= 0:
+                image_sources = image_sources[: self.max_outgoing_images]
+
+            if not text and not image_sources:
+                await self._on_empty()
+                self._finish_delivery(DeliveryResult(status="empty"))
+                await super().send(message)
+                return
+
+            await self._on_send_start(text, image_sources)
+            try:
+                if self.target.kind == "direct_message":
+                    await self.client.send_direct_message_chain(
+                        user_id=self.target.raw_user_id,
+                        text=text,
+                        image_sources=image_sources,
+                        allowed_local_roots=self.allowed_local_roots,
+                        max_local_image_bytes=self.max_local_image_bytes,
+                        cooldown_seconds=self.direct_message_cooldown_seconds,
+                    )
+                else:
+                    await self.client.send_reply(
+                        text=text,
+                        link_id=self.target.link_id,
+                        reply_id=self.target.comment_id,
+                        root_id=self.target.root_comment_id,
+                        image_sources=image_sources,
+                        allowed_local_roots=self.allowed_local_roots,
+                        max_local_image_bytes=self.max_local_image_bytes,
+                    )
+            except asyncio.CancelledError:
+                error = RuntimeError(
+                    "AstrBot 在小黑盒发送过程中停止，无法确认消息是否送达。"
+                )
+                await asyncio.shield(self._on_send_error(error, text, image_sources))
+                self._finish_delivery(
+                    DeliveryResult(
+                        status="error",
+                        text=text,
+                        image_sources=tuple(image_sources),
+                        error=error,
+                    )
+                )
+                raise
+            except Exception as exc:
+                await self._on_send_error(exc, text, image_sources)
+                self._finish_delivery(
+                    DeliveryResult(
+                        status="error",
+                        text=text,
+                        image_sources=tuple(image_sources),
+                        error=exc,
+                    )
+                )
+                raise
+
+            await self._on_sent(text, image_sources)
+            self._finish_delivery(
+                DeliveryResult(
+                    status="sent",
+                    text=text,
+                    image_sources=tuple(image_sources),
+                )
+            )
+            await super().send(message)
+
+    def _finish_delivery(self, result: DeliveryResult) -> None:
+        if not self.delivery_future.done():
+            self.delivery_future.set_result(result)
+
+    @staticmethod
+    def _message_chain_to_text(message: MessageChain) -> str:
+        parts: list[str] = []
+        for component in message.chain:
+            if isinstance(component, Plain):
+                parts.append(str(component.text or ""))
+            elif isinstance(component, AtAll):
+                parts.append("@全体成员")
+            elif isinstance(component, At):
+                parts.append(f"@{component.name or component.qq}")
+            elif isinstance(component, (Image, Reply)):
+                continue
+            elif isinstance(component, Record):
+                parts.append("[语音]")
+            elif isinstance(component, Video):
+                parts.append("[视频]")
+            elif isinstance(component, File):
+                name = str(
+                    getattr(component, "name", "")
+                    or getattr(component, "url", "")
+                    or ""
+                ).strip()
+                parts.append(f"[文件:{name}]" if name else "[文件]")
+            elif isinstance(component, Json):
+                parts.append("[结构化消息]")
+            else:
+                parts.append(f"[{component.__class__.__name__}]")
+        return "".join(parts)
+
+    @staticmethod
+    def _message_chain_to_image_sources(message: MessageChain) -> list[str]:
+        sources: list[str] = []
+        for component in message.chain:
+            if not isinstance(component, Image):
+                continue
+            values = (
+                getattr(component, "url", ""),
+                getattr(component, "file", ""),
+                getattr(component, "path", ""),
+            )
+            for value in values:
+                source = str(value or "").strip()
+                if not source:
+                    continue
+                if is_http_url(source) or source.startswith(
+                    ("file://", "base64://", "data:image/")
+                ):
+                    sources.append(source)
+                    break
+                try:
+                    if Path(source).expanduser().is_file():
+                        sources.append(source)
+                        break
+                except OSError:
+                    continue
+        return unique_strings(sources)
+
+
+def build_comment_message(
+    *,
+    self_user_id: str,
+    session_id: str,
+    message_id: str,
+    sender_id: str,
+    sender_name: str,
+    message_text: str,
+    image_urls: Sequence[str],
+    link_id: int,
+    link_title: str,
+    timestamp: int,
+    raw_message: Any,
+) -> AstrBotMessage:
+    sender = MessageMember(user_id=_namespaced_user(sender_id), nickname=sender_name)
+    self_id = _namespaced_user(self_user_id or XHH_PLATFORM_ID)
+    chain: list[Any] = [At(qq=self_id, name="小黑盒bot"), Plain(message_text)]
+    chain.extend(Image.fromURL(url) for url in unique_strings(image_urls))
+    message = AstrBotMessage()
+    message.type = MessageType.GROUP_MESSAGE
+    message.self_id = self_id
+    message.session_id = session_id
+    message.message_id = message_id
+    message.group = Group(
+        group_id=f"xhh-post:{link_id}",
+        group_name=link_title or f"小黑盒帖子 {link_id}",
+    )
+    message.sender = sender
+    message.message = chain
+    message.message_str = message_text
+    message.raw_message = raw_message
+    message.timestamp = int(timestamp or 0)
+    return message
+
+
+def build_direct_message(
+    *,
+    self_user_id: str,
+    session_id: str,
+    message_id: str,
+    sender_id: str,
+    sender_name: str,
+    message_text: str,
+    image_urls: Sequence[str],
+    timestamp: int,
+    raw_message: Any,
+) -> AstrBotMessage:
+    self_id = _namespaced_user(self_user_id or XHH_PLATFORM_ID)
+    chain: list[Any] = [At(qq=self_id, name="小黑盒bot"), Plain(message_text)]
+    chain.extend(Image.fromURL(url) for url in unique_strings(image_urls))
+    message = AstrBotMessage()
+    message.type = MessageType.FRIEND_MESSAGE
+    message.self_id = self_id
+    message.session_id = session_id
+    message.message_id = message_id
+    message.group = None
+    message.sender = MessageMember(
+        user_id=_namespaced_user(sender_id),
+        nickname=sender_name,
+    )
+    message.message = chain
+    message.message_str = message_text
+    message.raw_message = raw_message
+    message.timestamp = int(timestamp or 0)
+    return message
+
+
+def _namespaced_user(user_id: str) -> str:
+    value = str(user_id or "unknown").strip()
+    return value if value.startswith("xhh:") else f"xhh:{value}"

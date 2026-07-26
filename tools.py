@@ -9,6 +9,7 @@ import re
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass as std_dataclass
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -17,6 +18,7 @@ from pydantic import Field
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
 from .comment_archive import extract_comment_id
+from .media import local_path_from_source
 from .xhh_client import XhhError
 
 EXTERNAL_CONTENT_NOTICE = (
@@ -419,7 +421,10 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     "image_urls": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "可选 HTTP(S) 图片地址；不接受本地文件。",
+                        "description": (
+                            "可选图片来源。支持公开 HTTP(S) 地址；AstrBot 管理员还可使用"
+                            "插件配置允许目录内的本地文件路径。"
+                        ),
                     },
                 },
                 ("title",),
@@ -451,7 +456,10 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     "image_urls": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "可选 HTTP(S) 图片地址；不接受本地文件。",
+                        "description": (
+                            "可选图片来源。支持公开 HTTP(S) 地址；AstrBot 管理员还可使用"
+                            "插件配置允许目录内的本地文件路径。"
+                        ),
                     },
                 },
                 ("link_id",),
@@ -547,7 +555,7 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             "xhh_send_direct_message",
             "send_direct_message",
             _write_description(
-                "向指定小黑盒用户发送私信文本和至多一张网络图片。",
+                "向指定小黑盒用户发送私信文本和图片消息链。",
                 confirmation_required=confirmation_required,
             ),
             _write_schema(
@@ -562,7 +570,15 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     },
                     "image_url": {
                         "type": "string",
-                        "description": "可选的一张 HTTP(S) 图片地址；不接受本地文件。",
+                        "description": "兼容参数：可选的一张公开 HTTP(S) 图片地址。",
+                    },
+                    "image_sources": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": (
+                            "可选图片消息链。支持公开 HTTP(S) 地址；AstrBot 管理员还可"
+                            "使用插件配置允许目录内的本地文件路径。"
+                        ),
                     },
                 },
                 ("user_id",),
@@ -616,6 +632,12 @@ class XhhToolRuntime:
             return self._error("小黑盒 LLM 工具已在插件配置中关闭。")
         if event is None:
             return self._error("当前工具调用缺少 AstrBot 消息事件上下文。")
+        if self._event_platform_name(event) == "xhhrobot" and not self._bool_cfg(
+            "event_bridge.allow_llm_tools", False
+        ):
+            return self._error(
+                "小黑盒外部消息不能调用小黑盒账号工具；请从受信任的 AstrBot 会话操作。"
+            )
 
         is_write = action in WRITE_ACTIONS
         is_private = action in PRIVATE_ACTIONS
@@ -634,7 +656,12 @@ class XhhToolRuntime:
 
         try:
             if is_write:
-                data = await self._execute_write_once(action, event, kwargs)
+                data = await self._execute_write_once(
+                    action,
+                    event,
+                    kwargs,
+                    is_admin=is_admin,
+                )
                 return self._success(data, external=False)
             data = await self._dispatch(action, kwargs)
             return self._success(data, external=action != "status")
@@ -656,6 +683,8 @@ class XhhToolRuntime:
         action: str,
         event: Any,
         kwargs: Mapping[str, Any],
+        *,
+        is_admin: bool,
     ) -> Any:
         if not self._bool_cfg("tools.enable_write_tools", False):
             raise ToolInputError(
@@ -682,7 +711,11 @@ class XhhToolRuntime:
             if cooldown and elapsed < cooldown:
                 await asyncio.sleep(cooldown - elapsed)
             try:
-                result = await self._dispatch(action, kwargs)
+                result = await self._dispatch(
+                    action,
+                    kwargs,
+                    allow_local_images=is_admin,
+                )
             except (ToolInputError, XhhError) as exc:
                 if not isinstance(exc, XhhError) or not exc.delivery_uncertain:
                     self._recent_writes.pop(fingerprint, None)
@@ -695,7 +728,13 @@ class XhhToolRuntime:
             self._last_write_at = time.monotonic()
             return result
 
-    async def _dispatch(self, action: str, kwargs: Mapping[str, Any]) -> Any:
+    async def _dispatch(
+        self,
+        action: str,
+        kwargs: Mapping[str, Any],
+        *,
+        allow_local_images: bool = False,
+    ) -> Any:
         if action == "status":
             status = await self.plugin._status_text()
             return {
@@ -857,7 +896,10 @@ class XhhToolRuntime:
                 )
             return data
         if action == "publish_post":
-            image_urls = self._image_urls(kwargs.get("image_urls"))
+            image_urls = self._image_sources(
+                kwargs.get("image_urls"),
+                allow_local=allow_local_images,
+            )
             body = self._text(
                 kwargs.get("body"),
                 "body",
@@ -877,9 +919,14 @@ class XhhToolRuntime:
                 topic_ids=self._topic_ids(kwargs.get("topic_ids")),
                 hashtags=self._hashtags(kwargs.get("hashtags")),
                 image_urls=image_urls,
+                allowed_local_roots=self._allowed_local_roots(),
+                max_local_image_bytes=self._max_local_image_bytes(),
             )
         if action == "create_comment":
-            image_urls = self._image_urls(kwargs.get("image_urls"))
+            image_urls = self._image_sources(
+                kwargs.get("image_urls"),
+                allow_local=allow_local_images,
+            )
             text = self._text(
                 kwargs.get("text"),
                 "text",
@@ -900,6 +947,8 @@ class XhhToolRuntime:
                 reply_id=reply_id if reply_id > 0 else -1,
                 root_id=root_id if root_id > 0 else -1,
                 image_urls=image_urls,
+                allowed_local_roots=self._allowed_local_roots(),
+                max_local_image_bytes=self._max_local_image_bytes(),
             )
             recorder = getattr(self.plugin, "_record_bot_comment", None)
             if callable(recorder):
@@ -938,18 +987,51 @@ class XhhToolRuntime:
                 link_id=self._positive_int(kwargs.get("link_id"), "link_id")
             )
         if action == "send_direct_message":
-            image_url = self._optional_image_url(kwargs.get("image_url"))
+            image_sources = self._image_sources(
+                kwargs.get("image_sources"),
+                allow_local=allow_local_images,
+            )
+            legacy_image = str(kwargs.get("image_url") or "").strip()
+            if legacy_image:
+                image_sources = list(
+                    dict.fromkeys(
+                        [
+                            *image_sources,
+                            *self._image_sources(
+                                [legacy_image],
+                                allow_local=allow_local_images,
+                            ),
+                        ]
+                    )
+                )
             text = self._text(
                 kwargs.get("text"),
                 "text",
                 self._int_cfg("tools.max_direct_message_chars", 2000, 1, 10000),
             )
-            if not text and not image_url:
+            if not text and not image_sources:
                 raise ToolInputError("私信文本和图片不能同时为空。")
-            return await client.send_direct_message(
-                user_id=self._user_id(kwargs.get("user_id")),
+            user_id = self._user_id(kwargs.get("user_id"))
+            if len(image_sources) <= 1:
+                return await client.send_direct_message(
+                    user_id=user_id,
+                    text=text,
+                    image_sources=image_sources,
+                    allowed_local_roots=self._allowed_local_roots(),
+                    max_local_image_bytes=self._max_local_image_bytes(),
+                    cooldown_seconds=self._int_cfg(
+                        "direct_messages.send_cooldown_sec", 5, 0, 300
+                    ),
+                )
+            return await client.send_direct_message_chain(
+                user_id=user_id,
                 text=text,
-                image_url=image_url,
+                image_sources=image_sources,
+                allowed_local_roots=self._allowed_local_roots(),
+                max_local_image_bytes=self._max_local_image_bytes(),
+                cooldown_seconds=self._int_cfg(
+                    "direct_messages.send_cooldown_sec", 5, 0, 300
+                ),
             )
         raise ToolInputError(f"未知的小黑盒工具动作：{action}")
 
@@ -1089,16 +1171,68 @@ class XhhToolRuntime:
             encoded = json.dumps(reduced, ensure_ascii=False, separators=(",", ":"))
         return encoded[:limit]
 
-    def _image_urls(self, value: Any) -> list[str]:
-        values = self._string_list(value)
+    def _image_sources(self, value: Any, *, allow_local: bool) -> list[str]:
+        if isinstance(value, str) and value.strip().startswith(
+            ("base64://", "data:image/")
+        ):
+            values = [value.strip()]
+        else:
+            values = self._string_list(value)
         maximum = self._int_cfg("tools.max_image_urls", 9, 1, 20)
         if len(values) > maximum:
-            raise ToolInputError(f"image_urls 最多允许 {maximum} 个地址。")
-        return [self._validate_http_url(url) for url in values]
+            raise ToolInputError(f"单次最多允许 {maximum} 个图片来源。")
+        sources: list[str] = []
+        for source in values:
+            if source.startswith(("base64://", "data:image/")):
+                if not allow_local:
+                    raise ToolInputError(
+                        "Base64 图片仅允许 AstrBot 管理员通过写工具上传。"
+                    )
+                if not self._bool_cfg("media.allow_local_tool_uploads", True):
+                    raise ToolInputError("本地图片工具上传已在插件配置中关闭。")
+                sources.append(source)
+                continue
+            parsed = urlparse(source)
+            if parsed.scheme.lower() in {"http", "https"}:
+                sources.append(self._validate_http_url(source))
+                continue
+            if not allow_local:
+                raise ToolInputError("本地图片仅允许 AstrBot 管理员通过写工具上传。")
+            if not self._bool_cfg("media.allow_local_tool_uploads", True):
+                raise ToolInputError("本地图片工具上传已在插件配置中关闭。")
+            path = local_path_from_source(source)
+            if path is None:
+                raise ToolInputError(
+                    "图片来源必须是公开 HTTP(S) 地址或允许的本地文件路径。"
+                )
+            try:
+                resolved = path.resolve(strict=True)
+            except (OSError, RuntimeError) as exc:
+                raise ToolInputError(f"本地图片不存在或无法访问：{path}") from exc
+            if not resolved.is_file():
+                raise ToolInputError(f"本地图片路径不是文件：{resolved}")
+            roots = self._allowed_local_roots()
+            if not roots or not any(
+                resolved == root or resolved.is_relative_to(root) for root in roots
+            ):
+                raise ToolInputError(
+                    "本地图片不在 media.allowed_local_roots 允许范围内。"
+                )
+            sources.append(source)
+        return list(dict.fromkeys(sources))
 
-    def _optional_image_url(self, value: Any) -> str:
-        text = str(value or "").strip()
-        return self._validate_http_url(text) if text else ""
+    def _allowed_local_roots(self) -> list[Path]:
+        getter = getattr(self.plugin, "_allowed_local_upload_roots", None)
+        if not callable(getter):
+            return []
+        roots = getter()
+        return [Path(root).resolve(strict=False) for root in roots]
+
+    def _max_local_image_bytes(self) -> int:
+        getter = getattr(self.plugin, "_max_local_image_bytes", None)
+        if callable(getter):
+            return max(1, int(getter()))
+        return 20 * 1024 * 1024
 
     @staticmethod
     def _validate_http_url(value: str) -> str:
@@ -1122,6 +1256,16 @@ class XhhToolRuntime:
             if not address.is_global:
                 raise ToolInputError("图片 URL 不能指向私有、回环或保留 IP 地址。")
         return value
+
+    @staticmethod
+    def _event_platform_name(event: Any) -> str:
+        getter = getattr(event, "get_platform_name", None)
+        if callable(getter):
+            try:
+                return str(getter() or "").strip()
+            except Exception:
+                return ""
+        return str(getattr(event, "platform_name", "") or "").strip()
 
     def _topic_ids(self, value: Any) -> list[str]:
         values = self._string_list(value)

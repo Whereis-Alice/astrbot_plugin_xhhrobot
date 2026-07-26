@@ -8,7 +8,7 @@ from typing import Any
 
 from .models import Mention
 
-STATE_VERSION = 3
+STATE_VERSION = 4
 
 
 class StateStore:
@@ -165,6 +165,28 @@ class StateStore:
             item["status"] = "sending"
             item["updated_at"] = time.time()
             await self._save_locked()
+
+    async def mark_dispatched(self, message_id: int) -> None:
+        async with self._lock:
+            item = self._state["queue"].get(str(message_id))
+            if item is None:
+                return
+            item["status"] = "dispatched"
+            item["updated_at"] = time.time()
+            await self._save_locked()
+
+    async def item_status(self, message_id: int) -> str:
+        async with self._lock:
+            item = self._state["queue"].get(str(message_id))
+            if item is not None:
+                return str(item.get("status") or "")
+            dead = self._state["dead"].get(str(message_id))
+            if dead is not None:
+                return str(dead.get("reason") or "dead")
+            for recent in reversed(self._state["recent"]):
+                if int(recent.get("message_id") or 0) == int(message_id):
+                    return str(recent.get("status") or "")
+            return ""
 
     async def mark_retry(
         self,
@@ -387,8 +409,16 @@ class StateStore:
 
     def _recover_sending_locked(self) -> int:
         recovered = 0
+        uncertain_recovered = 0
         now = time.time()
         for key, item in list(self._state["queue"].items()):
+            if item.get("status") == "dispatched":
+                item["status"] = "pending"
+                item["last_error"] = "AstrBot 重启前事件尚未开始发送，已重新排队。"
+                item["next_attempt_at"] = 0.0
+                item["updated_at"] = now
+                recovered += 1
+                continue
             if item.get("status") != "sending":
                 continue
             self._state["queue"].pop(key, None)
@@ -400,8 +430,9 @@ class StateStore:
                 attempts=int(item.get("attempts") or 0),
             )
             recovered += 1
-        if recovered:
-            self._state["stats"]["dead"] += recovered
+            uncertain_recovered += 1
+        if uncertain_recovered:
+            self._state["stats"]["dead"] += uncertain_recovered
         return recovered
 
     def _recover_browse_sending_locked(self) -> int:

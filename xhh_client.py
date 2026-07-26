@@ -5,9 +5,10 @@ import html
 import json
 import re
 import time
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from http.cookies import SimpleCookie
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, unquote, urlparse
 
@@ -19,8 +20,20 @@ from aiohttp_socks import (
     ProxyTimeoutError,
 )
 
+from .media import (
+    ImagePayload,
+    cos_authorization,
+    cos_quote,
+    is_http_url,
+    is_xhh_image_url,
+    load_image_payload,
+    normalize_http_image_url,
+    unique_strings,
+)
 from .models import (
     AuthInfo,
+    DirectConversation,
+    DirectMessage,
     FeedPost,
     Mention,
     NotificationPage,
@@ -30,6 +43,15 @@ from .models import (
     ReplyReceipt,
 )
 from .signing import generate_xhh_token, get_request_keys
+
+COS_UPLOAD_INFO_PATH = "/bbs/app/api/qcloud/cos/upload/info/v2"
+COS_UPLOAD_TOKEN_PATH = "/bbs/app/api/qcloud/cos/upload/token/v2"
+COS_UPLOAD_CALLBACK_PATH = "/bbs/app/api/qcloud/cos/upload/callback/v2"
+DEFAULT_COS_REGION = "ap-shanghai"
+
+# The COS upload workflow is adapted from
+# advent259141/astrbot_plugin_xiaoheihe_adapter under Apache-2.0.
+# See THIRD_PARTY_NOTICES.md for the modification notice.
 
 
 class XhhError(RuntimeError):
@@ -82,6 +104,8 @@ class XhhClient:
         self._session = session
         self._owns_session = session is None
         self._direct_message_ack_id = int(time.time() * 1000) % 1_000_000_000
+        self._direct_message_send_lock = asyncio.Lock()
+        self._last_direct_message_sent_at = 0.0
 
     async def start(self) -> None:
         if self._session is None or self._session.closed:
@@ -713,7 +737,83 @@ class XhhClient:
         )
         return response.payload
 
+    @staticmethod
+    def parse_direct_conversations(
+        payload: Mapping[str, Any],
+        *,
+        source: str,
+    ) -> list[DirectConversation]:
+        result = payload.get("result")
+        result = result if isinstance(result, Mapping) else {}
+        raw_items = (
+            result.get("messages")
+            or result.get("list")
+            or result.get("items")
+            or payload.get("messages")
+            or payload.get("list")
+            or []
+        )
+        if not isinstance(raw_items, list):
+            return []
+        conversations: list[DirectConversation] = []
+        seen: set[str] = set()
+        for item in raw_items:
+            if not isinstance(item, Mapping):
+                continue
+            if source == "direct_message" and str(item.get("entry") or "") not in {
+                "",
+                "message",
+            }:
+                continue
+            conversation = DirectConversation.from_mapping(item, source=source)
+            if conversation is None or conversation.user_id in seen:
+                continue
+            seen.add(conversation.user_id)
+            conversations.append(conversation)
+        return conversations
+
+    def parse_direct_messages(
+        self,
+        payload: Mapping[str, Any],
+        *,
+        conversation: DirectConversation,
+    ) -> list[DirectMessage]:
+        result = payload.get("result")
+        result = result if isinstance(result, Mapping) else {}
+        raw_items = (
+            result.get("list")
+            or result.get("messages")
+            or result.get("items")
+            or payload.get("list")
+            or []
+        )
+        if not isinstance(raw_items, list):
+            return []
+        self_user_id = self.auth.heybox_id if self.auth is not None else ""
+        messages: list[DirectMessage] = []
+        seen: set[str] = set()
+        for item in raw_items:
+            if not isinstance(item, Mapping):
+                continue
+            message = DirectMessage.from_mapping(
+                item,
+                conversation=conversation,
+                self_user_id=self_user_id,
+            )
+            if message is None or message.event_key in seen:
+                continue
+            seen.add(message.event_key)
+            messages.append(message)
+        messages.sort(key=lambda item: (item.timestamp, item.message_id))
+        return messages
+
     async def copy_image_by_url(self, image_url: str) -> str:
+        try:
+            image_url = normalize_http_image_url(image_url)
+        except ValueError as exc:
+            raise XhhError(str(exc), retryable=False) from exc
+        if is_xhh_image_url(image_url):
+            return image_url
         response = await self._request_json(
             "GET",
             "/bbs/app/api/qcloud/cos/copy/image/by/url",
@@ -726,6 +826,224 @@ class XhhClient:
             raise XhhError("小黑盒图片转存响应中缺少 URL。", retryable=False)
         return self._normalise_media_url(copied)
 
+    async def prepare_image_sources(
+        self,
+        image_sources: Iterable[Any],
+        *,
+        allowed_local_roots: Sequence[Path] = (),
+        max_local_image_bytes: int = 20 * 1024 * 1024,
+    ) -> list[str]:
+        prepared: list[str] = []
+        for source in unique_strings(image_sources):
+            if is_http_url(source):
+                prepared.append(await self.copy_image_by_url(source))
+                continue
+            try:
+                payload = await asyncio.to_thread(
+                    load_image_payload,
+                    source,
+                    max_bytes=max(1, int(max_local_image_bytes)),
+                    allowed_roots=allowed_local_roots,
+                )
+            except ValueError as exc:
+                raise XhhError(str(exc), retryable=False) from exc
+            prepared.append(await self.upload_image_payload_to_cos(payload))
+        return unique_strings(prepared)
+
+    async def upload_local_image_to_cos(
+        self,
+        image_source: Any,
+        *,
+        allowed_local_roots: Sequence[Path] = (),
+        max_local_image_bytes: int = 20 * 1024 * 1024,
+    ) -> str:
+        try:
+            payload = await asyncio.to_thread(
+                load_image_payload,
+                image_source,
+                max_bytes=max(1, int(max_local_image_bytes)),
+                allowed_roots=allowed_local_roots,
+            )
+        except ValueError as exc:
+            raise XhhError(str(exc), retryable=False) from exc
+        return await self.upload_image_payload_to_cos(payload)
+
+    async def upload_image_payload_to_cos(self, image: ImagePayload) -> str:
+        if self.auth is None or not self.auth.heybox_id:
+            raise XhhError(
+                "登录凭据中缺少 heybox_id。",
+                auth_required=True,
+                retryable=False,
+            )
+        upload_info = await self._request_cos_upload_info(image)
+        keys = upload_info.get("keys")
+        keys = keys if isinstance(keys, list) else []
+        key = str((keys[0] if keys else upload_info.get("key")) or "").strip()
+        bucket = str(upload_info.get("bucket") or "").strip()
+        region = str(upload_info.get("region") or DEFAULT_COS_REGION).strip()
+        if not key or not bucket:
+            raise XhhError("图片上传初始化响应缺少 bucket 或 key。", retryable=False)
+        token = await self._request_cos_upload_token(
+            bucket=bucket,
+            keys=[key],
+            mimetypes=[image.mimetype],
+        )
+        await self._put_cos_object(
+            image=image,
+            bucket=bucket,
+            region=region,
+            key=key,
+            token=token,
+        )
+        return await self._finish_cos_upload([key])
+
+    async def _request_cos_upload_info(
+        self,
+        image: ImagePayload,
+    ) -> Mapping[str, Any]:
+        response = await self._request_json(
+            "POST",
+            COS_UPLOAD_INFO_PATH,
+            data={
+                "file_infos": json.dumps(
+                    [
+                        {
+                            "name": image.name,
+                            "mimetype": image.mimetype,
+                            "fsize": len(image.data),
+                            "width": image.width,
+                            "height": image.height,
+                            "duration": image.duration,
+                        }
+                    ],
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+                "scope": "bbs",
+                "need_cache": "0",
+            },
+            auth_required=True,
+        )
+        return self._result_mapping(response.payload)
+
+    async def _request_cos_upload_token(
+        self,
+        *,
+        bucket: str,
+        keys: list[str],
+        mimetypes: list[str],
+    ) -> Mapping[str, Any]:
+        response = await self._request_json(
+            "POST",
+            COS_UPLOAD_TOKEN_PATH,
+            data={
+                "bucket": bucket,
+                "keys": json.dumps(keys, ensure_ascii=False, separators=(",", ":")),
+                "mimetypes": json.dumps(
+                    mimetypes, ensure_ascii=False, separators=(",", ":")
+                ),
+                "is_multipart_upload": "0",
+            },
+            auth_required=True,
+        )
+        result = self._result_mapping(response.payload)
+        credentials = result.get("credentials")
+        credentials = credentials if isinstance(credentials, Mapping) else {}
+        if not all(
+            str(credentials.get(key) or "").strip()
+            for key in ("tmpSecretId", "tmpSecretKey", "sessionToken")
+        ):
+            raise XhhError("图片上传授权响应缺少临时凭证。", retryable=False)
+        return result
+
+    async def _put_cos_object(
+        self,
+        *,
+        image: ImagePayload,
+        bucket: str,
+        region: str,
+        key: str,
+        token: Mapping[str, Any],
+    ) -> None:
+        credentials = token.get("credentials")
+        credentials = credentials if isinstance(credentials, Mapping) else {}
+        secret_id = str(credentials.get("tmpSecretId") or "").strip()
+        secret_key = str(credentials.get("tmpSecretKey") or "").strip()
+        session_token = str(credentials.get("sessionToken") or "").strip()
+        if not secret_id or not secret_key or not session_token:
+            raise XhhError("图片上传授权响应缺少临时凭证。", retryable=False)
+
+        now = int(time.time())
+        start_time = self._to_int(token.get("startTime"), max(0, now - 60))
+        end_time = self._to_int(token.get("expiredTime"), now + 300)
+        host = f"{bucket}.cos.{region}.myqcloud.com"
+        object_path = "/" + key.lstrip("/")
+        headers = {
+            "Host": host,
+            "Content-Type": image.mimetype,
+            "x-cos-security-token": session_token,
+        }
+        headers["Authorization"] = cos_authorization(
+            secret_id=secret_id,
+            secret_key=secret_key,
+            method="PUT",
+            path=object_path,
+            headers=headers,
+            start_time=start_time,
+            end_time=end_time,
+        )
+        await self.start()
+        assert self._session is not None
+        url = f"https://{host}{cos_quote(object_path)}"
+        try:
+            async with self._session.request(
+                "PUT",
+                url,
+                data=image.data,
+                headers=headers,
+            ) as response:
+                if response.status < 200 or response.status >= 300:
+                    raw = await response.text(errors="replace")
+                    raise XhhError(
+                        f"COS 图片上传失败（HTTP {response.status}）：{raw[:200]}",
+                        retryable=response.status == 429 or response.status >= 500,
+                    )
+        except XhhError:
+            raise
+        except (
+            asyncio.TimeoutError,
+            aiohttp.ClientError,
+            ProxyConnectionError,
+            ProxyError,
+            ProxyTimeoutError,
+        ) as exc:
+            raise XhhError(
+                f"COS 图片上传失败：{self._safe_network_error(exc)}",
+                retryable=True,
+            ) from exc
+
+    async def _finish_cos_upload(self, keys: list[str]) -> str:
+        response = await self._request_json(
+            "POST",
+            COS_UPLOAD_CALLBACK_PATH,
+            params={"is_finished": "true"},
+            data={"keys": json.dumps(keys, ensure_ascii=False, separators=(",", ":"))},
+            auth_required=True,
+        )
+        result = self._result_mapping(response.payload)
+        preview_urls = result.get("preview_urls")
+        preview_urls = preview_urls if isinstance(preview_urls, list) else []
+        thumbs = result.get("thumbs")
+        thumbs = thumbs if isinstance(thumbs, list) else []
+        image_url = str(
+            (preview_urls[0] if preview_urls else "")
+            or (thumbs[0] if thumbs else "")
+            or ""
+        ).strip()
+        if not image_url:
+            raise XhhError("图片上传回调响应缺少预览 URL。", retryable=False)
+        return self._normalise_media_url(image_url)
+
     async def publish_post(
         self,
         *,
@@ -735,8 +1053,14 @@ class XhhClient:
         topic_ids: list[str] | None = None,
         hashtags: list[str] | None = None,
         image_urls: list[str] | None = None,
+        allowed_local_roots: Sequence[Path] = (),
+        max_local_image_bytes: int = 20 * 1024 * 1024,
     ) -> dict[str, Any]:
-        copied_images = [await self.copy_image_by_url(url) for url in image_urls or []]
+        copied_images = await self.prepare_image_sources(
+            image_urls or [],
+            allowed_local_roots=allowed_local_roots,
+            max_local_image_bytes=max_local_image_bytes,
+        )
         content: list[dict[str, str]] = []
         if body:
             escaped_body = html.escape(body).replace("\n", "<br>")
@@ -773,8 +1097,14 @@ class XhhClient:
         reply_id: int = -1,
         root_id: int = -1,
         image_urls: list[str] | None = None,
+        allowed_local_roots: Sequence[Path] = (),
+        max_local_image_bytes: int = 20 * 1024 * 1024,
     ) -> dict[str, Any]:
-        copied_images = [await self.copy_image_by_url(url) for url in image_urls or []]
+        copied_images = await self.prepare_image_sources(
+            image_urls or [],
+            allowed_local_roots=allowed_local_roots,
+            max_local_image_bytes=max_local_image_bytes,
+        )
         data = {
             "is_cy": "0",
             "link_id": str(link_id),
@@ -857,50 +1187,140 @@ class XhhClient:
         user_id: str,
         text: str,
         image_url: str = "",
+        image_sources: Sequence[str] | None = None,
+        allowed_local_roots: Sequence[Path] = (),
+        max_local_image_bytes: int = 20 * 1024 * 1024,
+        cooldown_seconds: int = 0,
     ) -> dict[str, Any]:
-        copied_image = await self.copy_image_by_url(image_url) if image_url else ""
-        self._direct_message_ack_id += 1
-        payload = await self._write_json(
-            "/chatroom/v2/msg/user",
-            params={"to_user_id": user_id},
-            data={
-                "heybox_ack_id": str(self._direct_message_ack_id),
-                "img": copied_image,
-                "msg": text,
-                "msg_type": "6",
-            },
+        sources = [*(image_sources or [])]
+        if image_url:
+            sources.insert(0, image_url)
+        prepared = await self.prepare_image_sources(
+            sources[:1],
+            allowed_local_roots=allowed_local_roots,
+            max_local_image_bytes=max_local_image_bytes,
         )
-        result = self._result_mapping(payload)
-        acknowledged = any(
-            str(result.get(key) or "").strip()
-            for key in ("heychat_ack_id", "msg_id", "msg_seq")
+        copied_image = prepared[0] if prepared else ""
+        return await self._send_direct_message_prepared(
+            user_id=user_id,
+            text=text,
+            image_url=copied_image,
+            cooldown_seconds=cooldown_seconds,
         )
-        if not acknowledged:
-            protocol = unquote(
-                str(result.get("heybox__protocol__execute__directly") or "")
-            ).lower()
-            if "web_auth" in protocol or "name_verify" in protocol:
-                message = (
-                    "小黑盒要求安全认证或实名认证，请先在 App 中完成后再发送私信。"
+
+    async def _send_direct_message_prepared(
+        self,
+        *,
+        user_id: str,
+        text: str,
+        image_url: str,
+        cooldown_seconds: int,
+    ) -> dict[str, Any]:
+        if not str(user_id or "").strip():
+            raise XhhError("缺少私信目标用户 ID。", retryable=False)
+        if not str(text or "").strip() and not image_url:
+            raise XhhError("私信内容和图片不能同时为空。", retryable=False)
+        async with self._direct_message_send_lock:
+            cooldown = max(0, int(cooldown_seconds))
+            elapsed = time.time() - self._last_direct_message_sent_at
+            if cooldown and elapsed < cooldown:
+                await asyncio.sleep(cooldown - elapsed)
+            self._direct_message_ack_id += 1
+            payload = await self._write_json(
+                "/chatroom/v2/msg/user",
+                params={"to_user_id": str(user_id)},
+                data={
+                    "heybox_ack_id": str(self._direct_message_ack_id),
+                    "img": image_url,
+                    "msg": str(text or ""),
+                    "msg_type": "6",
+                },
+            )
+            result = self._result_mapping(payload)
+            acknowledged = any(
+                str(result.get(key) or "").strip()
+                for key in ("heychat_ack_id", "msg_id", "msg_seq")
+            )
+            if not acknowledged:
+                protocol = unquote(
+                    str(result.get("heybox__protocol__execute__directly") or "")
+                ).lower()
+                if "web_auth" in protocol or "name_verify" in protocol:
+                    message = (
+                        "小黑盒要求安全认证或实名认证，请先在 App 中完成后再发送私信。"
+                    )
+                else:
+                    message = "小黑盒私信响应中缺少消息 ID，无法确认私信已发送。"
+                raise XhhError(message, retryable=False)
+            self._last_direct_message_sent_at = time.time()
+            return payload
+
+    async def send_direct_message_chain(
+        self,
+        *,
+        user_id: str,
+        text: str,
+        image_sources: Sequence[str],
+        allowed_local_roots: Sequence[Path] = (),
+        max_local_image_bytes: int = 20 * 1024 * 1024,
+        cooldown_seconds: int = 5,
+    ) -> list[dict[str, Any]]:
+        prepared = await self.prepare_image_sources(
+            image_sources,
+            allowed_local_roots=allowed_local_roots,
+            max_local_image_bytes=max_local_image_bytes,
+        )
+        deliveries: list[dict[str, Any]] = []
+        parts = prepared or [""]
+        for index, image_url in enumerate(parts):
+            try:
+                deliveries.append(
+                    await self._send_direct_message_prepared(
+                        user_id=user_id,
+                        text=text if index == 0 else "",
+                        image_url=image_url,
+                        cooldown_seconds=cooldown_seconds,
+                    )
                 )
-            else:
-                message = "小黑盒私信响应中缺少消息 ID，无法确认私信已发送。"
-            raise XhhError(message, retryable=False)
-        return payload
+            except XhhError as exc:
+                if deliveries:
+                    raise XhhError(
+                        "私信图片链只完成了部分发送，已停止重试以避免重复。",
+                        retryable=False,
+                        delivery_uncertain=True,
+                    ) from exc
+                raise
+        return deliveries
 
     async def send_reply(
-        self, *, text: str, link_id: int, reply_id: int, root_id: int
+        self,
+        *,
+        text: str,
+        link_id: int,
+        reply_id: int,
+        root_id: int,
+        image_sources: Sequence[str] = (),
+        allowed_local_roots: Sequence[Path] = (),
+        max_local_image_bytes: int = 20 * 1024 * 1024,
     ) -> ReplyReceipt:
+        prepared_images = await self.prepare_image_sources(
+            image_sources,
+            allowed_local_roots=allowed_local_roots,
+            max_local_image_bytes=max_local_image_bytes,
+        )
+        data = {
+            "is_cy": "",
+            "link_id": str(link_id),
+            "reply_id": str(reply_id),
+            "root_id": str(root_id),
+            "text": text,
+        }
+        if prepared_images:
+            data["imgs"] = ";".join(prepared_images)
         response = await self._request_json(
             "POST",
             "/bbs/app/comment/create",
-            data={
-                "is_cy": "",
-                "link_id": str(link_id),
-                "reply_id": str(reply_id),
-                "root_id": str(root_id),
-                "text": text,
-            },
+            data=data,
             use_reply_api=True,
             auth_required=True,
             allow_api_failure=True,

@@ -152,6 +152,19 @@ class CommentArchiveTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["records"][0]["message_ids"], [5])
         self.assertEqual(result["records"][0]["status"], "queued")
 
+        second_page = await self.archive.search(
+            direction="received",
+            link_id=99,
+            source="own_post_comment",
+            limit=2,
+            offset=2,
+        )
+        self.assertEqual(second_page["matched_count"], 5)
+        self.assertEqual(second_page["returned_count"], 2)
+        self.assertEqual(second_page["offset"], 2)
+        self.assertEqual(second_page["records"][0]["comment_id"], 1003)
+        self.assertEqual(second_page["records"][1]["comment_id"], 1002)
+
     async def test_bot_event_key_updates_uncertain_record_without_duplication(
         self,
     ) -> None:

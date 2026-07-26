@@ -1,0 +1,11 @@
+{
+  "metadata": {
+    "display_name": "Heybox bot"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "Heybox bot",
+      "desc": "Login, runtime status, and message database"
+    }
+  }
+}

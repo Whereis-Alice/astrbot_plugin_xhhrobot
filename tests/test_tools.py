@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -17,11 +19,13 @@ class FakeEvent:
         sender_id: str = "user-1",
         umo: str = "test:FriendMessage:session",
         message: str = "",
+        platform: str = "test",
     ) -> None:
         self._admin = admin
         self._sender_id = sender_id
         self.unified_msg_origin = umo
         self.message_str = message
+        self.platform = platform
 
     def is_admin(self) -> bool:
         return self._admin
@@ -31,6 +35,9 @@ class FakeEvent:
 
     def get_message_str(self) -> str:
         return self.message_str
+
+    def get_platform_name(self) -> str:
+        return self.platform
 
 
 class FakeClient:
@@ -56,12 +63,20 @@ class FakePlugin:
         self.config = config
         self.client = FakeClient()
         self.recorded_bot_comments: list[dict[str, Any]] = []
+        self.local_roots: list[Path] = []
 
     async def _status_text(self) -> str:
         return "登录：已配置"
 
     async def _record_bot_comment(self, **kwargs: Any) -> None:
         self.recorded_bot_comments.append(kwargs)
+
+    def _allowed_local_upload_roots(self) -> list[Path]:
+        return self.local_roots
+
+    @staticmethod
+    def _max_local_image_bytes() -> int:
+        return 20 * 1024 * 1024
 
 
 class FakeArchive:
@@ -163,6 +178,65 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result["ok"])
         self.assertEqual(len(plugin.client.published), 1)
+
+    async def test_xhh_originated_event_cannot_call_account_tools(self) -> None:
+        plugin = FakePlugin(self.config(require_explicit_confirmation=False))
+        runtime = XhhToolRuntime(plugin)
+
+        result = json.loads(
+            await runtime.execute(
+                "search",
+                FakeEvent(admin=True, platform="xhhrobot"),
+                {"query": "AstrBot"},
+            )
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertIn("外部消息不能调用", result["error"])
+
+    async def test_admin_write_tool_accepts_image_from_allowed_local_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            image = root / "reply.png"
+            image.write_bytes(b"image")
+            config = self.config(require_explicit_confirmation=False)
+            config["media"] = {"allow_local_tool_uploads": True}
+            plugin = FakePlugin(config)
+            plugin.local_roots = [root]
+            runtime = XhhToolRuntime(plugin)
+
+            result = json.loads(
+                await runtime.execute(
+                    "publish_post",
+                    FakeEvent(admin=True, message="发布帖子"),
+                    {
+                        "title": "标题",
+                        "body": "正文",
+                        "image_urls": [str(image)],
+                    },
+                )
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(plugin.client.published[0]["image_urls"], [str(image)])
+
+    async def test_admin_write_tool_preserves_data_url_as_one_image(self) -> None:
+        config = self.config(require_explicit_confirmation=False)
+        config["media"] = {"allow_local_tool_uploads": True}
+        plugin = FakePlugin(config)
+        runtime = XhhToolRuntime(plugin)
+        data_url = "data:image/png;base64,aGVsbG8="
+
+        result = json.loads(
+            await runtime.execute(
+                "publish_post",
+                FakeEvent(admin=True, message="发布帖子"),
+                {"title": "标题", "body": "正文", "image_urls": data_url},
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(plugin.client.published[0]["image_urls"], [data_url])
 
     async def test_write_requires_phrase_in_original_user_message(self) -> None:
         plugin = FakePlugin(self.config())
