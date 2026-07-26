@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 from astrbot.api.event import AstrMessageEvent, MessageChain
-from astrbot.api.message_components import Image, Plain
+from astrbot.api.message_components import At, Image, Plain
 from astrbot.api.platform import MessageType
 
 from astrbot_plugin_xhhrobot.event_bridge import (
@@ -132,6 +132,25 @@ class EventBridgeTests(unittest.IsolatedAsyncioTestCase):
         callbacks["sent"].assert_awaited_once()
         callbacks["error"].assert_not_awaited()
         self.assertEqual(event.delivery_future.result().status, "sent")
+
+    async def test_outbound_reply_removes_internal_xhh_mentions(self) -> None:
+        event, client, _ = self._make_comment_event()
+
+        with patch.object(AstrMessageEvent, "send", new=AsyncMock()):
+            await event.send(
+                MessageChain(
+                    [
+                        At(qq="xhh:99"),
+                        Plain("@xhh:99没绷住，2027 年也太远了。"),
+                    ]
+                )
+            )
+
+        self.assertEqual(
+            client.send_reply.await_args.kwargs["text"],
+            "没绷住，2027 年也太远了。",
+        )
+        self.assertNotIn("xhh:", event.delivery_future.result().text)
 
     async def test_outbound_direct_message_uses_chain_sender(self) -> None:
         message_obj = build_direct_message(

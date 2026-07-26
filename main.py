@@ -41,6 +41,7 @@ from .event_bridge import (
     XhhMessageEvent,
     build_comment_message,
     build_direct_message,
+    strip_internal_xhh_identifiers,
 )
 from .models import (
     AuthInfo,
@@ -2701,7 +2702,7 @@ class XhhRobotPlugin(Star):
         return text.strip()
 
     def _clean_reply(self, value: str) -> str:
-        text = self._strip_markdown_text(value)
+        text = strip_internal_xhh_identifiers(self._strip_markdown_text(value))
         max_chars = self._int_cfg("ai.max_reply_chars", 1200, 1, 10000)
         if len(text) > max_chars:
             text = text[:max_chars].rstrip()

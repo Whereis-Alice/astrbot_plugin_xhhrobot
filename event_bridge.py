@@ -46,6 +46,7 @@ _ASTRBOT_PLUGIN_ERROR_RE = re.compile(
     r"在调用插件[^\r\n]+?的处理函数[^\r\n]+?时出现异常[：:]"
     r"[\s\S]*\Z"
 )
+_INTERNAL_XHH_IDENTIFIER_RE = re.compile(r"(?<![A-Za-z0-9_:-])@?xhh:[A-Za-z0-9_-]+")
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,7 +123,9 @@ class XhhMessageEvent(AstrMessageEvent):
                 return
             self._delivery_started = True
 
-            raw_text = self._message_chain_to_text(message)
+            raw_text = strip_internal_xhh_identifiers(
+                self._message_chain_to_text(message)
+            )
             raw_text, suppressed_internal_error = _strip_astrbot_plugin_error(raw_text)
             if suppressed_internal_error:
                 logger.warning(
@@ -214,7 +217,14 @@ class XhhMessageEvent(AstrMessageEvent):
             elif isinstance(component, AtAll):
                 parts.append("@全体成员")
             elif isinstance(component, At):
-                parts.append(f"@{component.name or component.qq}")
+                target_id = str(getattr(component, "qq", "") or "").strip()
+                # The reply API already targets the source comment. AstrBot's
+                # namespaced XHH At values cannot be rendered by Xiaoheihe.
+                if target_id.startswith("xhh:"):
+                    continue
+                label = str(getattr(component, "name", "") or target_id).strip()
+                if label:
+                    parts.append(f"@{label}")
             elif isinstance(component, (Image, Reply)):
                 continue
             elif isinstance(component, Record):
@@ -333,6 +343,12 @@ def build_direct_message(
 def _namespaced_user(user_id: str) -> str:
     value = str(user_id or "unknown").strip()
     return value if value.startswith("xhh:") else f"xhh:{value}"
+
+
+def strip_internal_xhh_identifiers(value: str) -> str:
+    """Prevent AstrBot's internal XHH IDs from being posted as reply text."""
+
+    return _INTERNAL_XHH_IDENTIFIER_RE.sub("", str(value or ""))
 
 
 def _strip_astrbot_plugin_error(text: str) -> tuple[str, bool]:
