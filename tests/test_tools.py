@@ -7,6 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+from astrbot_plugin_xhhrobot.draft_store import DraftStore
 from astrbot_plugin_xhhrobot.main import XhhRobotPlugin
 from astrbot_plugin_xhhrobot.tools import WRITE_ACTIONS, XhhToolRuntime
 
@@ -137,6 +138,71 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(tools), 22)
         self.assertTrue(by_name["xhh_search"].active)
         self.assertFalse(by_name["xhh_publish_post"].active)
+        self.assertNotIn("xhh_get_drafts", by_name)
+
+    async def test_draft_tools_are_registered_only_when_enabled(self) -> None:
+        disabled = XhhToolRuntime(FakePlugin(self.config()))
+        disabled_result = json.loads(
+            await disabled.execute("drafts", FakeEvent(admin=True), {})
+        )
+        self.assertFalse(disabled_result["ok"])
+        self.assertIn("草稿箱", disabled_result["error"])
+
+        enabled = XhhToolRuntime(FakePlugin(self.config(enable_draft_tools=True)))
+        by_name = {tool.name: tool for tool in enabled.build_tools()}
+
+        self.assertEqual(len(by_name), 25)
+        self.assertTrue(by_name["xhh_get_drafts"].active)
+        self.assertTrue(by_name["xhh_save_draft"].active)
+        self.assertTrue(by_name["xhh_delete_draft"].active)
+
+    async def test_draft_tools_keep_write_permissions_and_confirmation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            plugin = FakePlugin(self.config(enable_draft_tools=True))
+            plugin.draft_store = DraftStore(Path(temp_dir) / "post_drafts.sqlite3")
+            runtime = XhhToolRuntime(plugin)
+            confirmed = FakeEvent(admin=True, message="确认执行小黑盒操作")
+
+            saved = json.loads(
+                await runtime.execute(
+                    "save_draft",
+                    confirmed,
+                    {
+                        "title": "草稿标题",
+                        "body": "草稿正文",
+                        "topic_ids": ["7214"],
+                        "confirm": True,
+                    },
+                )
+            )
+            draft_id = saved["data"]["draft"]["draft_id"]
+            listed = json.loads(
+                await runtime.execute("drafts", FakeEvent(admin=True), {})
+            )
+            denied_delete = json.loads(
+                await runtime.execute(
+                    "delete_draft",
+                    FakeEvent(admin=True, message="删除草稿"),
+                    {"draft_id": draft_id, "confirm": True},
+                )
+            )
+            deleted = json.loads(
+                await runtime.execute(
+                    "delete_draft",
+                    confirmed,
+                    {"draft_id": draft_id, "confirm": True},
+                )
+            )
+
+        self.assertTrue(saved["ok"])
+        self.assertEqual(saved["source"], "local_draft_box")
+        self.assertEqual(listed["data"]["total"], 1)
+        self.assertEqual(listed["data"]["drafts"][0]["draft_id"], draft_id)
+        self.assertEqual(listed["source"], "local_draft_box")
+        self.assertIn("本地草稿箱", listed["notice"])
+        self.assertFalse(denied_delete["ok"])
+        self.assertIn("确认", denied_delete["error"])
+        self.assertTrue(deleted["ok"])
 
     async def test_build_tools_adapts_confirmation_schema(self) -> None:
         required_runtime = XhhToolRuntime(FakePlugin(self.config()))

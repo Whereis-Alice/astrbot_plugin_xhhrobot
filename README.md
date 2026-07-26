@@ -7,7 +7,7 @@
 - **标准事件回复**：把评论和私信作为 AstrBot 消息处理，沿用人设、会话历史、世界书与其他 LLM 请求钩子。
 - **评论与私信**：回复小黑盒 `@` 消息、bot 自己帖子下无需 `@` 的普通评论，以及可选的好友/陌生人私信。
 - **自主巡帖评论**：定时浏览推荐流，由模型按人设自主选帖、阅读正文并决定评论或跳过。
-- **22 个 LLM 工具**：支持动态、搜索、帖子、评论、用户、话题、收藏、点赞、关注、私信、发帖和评论归档查询。
+- **LLM 工具**：默认提供 22 个动态、搜索、帖子、评论、用户、话题、收藏、点赞、关注、私信、发帖和归档工具；可单独开启 3 个本地草稿箱工具。
 - **消息数据库**：自动保存评论与私信，区分原始观察、去重评论、Bot 评论和处理状态，可在 WebUI 或通过工具统计查询。
 - **WebUI**：在插件页面扫码登录，查看运行状态、状态分布、分页筛选和消息详情。
 - **完整图片链**：收到的评论、帖子与私信图片可交给视觉模型；回复和写工具支持网络图、本地图片与多图私信。
@@ -37,6 +37,7 @@
 | `direct_messages.enabled` | 默认关闭；确认允许范围后再开启私信自动回复。 |
 | `analytics.enabled` | 默认开启；使用内置 SQLite 归档评论并提供去重统计。 |
 | `webui.show_message_content` | 不希望管理员页面显示正文时关闭，统计和 ID 仍保留。 |
+| `tools.enable_draft_tools` | 默认关闭；需要让模型保存、读取或删除本地发帖草稿时开启。 |
 | `tools.require_explicit_confirmation` | 默认开启；不想每次确认时可关闭，重载插件后生效。 |
 | `connection.proxy_url` | 美国等境外云服务器建议填写家庭 SOCKS5；留空表示云服务器直连。 |
 
@@ -280,6 +281,7 @@ curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
 | `xhh_get_direct_messages` | 获取最近私信会话或指定用户的私信历史。 |
 | `xhh_comment_stats` | 统计评论归档的原始观察、去重、正文匹配、用户、帖子和根楼数量，Bot 评论单列。 |
 | `xhh_search_comment_archive` | 按关键词、时间和相关 ID 查询收到或发出的具体评论记录。 |
+| `xhh_get_drafts` | 读取插件本地草稿箱的最近摘要或某篇完整草稿。仅在草稿箱开启时注册。 |
 
 私密读取工具默认仅允许 AstrBot 管理员调用。
 
@@ -294,8 +296,16 @@ curl --proxy socks5h://127.0.0.1:11080 https://api.ipify.org
 | `xhh_set_follow` | 关注或取消关注用户。 |
 | `xhh_delete_post` | 删除当前账号自己发布的帖子。 |
 | `xhh_send_direct_message` | 发送私信文本与多张网络/本地图片。 |
+| `xhh_save_draft` | 保存或更新插件本地的发帖草稿，不会发布到小黑盒。仅在草稿箱开启时注册。 |
+| `xhh_delete_draft` | 删除插件本地草稿，不会影响已发布帖子。仅在草稿箱开启时注册。 |
 
-写工具需要先开启 `tools.enable_write_tools`，修改后重载插件。
+除草稿读取外，写工具需要先开启 `tools.enable_write_tools`，修改后重载插件。
+
+### 本地草稿箱
+
+`tools.enable_draft_tools` 默认关闭。开启并重载后，模型才会看到 `xhh_get_drafts`、`xhh_save_draft` 和 `xhh_delete_draft`；关闭时三项工具不会注册，也不能通过直接调用绕过开关。
+
+草稿保存在 AstrBot 服务器插件数据目录的 `post_drafts.sqlite3`，不上传、不同步，也不会读取小黑盒 App 自己的草稿。读取草稿按私密读取权限处理；保存和删除同时要求 `tools.enable_write_tools=true`，并继续受管理员/允许列表、冷却、重复写入和 `tools.require_explicit_confirmation` 保护。保存现有 `draft_id` 时只更新本次提供的字段，传入空字符串或空数组可以清空对应字段。
 
 ## 写操作确认
 
@@ -321,6 +331,7 @@ Bot：调用 xhh_publish_post，并返回 link_id 或错误。
 | 配置项 | 默认值 | 作用 |
 | --- | --- | --- |
 | `tools.enable_write_tools` | `false` | 不向模型注册写工具。 |
+| `tools.enable_draft_tools` | `false` | 不注册本地草稿读取、保存和删除工具；保存/删除还需要总写入开关。 |
 | `tools.write_admin_only` | `true` | 仅 AstrBot 管理员可执行写操作。 |
 | `tools.private_tools_admin_only` | `true` | 仅管理员可读取账号私密信息。 |
 | `tools.require_explicit_confirmation` | `true` | 开启时同时校验 `confirm=true` 与用户原始消息确认词；可关闭。 |
@@ -377,10 +388,10 @@ Bot：调用 xhh_publish_post，并返回 link_id 或错误。
 ## 数据与更新
 
 - 扫码凭据、设备 ID、评论游标、待处理队列、巡帖记录和失败记录使用 AstrBot 插件 KV 存储。
-- 评论和私信分别保存在 `comment_archive.sqlite3` 与 `direct_messages.sqlite3`；数据库、WAL/SHM 文件、Cookie 和代理配置不会包含在发布安装包中。
-- 停止或卸载插件不会主动删除登录凭据和统计。`/小黑盒退出` 只清除扫码凭据；彻底清除统计时应先停止插件，再删除两个 SQLite 主文件及同名 `-wal`、`-shm` 文件。
+- 评论、私信和本地草稿分别保存在 `comment_archive.sqlite3`、`direct_messages.sqlite3` 与 `post_drafts.sqlite3`；数据库、WAL/SHM 文件、Cookie 和代理配置不会包含在发布安装包中。
+- 停止或卸载插件不会主动删除登录凭据、统计或草稿。`/小黑盒退出` 只清除扫码凭据；彻底清除本地数据时应先停止插件，再删除对应 SQLite 主文件及同名 `-wal`、`-shm` 文件。
 - 默认不处理首次启用前已有的历史 `@` 或普通评论。确有需要时，在各自首次拉取前开启 `polling.process_existing_on_first_start`。
-- `tools.enabled`、`tools.enable_write_tools` 和 `tools.require_explicit_confirmation` 会影响工具注册或 schema，修改后需要重载插件；修改归档或 WebUI 开关也建议重载。
+- `tools.enabled`、`tools.enable_write_tools`、`tools.enable_draft_tools` 和 `tools.require_explicit_confirmation` 会影响工具注册或 schema，修改后需要重载插件；修改归档或 WebUI 开关也建议重载。
 - 版本变化单独记录在 [changelog.md](./changelog.md)，README 不再堆叠更新历史。
 
 ## 与参考项目的关系
@@ -389,14 +400,14 @@ Bot：调用 xhh_publish_post，并返回 link_id 或错误。
 
 | 能力 | 本插件 | `astrbot_plugin_xiaoheihe_adapter` |
 | --- | --- | --- |
-| AstrBot 集成方式 | 普通插件后台轮询，构造标准事件，并注册 22 个 LLM 工具。 | 注册为小黑盒平台适配器，把消息提交为标准 AstrBot 事件。 |
+| AstrBot 集成方式 | 普通插件后台轮询，构造标准事件，并注册 22 个基础 LLM 工具；可选开启本地草稿箱工具。 | 注册为小黑盒平台适配器，把消息提交为标准 AstrBot 事件。 |
 | `@` 与帖子评论回复 | 支持，带持久化队列、重试和发送不确定保护。 | 支持，通过标准事件链交给 AstrBot 回复。 |
 | 私信 | 可轮询好友/陌生人私信并作为标准私聊事件自动回复，也可由工具主动发送。 | 可轮询好友、陌生人私信并作为标准事件自动处理。 |
 | 世界书等消息钩子 | 评论与私信经过标准消息链；自动巡帖仍是受控后台生成。 | 标准事件沿用 AstrBot 对话链和相关插件钩子。 |
 | 收到的图片 | 评论、被回复内容、帖子和私信图片组成 AstrBot `Image` 消息链。 | 支持图片消息组件。 |
 | 发出图片 | 网络图片转存、本地/Base64 图片上传 COS，支持评论和多图私信链。 | 支持本地图片上传到小黑盒 COS。 |
 | 登录与状态 | 管理命令与插件 WebUI 均可扫码；WebUI 还提供运行状态和数据库统计。 | 提供插件 WebUI 扫码登录页和状态页。 |
-| LLM 工具 | 22 个，含发帖、删帖、用户活动/关系、话题、收藏夹、私信和归档统计。 | 8 个，覆盖推荐、读帖、搜索、评论、收藏、点赞和关注。 |
+| LLM 工具 | 22 个基础工具，含发帖、删帖、用户活动/关系、话题、收藏夹、私信和归档统计；草稿箱开启后额外 3 个本地草稿工具。 | 8 个，覆盖推荐、读帖、搜索、评论、收藏、点赞和关注。 |
 | 自主巡帖 | 支持定时选帖、决策、评论、额度与风控保护。 | 提供模型逛帖工具，不负责定时自主评论。 |
 | 消息数据库 | SQLite 持久归档评论与私信，支持去重、统计、筛选和 WebUI 明细。 | 提供运行状态计数与内存去重。 |
 | 国际化 | 插件名称和 Page 标题提供中英文 i18n；配置和文档以中文为主。 | 带 AstrBot 插件 i18n 资源。 |

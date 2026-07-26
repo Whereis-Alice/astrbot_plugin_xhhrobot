@@ -34,6 +34,7 @@ from .auto_browse import (
 )
 from .comment_archive import CommentArchive, extract_comment_id
 from .dm_store import DirectMessageStore
+from .draft_store import DraftStore
 from .event_bridge import (
     XHH_PLATFORM_ID,
     EventTarget,
@@ -132,6 +133,7 @@ class XhhRobotPlugin(Star):
             retention_days=self._int_cfg("analytics.retention_days", 365, 0, 3650),
             max_records=self._int_cfg("analytics.max_records", 100000, 1000, 1000000),
         )
+        self.draft_store = DraftStore(self.data_dir / "post_drafts.sqlite3")
         self._archive_error = ""
         self.client: XhhClient | None = None
         self.auth: AuthInfo | None = None
@@ -170,6 +172,8 @@ class XhhRobotPlugin(Star):
             self.comment_archive.enabled = False
             logger.exception("%s comment archive initialization failed", PLUGIN_ID)
         await self.dm_store.initialize()
+        if self._bool_cfg("tools.enable_draft_tools", False):
+            await self.draft_store.initialize()
         device_id = await self._resolve_device_id()
         self.auth, self._auth_source = await self._load_auth()
         self.client = XhhClient(
@@ -352,6 +356,7 @@ class XhhRobotPlugin(Star):
                 "auto_browse": self._bool_cfg("auto_browse.enabled", False),
                 "llm_tools": self._bool_cfg("tools.enabled", True),
                 "write_tools": self._bool_cfg("tools.enable_write_tools", False),
+                "draft_tools": self._bool_cfg("tools.enable_draft_tools", False),
                 "worldbook_hooks": self._event_bridge_enabled(),
             },
         }
@@ -586,6 +591,7 @@ class XhhRobotPlugin(Star):
             "/小黑盒逛帖 预览 - 立即选帖并生成评论，但不发布\n"
             "/小黑盒逛帖 - 自动巡帖已启用时立即执行一次\n\n"
             "自然语言工具：动态、搜索、帖子/评论、用户资料、话题、收藏、点赞、关注、私信、发帖和评论归档统计。\n"
+            "本地草稿箱由 tools.enable_draft_tools 单独控制；关闭时不会注册草稿工具。\n"
             f"写工具默认关闭；{confirmation_help}\n"
             "自己帖子下的普通评论可无需 @ 自动回复，仍受用户允许范围控制。\n"
             "私信自动回复和自动巡帖默认关闭；开启后会沿用 AstrBot 人设、世界书和消息钩子。\n"
@@ -3003,6 +3009,12 @@ class XhhRobotPlugin(Star):
                 + (
                     "已启用"
                     if self._bool_cfg("tools.enable_write_tools", False)
+                    else "已关闭"
+                )
+                + "；草稿箱："
+                + (
+                    "已启用"
+                    if self._bool_cfg("tools.enable_draft_tools", False)
                     else "已关闭"
                 )
                 + "；逐次确认："
