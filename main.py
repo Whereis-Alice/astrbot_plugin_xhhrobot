@@ -160,6 +160,8 @@ class XhhRobotPlugin(Star):
         self._next_dm_poll_at = 0.0
         self._last_dm_poll_at = 0.0
         self._last_dm_error = ""
+        self._dm_sending_blocked_reason = ""
+        self._dm_sending_blocked_at = 0.0
         self._web_login_challenge: QrChallenge | None = None
         self._web_login_started_at = 0.0
         self._register_web_apis()
@@ -348,6 +350,11 @@ class XhhRobotPlugin(Star):
                 "enabled": self._bool_cfg("direct_messages.enabled", False),
                 "last_poll_at": self._last_dm_poll_at,
                 "last_error": self._last_dm_error,
+                "sending_blocked": bool(self._dm_sending_block_reason()),
+                "sending_blocked_reason": self._dm_sending_block_reason(),
+                "sending_blocked_at": float(
+                    getattr(self, "_dm_sending_blocked_at", 0.0) or 0.0
+                ),
                 **direct_messages,
             },
             "features": {
@@ -841,7 +848,8 @@ class XhhRobotPlugin(Star):
             ):
                 try:
                     result.direct_messages += await self._poll_direct_messages_if_due()
-                    self._last_dm_error = ""
+                    if not self._dm_sending_block_reason():
+                        self._last_dm_error = ""
                 except XhhError as exc:
                     self._last_dm_error = str(exc)
                     if exc.auth_required:
@@ -1619,6 +1627,8 @@ class XhhRobotPlugin(Star):
             "direct_messages.enabled", False
         ):
             return
+        if self._dm_sending_block_reason():
+            return
         capacity = self._event_capacity()
         if capacity <= 0:
             return
@@ -2289,6 +2299,18 @@ class XhhRobotPlugin(Star):
             exc,
         )
         if isinstance(exc, XhhError):
+            if exc.action_restricted:
+                if exc.delivery_uncertain:
+                    await self.dm_store.mark_uncertain(
+                        message.event_key,
+                        reason,
+                        reply_text=text,
+                        reply_image_sources=images,
+                    )
+                else:
+                    await self.dm_store.mark_skipped(message.event_key, reason)
+                await self._block_automatic_direct_messages(reason, message)
+                return
             if exc.delivery_uncertain:
                 await self.dm_store.mark_uncertain(
                     message.event_key,
@@ -2330,6 +2352,38 @@ class XhhRobotPlugin(Star):
         self._last_error = reason
         await self._notify(
             f"小黑盒私信 {message.message_id} 的发送结果无法确认，已停止自动重试。"
+        )
+
+    def _dm_sending_block_reason(self) -> str:
+        return str(getattr(self, "_dm_sending_blocked_reason", "") or "").strip()
+
+    async def _block_automatic_direct_messages(
+        self,
+        reason: str,
+        message: DirectMessage,
+    ) -> None:
+        already_blocked = bool(self._dm_sending_block_reason())
+        if not already_blocked:
+            self._dm_sending_blocked_reason = str(reason or "")[:2000]
+            self._dm_sending_blocked_at = time.time()
+        self._last_dm_error = self._dm_sending_block_reason()
+        if already_blocked:
+            return
+        logger.warning(
+            "%s automatic direct-message sending paused: message_id=%s user_id=%s "
+            "reason=%s",
+            PLUGIN_ID,
+            message.message_id,
+            message.user_id,
+            self._last_dm_error,
+        )
+        await self._notify(
+            "小黑盒已拒绝当前账号发送私信，自动私信回复已在本次插件运行中暂停。\n\n"
+            f"原因：{self._last_dm_error}\n"
+            f"消息 ID：{message.message_id}\n"
+            f"用户 ID：{message.user_id}\n\n"
+            "收信和 SQLite 归档会继续运行。请不要重复尝试发送或规避限制；"
+            "待小黑盒恢复该账号的私信能力后，再重载插件。"
         )
 
     async def _process_mention(self, mention: Mention) -> str:
@@ -2963,6 +3017,7 @@ class XhhRobotPlugin(Star):
         browse_mode = "已关闭"
         if browse_enabled:
             browse_mode = "已开启（仅预览）" if browse_dry_run else "已开启（自动发布）"
+        dm_block_reason = self._dm_sending_block_reason()
         lines = [
             f"运行：{'运行中' if self._worker_running else '未运行'}{'（已手动停止）' if paused else ''}",
             f"登录：{auth_state}；来源：{self._auth_source}"
@@ -2998,7 +3053,9 @@ class XhhRobotPlugin(Star):
             (
                 "私信自动回复："
                 + (
-                    "已启用"
+                    "已因平台限制暂停"
+                    if dm_block_reason
+                    else "已启用"
                     if self._bool_cfg("direct_messages.enabled", False)
                     else "已关闭"
                 )
@@ -3053,6 +3110,8 @@ class XhhRobotPlugin(Star):
             lines.append("下次巡帖：" + self._format_time(next_browse_at))
         if browse.get("last_error"):
             lines.append("最近巡帖错误：" + str(browse["last_error"])[:300])
+        if dm_block_reason:
+            lines.append("私信发送暂停：" + dm_block_reason[:300])
         if suspend_left:
             lines.append(f"熔断暂停：剩余 {suspend_left} 秒")
         if self._last_success_at:

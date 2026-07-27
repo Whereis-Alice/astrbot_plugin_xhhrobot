@@ -1188,7 +1188,7 @@
 
         byId("featureStatus").innerHTML = kvRows([
           ["自己帖子评论", badge(features.reply_to_own_post_comments ? "启用" : "关闭", features.reply_to_own_post_comments ? "good" : "")],
-          ["私信自动回复", badge(dms.enabled ? "启用" : "关闭", dms.enabled ? "good" : "")],
+          ["私信自动回复", badge(dms.sending_blocked ? "已暂停" : dms.enabled ? "启用" : "关闭", dms.sending_blocked ? "bad" : dms.enabled ? "good" : "")],
           ["自动巡帖", badge(features.auto_browse ? "启用" : "关闭", features.auto_browse ? "warn" : "")],
           ["LLM 工具", badge(features.llm_tools ? "启用" : "关闭", features.llm_tools ? "info" : "")],
           ["写工具", badge(features.write_tools ? "启用" : "关闭", features.write_tools ? "warn" : "")],
@@ -1196,7 +1196,7 @@
         ]);
 
         const alertContainer = byId("runtimeAlert");
-        const errors = [runtime.last_error, dms.last_error].filter(Boolean);
+        const errors = [...new Set([runtime.last_error, dms.last_error, dms.sending_blocked_reason].filter(Boolean))];
         if (errors.length) {
           alertContainer.innerHTML = `<div class="alert bad">${escapeHtml(errors.join("；"))}</div>`;
         } else if (runtime.suspended_until > Date.now() / 1000) {

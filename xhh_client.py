@@ -72,6 +72,7 @@ class XhhError(RuntimeError):
         terminal: bool = False,
         auth_required: bool = False,
         delivery_uncertain: bool = False,
+        action_restricted: bool = False,
         retry_after: float | None = None,
     ) -> None:
         super().__init__(message)
@@ -79,6 +80,7 @@ class XhhError(RuntimeError):
         self.terminal = terminal
         self.auth_required = auth_required
         self.delivery_uncertain = delivery_uncertain
+        self.action_restricted = action_restricted
         self.retry_after = retry_after
 
 
@@ -115,6 +117,7 @@ class XhhClient:
         self._direct_message_ack_id = int(time.time() * 1000) % 1_000_000_000
         self._direct_message_send_lock = asyncio.Lock()
         self._last_direct_message_sent_at = 0.0
+        self._direct_message_action_restriction = ""
 
     async def start(self) -> None:
         if self._session is None or self._session.closed:
@@ -1383,6 +1386,7 @@ class XhhClient:
         max_local_image_bytes: int = 20 * 1024 * 1024,
         cooldown_seconds: int = 0,
     ) -> dict[str, Any]:
+        self._ensure_direct_message_sending_allowed()
         sources = [*(image_sources or [])]
         if image_url:
             sources.insert(0, image_url)
@@ -1412,21 +1416,27 @@ class XhhClient:
         if not str(text or "").strip() and not image_url:
             raise XhhError("私信内容和图片不能同时为空。", retryable=False)
         async with self._direct_message_send_lock:
+            self._ensure_direct_message_sending_allowed()
             cooldown = max(0, int(cooldown_seconds))
             elapsed = time.time() - self._last_direct_message_sent_at
             if cooldown and elapsed < cooldown:
                 await asyncio.sleep(cooldown - elapsed)
             self._direct_message_ack_id += 1
-            payload = await self._write_json(
-                "/chatroom/v2/msg/user",
-                params={"to_user_id": str(user_id)},
-                data={
-                    "heybox_ack_id": str(self._direct_message_ack_id),
-                    "img": image_url,
-                    "msg": str(text or ""),
-                    "msg_type": "6",
-                },
-            )
+            try:
+                payload = await self._write_json(
+                    "/chatroom/v2/msg/user",
+                    params={"to_user_id": str(user_id)},
+                    data={
+                        "heybox_ack_id": str(self._direct_message_ack_id),
+                        "img": image_url,
+                        "msg": str(text or ""),
+                        "msg_type": "6",
+                    },
+                )
+            except XhhError as exc:
+                if exc.action_restricted:
+                    self._direct_message_action_restriction = str(exc)
+                raise
             result = self._result_mapping(payload)
             acknowledged = any(
                 str(result.get(key) or "").strip()
@@ -1456,6 +1466,7 @@ class XhhClient:
         max_local_image_bytes: int = 20 * 1024 * 1024,
         cooldown_seconds: int = 5,
     ) -> list[dict[str, Any]]:
+        self._ensure_direct_message_sending_allowed()
         prepared = await self.prepare_image_sources(
             image_sources,
             allowed_local_roots=allowed_local_roots,
@@ -1479,9 +1490,21 @@ class XhhClient:
                         "私信图片链只完成了部分发送，已停止重试以避免重复。",
                         retryable=False,
                         delivery_uncertain=True,
+                        action_restricted=exc.action_restricted,
                     ) from exc
                 raise
         return deliveries
+
+    def _ensure_direct_message_sending_allowed(self) -> None:
+        if not self._direct_message_action_restriction:
+            return
+        raise XhhError(
+            "小黑盒已拒绝当前账号发送私信；为避免重复触发限制，"
+            "本次插件运行不会继续发送私信。",
+            retryable=False,
+            terminal=True,
+            action_restricted=True,
+        )
 
     async def send_reply(
         self,
@@ -1745,6 +1768,13 @@ class XhhClient:
             raise XhhError(
                 message or "小黑盒登录已失效。", auth_required=True, retryable=False
             )
+        if self._looks_like_direct_message_action_restriction(combined):
+            raise XhhError(
+                message or "小黑盒已禁止当前账号发送私信。",
+                retryable=False,
+                terminal=True,
+                action_restricted=True,
+            )
         if self._looks_like_rate_limit(combined):
             raise XhhError(
                 message or "小黑盒请求过于频繁。", retryable=True, retry_after=60
@@ -1823,6 +1853,18 @@ class XhhClient:
     @staticmethod
     def _looks_like_rate_limit(value: str) -> bool:
         return any(word in value for word in ("频繁", "稍后", "rate limit", "too many"))
+
+    @staticmethod
+    def _looks_like_direct_message_action_restriction(value: str) -> bool:
+        return any(
+            phrase in value
+            for phrase in (
+                "禁止发送消息",
+                "被禁止发消息",
+                "禁止私信",
+                "私信功能已被限制",
+            )
+        )
 
     @staticmethod
     def _normalise_media_url(value: str) -> str:

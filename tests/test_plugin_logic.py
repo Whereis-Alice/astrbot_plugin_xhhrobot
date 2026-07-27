@@ -7,9 +7,11 @@ import unittest
 from pathlib import Path
 
 from astrbot_plugin_xhhrobot.comment_archive import CommentArchive
-from astrbot_plugin_xhhrobot.main import XhhRobotPlugin
+from astrbot_plugin_xhhrobot.dm_store import DirectMessageStore
+from astrbot_plugin_xhhrobot.main import CycleResult, XhhRobotPlugin
 from astrbot_plugin_xhhrobot.models import (
     AuthInfo,
+    DirectMessage,
     Mention,
     NotificationPage,
     PostContext,
@@ -433,6 +435,67 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.queued, 1)
         self.assertEqual(snapshot["last_message_id"], 0)
         self.assertEqual(snapshot["last_comment_message_id"], 12)
+
+
+class DirectMessageRestrictionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_restriction_skips_triggering_message_and_pauses_automatic_sends(
+        self,
+    ) -> None:
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        dm_store = DirectMessageStore(Path(temp_dir.name) / "direct_messages.sqlite3")
+        first = DirectMessage(
+            event_key="dm:99:1",
+            message_id="1",
+            user_id="99",
+            user_name="Alice",
+            text="你好",
+            image_urls=(),
+            timestamp=1,
+        )
+        second = DirectMessage(
+            event_key="dm:100:2",
+            message_id="2",
+            user_id="100",
+            user_name="Bob",
+            text="还在吗",
+            image_urls=(),
+            timestamp=2,
+        )
+        await dm_store.enqueue((first, second))
+
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "event_bridge": {"enabled": True},
+            "direct_messages": {"enabled": True},
+            "notifications": {"umo": "test:FriendMessage:notify"},
+        }
+        plugin.dm_store = dm_store
+        plugin.context = RecordingNotificationContext()
+        plugin._last_dm_error = ""
+        plugin._dm_sending_blocked_reason = ""
+        plugin._dm_sending_blocked_at = 0.0
+
+        await plugin._handle_dm_event_error(
+            first,
+            XhhError(
+                "您已被禁止发送消息行为",
+                retryable=False,
+                terminal=True,
+                action_restricted=True,
+            ),
+            "自动回复",
+            [],
+        )
+
+        self.assertEqual(await dm_store.status(first.event_key), "skipped")
+        self.assertEqual(await dm_store.status(second.event_key), "pending")
+        self.assertIn("禁止发送消息", plugin._dm_sending_blocked_reason)
+        self.assertEqual(len(plugin.context.sent), 1)
+        self.assertIn("自动私信回复已在本次插件运行中暂停", plugin.context.sent[0][1])
+
+        await plugin._process_pending_direct_messages(CycleResult())
+        self.assertEqual(await dm_store.status(second.event_key), "pending")
 
 
 if __name__ == "__main__":

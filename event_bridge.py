@@ -29,7 +29,7 @@ from astrbot.api.platform import (
 )
 
 from .media import is_http_url, unique_strings
-from .xhh_client import XhhClient
+from .xhh_client import XhhClient, XhhError
 
 XHH_PLATFORM_ID = "xhhrobot"
 XHH_PLATFORM_META = PlatformMetadata(
@@ -219,6 +219,8 @@ class XhhMessageEvent(AstrMessageEvent):
                         error=exc,
                     )
                 )
+                if isinstance(exc, XhhError) and exc.action_restricted:
+                    return
                 raise
 
             await self._on_sent(text, image_sources)

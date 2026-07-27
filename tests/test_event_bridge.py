@@ -15,6 +15,7 @@ from astrbot_plugin_xhhrobot.event_bridge import (
     build_comment_message,
     build_direct_message,
 )
+from astrbot_plugin_xhhrobot.xhh_client import XhhError
 
 
 class EventBridgeTests(unittest.IsolatedAsyncioTestCase):
@@ -214,6 +215,62 @@ class EventBridgeTests(unittest.IsolatedAsyncioTestCase):
             max_local_image_bytes=1024,
             cooldown_seconds=3,
         )
+
+    async def test_direct_message_restriction_is_not_rethrown_to_astrbot(self) -> None:
+        message_obj = build_direct_message(
+            self_user_id="42",
+            session_id="dm!99",
+            message_id="8",
+            sender_id="99",
+            sender_name="Alice",
+            message_text="私信正文",
+            image_urls=(),
+            timestamp=124,
+            raw_message={},
+        )
+        client = AsyncMock()
+        restriction = XhhError(
+            "您已被禁止发送消息行为",
+            retryable=False,
+            terminal=True,
+            action_restricted=True,
+        )
+        client.send_direct_message_chain.side_effect = restriction
+        callbacks = {
+            "start": AsyncMock(),
+            "sent": AsyncMock(),
+            "error": AsyncMock(),
+            "empty": AsyncMock(),
+        }
+        event = XhhMessageEvent(
+            message_obj=message_obj,
+            target=EventTarget(
+                kind="direct_message",
+                source="direct_message",
+                event_key="dm:99:8",
+                raw_user_id="99",
+            ),
+            client=client,
+            max_reply_chars=100,
+            max_outgoing_images=1,
+            max_local_image_bytes=1024,
+            allowed_local_roots=(self.root,),
+            direct_message_cooldown_seconds=3,
+            clean_text=lambda value: value,
+            on_send_start=callbacks["start"],
+            on_sent=callbacks["sent"],
+            on_send_error=callbacks["error"],
+            on_empty=callbacks["empty"],
+        )
+
+        with patch.object(AstrMessageEvent, "send", new=AsyncMock()) as super_send:
+            await event.send(MessageChain([Plain("回复")]))
+
+        callbacks["error"].assert_awaited_once()
+        callbacks["sent"].assert_not_awaited()
+        super_send.assert_not_awaited()
+        self.assertEqual(event.delivery_future.result().status, "error")
+        self.assertIs(event.delivery_future.result().error, restriction)
 
     async def test_internal_plugin_error_result_is_not_posted(self) -> None:
         event, client, callbacks = self._make_comment_event()

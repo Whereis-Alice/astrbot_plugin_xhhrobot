@@ -160,6 +160,8 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         plugin._suspended_until = 0
         plugin._last_dm_poll_at = 0
         plugin._last_dm_error = ""
+        plugin._dm_sending_blocked_reason = "小黑盒已禁止当前账号发送私信"
+        plugin._dm_sending_blocked_at = 123.0
         plugin.auth = None
         plugin._auth_invalid = False
         plugin._auth_source = "none"
@@ -167,6 +169,11 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         result = await plugin._web_status_payload()
 
         self.assertFalse(result["features"]["reply_to_own_post_comments"])
+        self.assertTrue(result["direct_messages"]["sending_blocked"])
+        self.assertEqual(
+            result["direct_messages"]["sending_blocked_reason"],
+            "小黑盒已禁止当前账号发送私信",
+        )
 
     def test_registers_page_routes_with_plugin_prefix(self) -> None:
         routes: list[tuple] = []

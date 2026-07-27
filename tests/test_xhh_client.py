@@ -626,6 +626,26 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(kwargs["data"]["img"], "https://cdn.xiaoheihe.cn/dm.png")
         self.assertTrue(kwargs["data"]["heybox_ack_id"])
 
+    async def test_direct_message_restriction_is_terminal_and_stops_this_client(
+        self,
+    ) -> None:
+        client, session = self.make_client(
+            [FakeResponse({"status": "failed", "msg": "您已被禁止发送消息行为"})]
+        )
+
+        with self.assertRaises(XhhError) as first_error:
+            await client.send_direct_message(user_id="99", text="测试")
+
+        self.assertFalse(first_error.exception.retryable)
+        self.assertTrue(first_error.exception.terminal)
+        self.assertTrue(first_error.exception.action_restricted)
+
+        with self.assertRaises(XhhError) as second_error:
+            await client.send_direct_message(user_id="100", text="不应再次请求")
+
+        self.assertTrue(second_error.exception.action_restricted)
+        self.assertEqual(len(session.requests), 1)
+
 
 if __name__ == "__main__":
     unittest.main()
