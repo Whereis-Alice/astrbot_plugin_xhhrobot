@@ -157,23 +157,49 @@ class StateStore:
             )
             return [Mention.from_dict(item) for item in items[: max(0, limit)]]
 
-    async def mark_sending(self, message_id: int) -> None:
+    async def mark_sending(self, message_id: int) -> bool:
+        """Atomically claim the one allowed outbound reply for a comment.
+
+        A notification can arrive through both the mention stream and the
+        own-post-comment stream.  The queue normally merges those records, but
+        this final gate also protects against stale or concurrently dispatched
+        events before a request reaches Xiaoheihe.
+        """
+
         async with self._lock:
-            item = self._state["queue"].get(str(message_id))
+            key = str(message_id)
+            item = self._state["queue"].get(key)
             if item is None:
-                return
+                return False
+            if item.get("status") not in {"pending", "dispatched"}:
+                return False
+
+            if self._target_already_claimed_locked(key, item):
+                self._skip_duplicate_locked(key, item)
+                await self._save_locked()
+                return False
+
             item["status"] = "sending"
             item["updated_at"] = time.time()
             await self._save_locked()
+            return True
 
-    async def mark_dispatched(self, message_id: int) -> None:
+    async def mark_dispatched(self, message_id: int) -> bool:
+        """Claim a pending item before building its standard AstrBot event."""
+
         async with self._lock:
-            item = self._state["queue"].get(str(message_id))
-            if item is None:
-                return
+            key = str(message_id)
+            item = self._state["queue"].get(key)
+            if item is None or item.get("status") != "pending":
+                return False
+            if self._target_already_claimed_locked(key, item):
+                self._skip_duplicate_locked(key, item)
+                await self._save_locked()
+                return False
             item["status"] = "dispatched"
             item["updated_at"] = time.time()
             await self._save_locked()
+            return True
 
     async def item_status(self, message_id: int) -> str:
         async with self._lock:
@@ -525,6 +551,36 @@ class StateStore:
             if item.get("status") == "replied" and self._item_target(item) == target:
                 return str(item.get("message_id") or ""), item
         return None
+
+    def _target_already_claimed_locked(
+        self,
+        key: str,
+        item: Mapping[str, Any],
+    ) -> bool:
+        target = self._item_target(item)
+        if target == (0, 0):
+            return False
+        for other_key, other in self._state["queue"].items():
+            if other_key == key or self._item_target(other) != target:
+                continue
+            if other.get("status") in {"dispatched", "sending"}:
+                return True
+        return any(
+            recent.get("status") == "replied"
+            and self._item_target(recent) == target
+            for recent in self._state["recent"]
+        )
+
+    def _skip_duplicate_locked(self, key: str, item: Mapping[str, Any]) -> None:
+        self._state["queue"].pop(key, None)
+        self._append_recent_locked(
+            Mention.from_dict(item),
+            "skipped",
+            "同一条评论已经在发送或已完成回复",
+            "",
+            time.time(),
+        )
+        self._state["stats"]["skipped"] += 1
 
     @staticmethod
     def _item_target(item: Mapping[str, Any]) -> tuple[int, int]:

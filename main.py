@@ -43,6 +43,7 @@ from .event_bridge import (
     build_direct_message,
     strip_internal_xhh_identifiers,
 )
+from .media import unique_strings
 from .models import (
     AuthInfo,
     DirectMessage,
@@ -1776,6 +1777,16 @@ class XhhRobotPlugin(Star):
             await self._archive_received_status(mention, "skipped", eligibility_error)
             return "skipped"
         assert self.client is not None
+        if not await self.store.mark_dispatched(mention.message_id):
+            logger.info(
+                "%s skipped an already-claimed comment event: message_id=%s "
+                "link_id=%s comment_id=%s",
+                PLUGIN_ID,
+                mention.message_id,
+                mention.link_id,
+                mention.comment_id,
+            )
+            return "deferred"
 
         try:
             include_post_context = self._bool_cfg("ai.include_post_context", True)
@@ -1805,11 +1816,7 @@ class XhhRobotPlugin(Star):
 
         event_key = f"comment:{mention.link_id}:{mention.comment_id}"
         message_text = self._build_comment_event_text(mention, post)
-        image_urls = [*mention.image_urls, *mention.replied_image_urls]
-        if self._bool_cfg("ai.include_post_images", True):
-            image_urls.extend(
-                post.image_urls[: self._int_cfg("ai.max_post_images", 4, 0, 20)]
-            )
+        image_groups = self._comment_context_image_groups(mention, post)
         message_obj = build_comment_message(
             self_user_id=self.auth.heybox_id if self.auth is not None else "",
             session_id=f"post!{mention.link_id}",
@@ -1817,13 +1824,17 @@ class XhhRobotPlugin(Star):
             sender_id=str(mention.user_id),
             sender_name=mention.user_name or str(mention.user_id),
             message_text=message_text,
-            image_urls=image_urls,
+            image_urls=(),
             link_id=mention.link_id,
             link_title=post.title or mention.link_title,
             timestamp=mention.message_time or int(time.time()),
             raw_message={
                 "source": mention.source,
                 "mention": mention.to_dict(),
+                "image_groups": [
+                    {"label": label, "image_urls": list(urls)}
+                    for label, urls in image_groups
+                ],
                 "post": {
                     "title": post.title,
                     "author_id": post.author_id,
@@ -1836,9 +1847,19 @@ class XhhRobotPlugin(Star):
             },
         )
 
-        async def on_start(text: str, images: list[str]) -> None:
-            await self.store.mark_sending(mention.message_id)
+        async def on_start(text: str, images: list[str]) -> bool:
+            if not await self.store.mark_sending(mention.message_id):
+                logger.info(
+                    "%s blocked duplicate comment delivery: message_id=%s "
+                    "link_id=%s comment_id=%s",
+                    PLUGIN_ID,
+                    mention.message_id,
+                    mention.link_id,
+                    mention.comment_id,
+                )
+                return False
             await self._archive_received_status(mention, "sending")
+            return True
 
         async def on_sent(text: str, images: list[str]) -> None:
             await self.store.mark_done(mention.message_id, text)
@@ -1920,8 +1941,6 @@ class XhhRobotPlugin(Star):
         selected_provider = self._str_cfg("ai.provider_id", "")
         if selected_provider:
             event.set_extra("selected_provider", selected_provider)
-        await self.store.mark_dispatched(mention.message_id)
-
         async def on_timeout(retry_safe: bool) -> None:
             status = await self.store.item_status(mention.message_id)
             if status not in {"dispatched", "sending"}:
@@ -1961,8 +1980,9 @@ class XhhRobotPlugin(Star):
             raw_message={"source": message.source, "message": message.to_dict()},
         )
 
-        async def on_start(text: str, images: list[str]) -> None:
+        async def on_start(text: str, images: list[str]) -> bool:
             await self.dm_store.mark_sending(message.event_key)
+            return True
 
         async def on_sent(text: str, images: list[str]) -> None:
             await self.dm_store.mark_sent(
@@ -2136,6 +2156,50 @@ class XhhRobotPlugin(Star):
     def _event_bridge_enabled(self) -> bool:
         return self._bool_cfg("event_bridge.enabled", True)
 
+    def _comment_context_image_groups(
+        self,
+        mention: Mention,
+        post: PostContext,
+    ) -> list[tuple[str, list[str]]]:
+        """Build one bounded, ordered visual context for comment replies."""
+
+        maximum = self._int_cfg("ai.max_context_images", 8, 0, 20)
+        if maximum <= 0:
+            return []
+
+        sources: list[tuple[str, tuple[str, ...] | list[str]]] = [
+            ("本评论图片", mention.image_urls),
+            ("被回复评论图片", mention.replied_image_urls),
+        ]
+        if self._bool_cfg("ai.include_post_images", True):
+            sources.append(
+                (
+                    "帖子图片",
+                    list(post.image_urls)[
+                        : self._int_cfg("ai.max_post_images", 4, 0, 20)
+                    ],
+                )
+            )
+
+        groups: list[tuple[str, list[str]]] = []
+        seen: set[str] = set()
+        remaining = maximum
+        for label, group_sources in sources:
+            if remaining <= 0:
+                break
+            urls: list[str] = []
+            for url in unique_strings(group_sources):
+                if url in seen:
+                    continue
+                seen.add(url)
+                urls.append(url)
+                if len(urls) >= remaining:
+                    break
+            if urls:
+                groups.append((label, urls))
+                remaining -= len(urls)
+        return groups
+
     def _build_comment_event_text(
         self,
         mention: Mention,
@@ -2178,15 +2242,13 @@ class XhhRobotPlugin(Star):
                 mention.comment_text or "[仅发送了图片]",
             )
         )
-        incoming_images = len(mention.image_urls) + len(mention.replied_image_urls)
-        post_images = (
-            len(post.image_urls)
-            if self._bool_cfg("ai.include_post_images", True)
-            else 0
-        )
-        if incoming_images or post_images:
+        image_groups = self._comment_context_image_groups(mention, post)
+        if image_groups:
+            image_summary = "、".join(
+                f"{label} {len(urls)} 张" for label, urls in image_groups
+            )
             parts.append(
-                f"随消息提供的图片：评论相关 {incoming_images} 张，帖子 {post_images} 张。"
+                "随消息提供的图片会按以下标签顺序进入消息链：" + image_summary + "。"
             )
         parts.append("请保持当前人设，自然地直接回复对方。")
         return "\n".join(parts)
@@ -2378,12 +2440,12 @@ class XhhRobotPlugin(Star):
             self._last_dm_error,
         )
         await self._notify(
-            "小黑盒已拒绝当前账号发送私信，自动私信回复已在本次插件运行中暂停。\n\n"
+            "小黑盒已拒绝当前插件会话的私信发送请求，自动私信回复已在本次插件运行中暂停。\n\n"
             f"原因：{self._last_dm_error}\n"
             f"消息 ID：{message.message_id}\n"
             f"用户 ID：{message.user_id}\n\n"
-            "收信和 SQLite 归档会继续运行。请不要重复尝试发送或规避限制；"
-            "待小黑盒恢复该账号的私信能力后，再重载插件。"
+            "收信和 SQLite 归档会继续运行。手机 App 可以发送不代表该插件会话一定被允许；"
+            "请不要重复尝试发送或规避限制，待请求恢复后再重载插件。"
         )
 
     async def _process_mention(self, mention: Mention) -> str:
@@ -2440,7 +2502,16 @@ class XhhRobotPlugin(Star):
             return "retry"
 
         try:
-            await self.store.mark_sending(mention.message_id)
+            if not await self.store.mark_sending(mention.message_id):
+                logger.info(
+                    "%s blocked duplicate compatibility delivery: message_id=%s "
+                    "link_id=%s comment_id=%s",
+                    PLUGIN_ID,
+                    mention.message_id,
+                    mention.link_id,
+                    mention.comment_id,
+                )
+                return "deferred"
             await self._archive_received_status(mention, "sending")
         except asyncio.CancelledError:
             reason = "任务在发出回帖请求前被停止。"
@@ -2616,11 +2687,11 @@ class XhhRobotPlugin(Star):
         provider_id = await self._resolve_provider_id()
         system_prompt = await self._build_system_prompt()
         prompt = self._build_generation_prompt(mention, post, history)
-        image_urls = (
-            list(post.image_urls)[: self._int_cfg("ai.max_post_images", 4, 0, 20)]
-            if self._bool_cfg("ai.include_post_images", True)
-            else []
-        )
+        image_urls = [
+            url
+            for _, urls in self._comment_context_image_groups(mention, post)
+            for url in urls
+        ]
         timeout = self._int_cfg("ai.generation_timeout_sec", 120, 10, 600)
         response = await asyncio.wait_for(
             self.context.llm_generate(
@@ -2739,9 +2810,13 @@ class XhhRobotPlugin(Star):
             sections.append("标签：" + "、".join(post.tags))
         if body:
             sections.append("帖子正文：\n" + body)
-        if post.image_urls and self._bool_cfg("ai.include_post_images", True):
+        image_groups = self._comment_context_image_groups(mention, post)
+        if image_groups:
+            image_summary = "、".join(
+                f"{label} {len(urls)} 张" for label, urls in image_groups
+            )
             sections.append(
-                f"帖子图片：{len(post.image_urls)} 张（已随模型请求提供可用图片）"
+                "随模型请求提供的图片（按此顺序）：" + image_summary
             )
         if history:
             lines = []

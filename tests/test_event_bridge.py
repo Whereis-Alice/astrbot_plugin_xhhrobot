@@ -65,6 +65,56 @@ class EventBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(direct.session_id, "dm!99")
         self.assertIsNone(direct.group)
 
+    def test_comment_image_groups_are_labeled_and_deduplicated(self) -> None:
+        comment = build_comment_message(
+            self_user_id="42",
+            session_id="post!100",
+            message_id="7",
+            sender_id="99",
+            sender_name="Alice",
+            message_text="评论正文",
+            image_urls=(),
+            image_groups=(
+                (
+                    "本评论图片",
+                    ("https://example.com/current.png", "https://example.com/shared.png"),
+                ),
+                (
+                    "被回复评论图片",
+                    ("https://example.com/shared.png", "https://example.com/quoted.png"),
+                ),
+                ("帖子图片", ("https://example.com/post.png",)),
+            ),
+            link_id=100,
+            link_title="帖子标题",
+            timestamp=123,
+            raw_message={},
+        )
+
+        labels = [
+            item.text
+            for item in comment.message
+            if isinstance(item, Plain) and item.text.startswith("\n[")
+        ]
+        urls = [
+            str(item.url or item.file or item.path or "")
+            for item in comment.message
+            if isinstance(item, Image)
+        ]
+        self.assertEqual(
+            labels,
+            ["\n[本评论图片：2 张]", "\n[被回复评论图片：1 张]", "\n[帖子图片：1 张]"],
+        )
+        self.assertEqual(
+            urls,
+            [
+                "https://example.com/current.png",
+                "https://example.com/shared.png",
+                "https://example.com/quoted.png",
+                "https://example.com/post.png",
+            ],
+        )
+
     async def test_outbound_comment_preserves_text_and_full_image_chain(self) -> None:
         message_obj = build_comment_message(
             self_user_id="42",
@@ -152,6 +202,30 @@ class EventBridgeTests(unittest.IsolatedAsyncioTestCase):
             "没绷住，2027 年也太远了。",
         )
         self.assertNotIn("xhh:", event.delivery_future.result().text)
+
+    async def test_second_send_call_is_ignored(self) -> None:
+        event, client, callbacks = self._make_comment_event()
+
+        with patch.object(AstrMessageEvent, "send", new=AsyncMock()) as super_send:
+            await event.send(MessageChain([Plain("第一条回复")]))
+            await event.send(MessageChain([Plain("不应再次发送")]))
+
+        client.send_reply.assert_awaited_once()
+        self.assertEqual(client.send_reply.await_args.kwargs["text"], "第一条回复")
+        callbacks["sent"].assert_awaited_once()
+        super_send.assert_awaited_once()
+
+    async def test_delivery_claim_rejection_does_not_send(self) -> None:
+        event, client, callbacks = self._make_comment_event()
+        callbacks["start"].return_value = False
+
+        with patch.object(AstrMessageEvent, "send", new=AsyncMock()) as super_send:
+            await event.send(MessageChain([Plain("被拦截的重复回复")]))
+
+        client.send_reply.assert_not_awaited()
+        callbacks["sent"].assert_not_awaited()
+        super_send.assert_not_awaited()
+        self.assertEqual(event.delivery_future.result().status, "suppressed")
 
     async def test_expired_event_does_not_send_a_late_reply(self) -> None:
         event, client, callbacks = self._make_comment_event()

@@ -48,6 +48,43 @@ class MentionParsingTests(unittest.TestCase):
         self.assertEqual(mention.comment_text, "@Alice")
         self.assertEqual(mention.replied_text, "回复 内容")
 
+    def test_nested_comment_image_groups_are_extracted(self) -> None:
+        mention = Mention.from_mapping(
+            {
+                "message_id": 1,
+                "comment_a_id": 2,
+                "linkid": 3,
+                "userid_a": 4,
+                "comment_a": {
+                    "images": [
+                        {"url": "https://cdn.example/current.jpg"},
+                        {"url": "https://cdn.example/shared.jpg"},
+                    ]
+                },
+                "comment_b": {
+                    "imgs": [
+                        {"url": "https://cdn.example/quoted.jpg"},
+                        {"url": "https://cdn.example/shared.jpg"},
+                    ]
+                },
+            }
+        )
+
+        self.assertEqual(
+            mention.image_urls,
+            (
+                "https://cdn.example/current.jpg",
+                "https://cdn.example/shared.jpg",
+            ),
+        )
+        self.assertEqual(
+            mention.replied_image_urls,
+            (
+                "https://cdn.example/quoted.jpg",
+                "https://cdn.example/shared.jpg",
+            ),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

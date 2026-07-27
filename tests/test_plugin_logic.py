@@ -5,6 +5,7 @@ import copy
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 from astrbot_plugin_xhhrobot.comment_archive import CommentArchive
 from astrbot_plugin_xhhrobot.dm_store import DirectMessageStore
@@ -105,6 +106,15 @@ class TimedOutStandardEvent:
     def expire_if_not_started(self) -> bool:
         self.expire_calls += 1
         return self.retry_safe
+
+
+class RecordingGenerationContext:
+    def __init__(self) -> None:
+        self.request: dict[str, object] = {}
+
+    async def llm_generate(self, **kwargs: object) -> SimpleNamespace:
+        self.request = dict(kwargs)
+        return SimpleNamespace(completion_text="视觉回复")
 
 
 class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
@@ -435,6 +445,65 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.queued, 1)
         self.assertEqual(snapshot["last_message_id"], 0)
         self.assertEqual(snapshot["last_comment_message_id"], 12)
+
+
+class CommentImageGenerationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_compatibility_generation_receives_labeled_comment_images(self) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "ai": {
+                "provider_id": "vision-model",
+                "include_post_images": True,
+                "max_post_images": 2,
+                "max_context_images": 4,
+            }
+        }
+        context = RecordingGenerationContext()
+        plugin.context = context
+
+        async def build_system_prompt() -> str:
+            return "system"
+
+        plugin._build_system_prompt = build_system_prompt  # type: ignore[method-assign]
+        mention = Mention(
+            message_id=1,
+            comment_id=2,
+            root_comment_id=2,
+            link_id=3,
+            user_id=4,
+            comment_text="带图评论",
+            image_urls=(
+                "https://cdn.example/current.jpg",
+                "https://cdn.example/shared.jpg",
+            ),
+            replied_image_urls=(
+                "https://cdn.example/quoted.jpg",
+                "https://cdn.example/shared.jpg",
+            ),
+        )
+        post = PostContext(
+            title="帖子",
+            image_urls=(
+                "https://cdn.example/post-1.jpg",
+                "https://cdn.example/post-2.jpg",
+            ),
+        )
+
+        reply = await plugin._generate_reply(mention, post, [])
+
+        self.assertEqual(reply, "视觉回复")
+        self.assertEqual(
+            context.request["image_urls"],
+            [
+                "https://cdn.example/current.jpg",
+                "https://cdn.example/shared.jpg",
+                "https://cdn.example/quoted.jpg",
+                "https://cdn.example/post-1.jpg",
+            ],
+        )
+        self.assertIn("本评论图片 2 张", str(context.request["prompt"]))
+        self.assertIn("被回复评论图片 1 张", str(context.request["prompt"]))
+        self.assertIn("帖子图片 1 张", str(context.request["prompt"]))
 
 
 class DirectMessageRestrictionTests(unittest.IsolatedAsyncioTestCase):

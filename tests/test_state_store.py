@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import copy
 import unittest
 
@@ -73,6 +74,21 @@ class StateStoreTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await recovered.retry_dead(include_uncertain=False), 0)
         self.assertEqual(await recovered.retry_dead(include_uncertain=True), 1)
         self.assertEqual(len(await recovered.due_items(limit=10)), 1)
+
+    async def test_dispatch_and_delivery_claims_are_atomic(self) -> None:
+        await self.store.ingest(
+            newest_message_id=101, queued=[self.mention], ignored=[]
+        )
+
+        claims = await asyncio.gather(
+            self.store.mark_dispatched(101),
+            self.store.mark_dispatched(101),
+        )
+
+        self.assertEqual(sum(claims), 1)
+        self.assertEqual(await self.store.item_status(101), "dispatched")
+        self.assertTrue(await self.store.mark_sending(101))
+        self.assertFalse(await self.store.mark_sending(101))
 
     async def test_retry_exhaustion_moves_to_dead_queue(self) -> None:
         await self.store.ingest(

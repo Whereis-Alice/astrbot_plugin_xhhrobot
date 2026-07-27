@@ -68,6 +68,7 @@ class DeliveryResult:
     error: BaseException | None = None
 
 
+DeliveryStartCallback = Callable[[str, list[str]], Awaitable[bool | None]]
 DeliveryCallback = Callable[[str, list[str]], Awaitable[None]]
 ErrorCallback = Callable[[BaseException, str, list[str]], Awaitable[None]]
 
@@ -85,7 +86,7 @@ class XhhMessageEvent(AstrMessageEvent):
         allowed_local_roots: Sequence[Path],
         direct_message_cooldown_seconds: int,
         clean_text: Callable[[str], str],
-        on_send_start: DeliveryCallback,
+        on_send_start: DeliveryStartCallback,
         on_sent: DeliveryCallback,
         on_send_error: ErrorCallback,
         on_empty: Callable[[], Awaitable[None]],
@@ -143,7 +144,11 @@ class XhhMessageEvent(AstrMessageEvent):
     async def send(self, message: MessageChain) -> None:
         async with self._send_lock:
             if self._delivery_started:
-                await super().send(message)
+                logger.debug(
+                    "xhhrobot ignored duplicate send call: event_key=%s target=%s",
+                    self.target.event_key,
+                    self.target.kind,
+                )
                 return
             if self._delivery_expired:
                 return
@@ -173,8 +178,24 @@ class XhhMessageEvent(AstrMessageEvent):
                 await super().send(message)
                 return
 
+            delivery_claimed = await self._on_send_start(text, image_sources)
+            if delivery_claimed is False:
+                logger.info(
+                    "xhhrobot suppressed duplicate platform delivery: "
+                    "event_key=%s target=%s",
+                    self.target.event_key,
+                    self.target.kind,
+                )
+                self._finish_delivery(
+                    DeliveryResult(
+                        status="suppressed",
+                        text=text,
+                        image_sources=tuple(image_sources),
+                    )
+                )
+                return
+
             self._outbound_started = True
-            await self._on_send_start(text, image_sources)
             try:
                 if self.target.kind == "direct_message":
                     await self.client.send_direct_message_chain(
@@ -315,11 +336,30 @@ def build_comment_message(
     link_title: str,
     timestamp: int,
     raw_message: Any,
+    image_groups: Sequence[tuple[str, Sequence[str]]] | None = None,
 ) -> AstrBotMessage:
     sender = MessageMember(user_id=_namespaced_user(sender_id), nickname=sender_name)
     self_id = _namespaced_user(self_user_id or XHH_PLATFORM_ID)
     chain: list[Any] = [At(qq=self_id, name="小黑盒bot"), Plain(message_text)]
-    chain.extend(Image.fromURL(url) for url in unique_strings(image_urls))
+    message_text_parts = [message_text]
+    if image_groups:
+        seen_urls: set[str] = set()
+        for label, sources in image_groups:
+            urls: list[str] = []
+            for url in unique_strings(sources):
+                if url in seen_urls:
+                    continue
+                seen_urls.add(url)
+                urls.append(url)
+            if not urls:
+                continue
+            normalized_label = str(label or "评论图片").strip() or "评论图片"
+            label_text = f"\n[{normalized_label}：{len(urls)} 张]"
+            chain.append(Plain(label_text))
+            message_text_parts.append(label_text)
+            chain.extend(Image.fromURL(url) for url in urls)
+    else:
+        chain.extend(Image.fromURL(url) for url in unique_strings(image_urls))
     message = AstrBotMessage()
     message.type = MessageType.GROUP_MESSAGE
     message.self_id = self_id
@@ -331,7 +371,7 @@ def build_comment_message(
     )
     message.sender = sender
     message.message = chain
-    message.message_str = message_text
+    message.message_str = "".join(message_text_parts)
     message.raw_message = raw_message
     message.timestamp = int(timestamp or 0)
     return message

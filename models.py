@@ -229,6 +229,8 @@ class Mention:
                         value.get("images"),
                         value.get("comment_a_imgs"),
                         value.get("comment_images"),
+                        value.get("comment_a"),
+                        value.get("comment"),
                         value.get("comment_a_text"),
                         value.get("comment_text"),
                         value.get("content"),
@@ -240,6 +242,8 @@ class Mention:
                     [
                         value.get("comment_b_imgs"),
                         value.get("reply_imgs"),
+                        value.get("comment_b"),
+                        value.get("reply"),
                         value.get("comment_b_text"),
                     ]
                 )
