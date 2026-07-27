@@ -91,6 +91,20 @@ class RecordingNotificationContext:
         self.sent.append((umo, chain.get_plain_text()))
 
 
+class TimedOutStandardEvent:
+    def __init__(self, *, retry_safe: bool) -> None:
+        self.delivery_future: asyncio.Future[object] = (
+            asyncio.get_running_loop().create_future()
+        )
+        self.retry_safe = retry_safe
+        self.expire_calls = 0
+        self.outbound_started = not retry_safe
+
+    def expire_if_not_started(self) -> bool:
+        self.expire_calls += 1
+        return self.retry_safe
+
+
 class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
     async def make_plugin(
         self, config: dict, pages: list[list[Mention]]
@@ -252,6 +266,28 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
         snapshot = await store.snapshot()
         self.assertEqual(snapshot["queue"], {})
         self.assertEqual(snapshot["dead"]["12"]["reason"], "uncertain_delivery")
+
+    async def test_standard_event_timeout_reports_whether_retry_is_safe(self) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin._event_tasks = {}
+        plugin._int_cfg = lambda *args, **kwargs: 0  # type: ignore[method-assign]
+
+        for retry_safe in (True, False):
+            event = TimedOutStandardEvent(retry_safe=retry_safe)
+            received: list[bool] = []
+
+            async def on_timeout(
+                value: bool,
+                captured: list[bool] = received,
+            ) -> None:
+                captured.append(value)
+
+            await plugin._monitor_standard_event(
+                f"event-{retry_safe}", event, on_timeout
+            )
+
+            self.assertEqual(event.expire_calls, 1)
+            self.assertEqual(received, [retry_safe])
 
     async def test_ordinary_comment_on_own_post_replies_without_mention(self) -> None:
         backend = MemoryBackend()

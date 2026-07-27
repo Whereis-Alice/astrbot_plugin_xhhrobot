@@ -10,7 +10,7 @@ import re
 import tempfile
 import time
 import uuid
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -1912,19 +1912,22 @@ class XhhRobotPlugin(Star):
             event.set_extra("selected_provider", selected_provider)
         await self.store.mark_dispatched(mention.message_id)
 
-        async def on_timeout() -> None:
+        async def on_timeout(retry_safe: bool) -> None:
             status = await self.store.item_status(mention.message_id)
-            reason = "AstrBot 标准事件超时，未产生回复"
-            if status == "dispatched":
+            if status not in {"dispatched", "sending"}:
+                return
+            if retry_safe and status == "dispatched":
+                reason = "AstrBot 标准事件超时，未开始发送；已阻止迟到回复并重新排队"
                 await self._schedule_retry(mention, reason)
                 await self._archive_received_status(mention, "retry", reason)
-            elif status == "sending":
-                await self._mark_comment_event_uncertain(
-                    mention,
-                    reason,
-                    "",
-                    [],
-                )
+                return
+            reason = "AstrBot 标准事件超时，回复可能已开始发送"
+            await self._mark_comment_event_uncertain(
+                mention,
+                reason,
+                "",
+                [],
+            )
 
         if not self._queue_standard_event(event_key, event, on_timeout):
             await self._schedule_retry(mention, "AstrBot 事件队列暂时不可用")
@@ -2020,10 +2023,14 @@ class XhhRobotPlugin(Star):
             event.set_extra("selected_provider", selected_provider)
         await self.dm_store.mark_dispatched(message.event_key)
 
-        async def on_timeout() -> None:
+        async def on_timeout(retry_safe: bool) -> None:
             status = await self.dm_store.status(message.event_key)
-            reason = "AstrBot 标准事件超时，未产生私信回复"
-            if status == "dispatched":
+            if status not in {"dispatched", "sending"}:
+                return
+            if retry_safe and status == "dispatched":
+                reason = (
+                    "AstrBot 标准事件超时，未开始发送私信；已阻止迟到回复并重新排队"
+                )
                 await self.dm_store.mark_retry(
                     message.event_key,
                     reason,
@@ -2034,8 +2041,11 @@ class XhhRobotPlugin(Star):
                         "reliability.retry_base_delay_sec", 60, 5, 3600
                     ),
                 )
-            elif status == "sending":
-                await self.dm_store.mark_uncertain(message.event_key, reason=reason)
+                self._last_dm_error = reason
+                return
+            reason = "AstrBot 标准事件超时，私信回复可能已开始发送"
+            await self.dm_store.mark_uncertain(message.event_key, reason=reason)
+            self._last_dm_error = reason
 
         if not self._queue_standard_event(event_key, event, on_timeout):
             await self.dm_store.defer(
@@ -2050,7 +2060,7 @@ class XhhRobotPlugin(Star):
         self,
         event_key: str,
         event: XhhMessageEvent,
-        on_timeout: Any,
+        on_timeout: Callable[[bool], Awaitable[None]],
     ) -> bool:
         tasks = getattr(self, "_event_tasks", None)
         if tasks is None:
@@ -2073,15 +2083,21 @@ class XhhRobotPlugin(Star):
         self,
         event_key: str,
         event: XhhMessageEvent,
-        on_timeout: Any,
+        on_timeout: Callable[[bool], Awaitable[None]],
     ) -> None:
         timeout = self._int_cfg("event_bridge.event_timeout_sec", 300, 30, 1800)
         try:
             done, _ = await asyncio.wait({event.delivery_future}, timeout=timeout)
             if not done:
-                await on_timeout()
+                retry_safe = event.expire_if_not_started()
+                await on_timeout(retry_safe)
                 logger.warning(
-                    "%s standard event timed out: event_key=%s", PLUGIN_ID, event_key
+                    "%s standard event timed out: event_key=%s retry_safe=%s "
+                    "outbound_started=%s",
+                    PLUGIN_ID,
+                    event_key,
+                    retry_safe,
+                    event.outbound_started,
                 )
         except asyncio.CancelledError:
             raise

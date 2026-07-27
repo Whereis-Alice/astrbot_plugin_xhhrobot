@@ -112,14 +112,40 @@ class XhhMessageEvent(AstrMessageEvent):
         self._on_empty = on_empty
         self._send_lock = asyncio.Lock()
         self._delivery_started = False
+        self._outbound_started = False
+        self._delivery_expired = False
         self.delivery_future: asyncio.Future[DeliveryResult] = (
             asyncio.get_running_loop().create_future()
         )
+
+    @property
+    def outbound_started(self) -> bool:
+        """Whether the reply crossed into the platform delivery phase."""
+
+        return self._outbound_started
+
+    def expire_if_not_started(self) -> bool:
+        """Stop a late event before it can create a duplicate platform reply.
+
+        AstrBot owns the task that consumes its event queue, so the plugin cannot
+        cancel that task directly. Once this event is expired, a later `send()`
+        becomes a no-op. If platform delivery has already started, the result is
+        intentionally left uncertain instead of allowing an automatic retry.
+        """
+
+        if self._outbound_started or self.delivery_future.done():
+            return False
+        self._delivery_expired = True
+        self.stop_event()
+        self._finish_delivery(DeliveryResult(status="expired"))
+        return True
 
     async def send(self, message: MessageChain) -> None:
         async with self._send_lock:
             if self._delivery_started:
                 await super().send(message)
+                return
+            if self._delivery_expired:
                 return
             self._delivery_started = True
 
@@ -147,6 +173,7 @@ class XhhMessageEvent(AstrMessageEvent):
                 await super().send(message)
                 return
 
+            self._outbound_started = True
             await self._on_send_start(text, image_sources)
             try:
                 if self.target.kind == "direct_message":

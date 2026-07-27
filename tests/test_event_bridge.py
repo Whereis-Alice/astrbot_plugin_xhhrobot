@@ -152,6 +152,19 @@ class EventBridgeTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertNotIn("xhh:", event.delivery_future.result().text)
 
+    async def test_expired_event_does_not_send_a_late_reply(self) -> None:
+        event, client, callbacks = self._make_comment_event()
+
+        self.assertTrue(event.expire_if_not_started())
+        self.assertTrue(event.is_stopped())
+        with patch.object(AstrMessageEvent, "send", new=AsyncMock()):
+            await event.send(MessageChain([Plain("这条迟到回复不能发送")]))
+
+        client.send_reply.assert_not_awaited()
+        callbacks["start"].assert_not_awaited()
+        callbacks["sent"].assert_not_awaited()
+        self.assertEqual(event.delivery_future.result().status, "expired")
+
     async def test_outbound_direct_message_uses_chain_sender(self) -> None:
         message_obj = build_direct_message(
             self_user_id="42",
