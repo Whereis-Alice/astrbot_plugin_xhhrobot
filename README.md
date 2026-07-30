@@ -67,6 +67,8 @@ https://github.com/Whereis-Alice/astrbot_plugin_xhhrobot
 
 打开 AstrBot 插件详情中的“小黑盒bot”页面，在“扫码登录”标签生成二维码。也可以由 AstrBot 管理员发送：
 
+WebUI 会在页面内绘制二维码，不需要浏览器直接加载小黑盒图片地址。刷新页面时，尚未过期的扫码会话仍会重新显示。
+
 ```text
 /小黑盒登录
 ```

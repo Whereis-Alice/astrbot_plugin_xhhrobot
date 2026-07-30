@@ -347,12 +347,14 @@
         background: var(--surface);
       }
 
-      .qr-area img {
+      .qr-canvas {
         display: block;
-        width: min(320px, calc(100% - 36px));
+        max-width: calc(100% - 36px);
+        height: auto;
         aspect-ratio: 1;
-        object-fit: contain;
+        background: #fff;
         image-rendering: crisp-edges;
+        image-rendering: pixelated;
       }
 
       .qr-placeholder {
@@ -1490,6 +1492,59 @@
         }[stateName] || stateName || "未知";
       }
 
+      function renderQrMatrix(qrPayload) {
+        const size = Number(qrPayload?.size);
+        const rows = qrPayload?.rows;
+        if (
+          !Number.isInteger(size) ||
+          size < 21 ||
+          size > 200 ||
+          !Array.isArray(rows) ||
+          rows.length !== size ||
+          rows.some(
+            (row) =>
+              typeof row !== "string" ||
+              row.length !== size ||
+              /[^01]/.test(row),
+          )
+        ) {
+          return false;
+        }
+
+        const area = byId("qrArea");
+        const availableWidth =
+          area.clientWidth > 72 ? Math.min(320, area.clientWidth - 36) : 320;
+        const moduleSize = Math.max(1, Math.floor(availableWidth / size));
+        const canvasSize = size * moduleSize;
+        const canvas = document.createElement("canvas");
+        canvas.className = "qr-canvas";
+        canvas.width = canvasSize;
+        canvas.height = canvasSize;
+        canvas.setAttribute("role", "img");
+        canvas.setAttribute("aria-label", "小黑盒登录二维码");
+
+        const context = canvas.getContext("2d", { alpha: false });
+        if (!context) return false;
+        context.imageSmoothingEnabled = false;
+        context.fillStyle = "#fff";
+        context.fillRect(0, 0, canvasSize, canvasSize);
+        context.fillStyle = "#000";
+        rows.forEach((row, y) => {
+          for (let x = 0; x < size; x += 1) {
+            if (row[x] === "1") {
+              context.fillRect(
+                x * moduleSize,
+                y * moduleSize,
+                moduleSize,
+                moduleSize,
+              );
+            }
+          }
+        });
+        area.replaceChildren(canvas);
+        return true;
+      }
+
       function renderLogin(payload) {
         const account = payload.account || {};
         const stateName = payload.state || "idle";
@@ -1507,8 +1562,11 @@
           ? `<div class="alert ${stateName === "failed" || stateName === "invalid" ? "bad" : ""}">${escapeHtml(payload.message)}</div>`
           : "";
 
-        if (payload.qr_image) {
-          byId("qrArea").innerHTML = `<img src="${payload.qr_image}" alt="小黑盒登录二维码" />`;
+        if (payload.qr_matrix) {
+          if (!renderQrMatrix(payload.qr_matrix)) {
+            byId("qrArea").innerHTML =
+              '<div class="qr-placeholder">二维码数据无效，请重新生成</div>';
+          }
         } else if (stateName === "authenticated") {
           byId("qrArea").innerHTML = '<div class="qr-placeholder"><span class="status-badge good">当前账号已登录</span></div>';
         } else if (stateName !== "waiting") {

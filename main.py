@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import contextlib
 import inspect
-import io
 import random
 import re
 import tempfile
@@ -415,7 +413,7 @@ class XhhRobotPlugin(Star):
     async def web_login_session(self):
         if not self._webui_enabled():
             return jsonify({"ok": False, "error": "插件 WebUI 已在配置中关闭。"}), 403
-        payload = await self._web_login_payload(include_qr=False)
+        payload = await self._web_login_payload(include_qr=True)
         payload["worker_running"] = self._worker_running
         return jsonify(payload)
 
@@ -468,11 +466,12 @@ class XhhRobotPlugin(Star):
             },
         }
         challenge = self._web_login_challenge
-        if include_qr and state == "waiting" and challenge is not None:
-            payload["qr_image"] = self._qr_data_url(challenge.qr_url)
+        if state == "waiting" and challenge is not None:
             payload["expires_at"] = self._web_login_started_at + max(
                 1, int(challenge.expires_in or 120)
             )
+            if include_qr:
+                payload["qr_matrix"] = self._qr_matrix_payload(challenge.qr_url)
         return payload
 
     async def _clear_login_credentials(self) -> None:
@@ -578,20 +577,22 @@ class XhhRobotPlugin(Star):
         return max(minimum, min(maximum, value))
 
     @staticmethod
-    def _qr_data_url(qr_url: str) -> str:
+    def _qr_matrix_payload(qr_url: str) -> dict[str, Any]:
         qr = qrcode.QRCode(
             version=None,
             error_correction=qrcode.constants.ERROR_CORRECT_M,
-            box_size=8,
             border=4,
         )
         qr.add_data(qr_url)
         qr.make(fit=True)
-        image = qr.make_image(fill_color="black", back_color="white")
-        buffer = io.BytesIO()
-        image.save(buffer, format="PNG")
-        encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
-        return "data:image/png;base64," + encoded
+        matrix = qr.get_matrix()
+        return {
+            "size": len(matrix),
+            "rows": [
+                "".join("1" if module else "0" for module in row)
+                for row in matrix
+            ],
+        }
 
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command("小黑盒帮助", alias={"xhh帮助", "xhh_help"})

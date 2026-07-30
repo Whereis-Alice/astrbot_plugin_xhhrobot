@@ -204,6 +204,61 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("const pageBridge = await getBridge();", page)
         self.assertNotIn("const bridge = window.AstrBotPluginPage;", page)
 
+    def test_qr_code_uses_valid_canvas_matrix(self) -> None:
+        payload = XhhRobotPlugin._qr_matrix_payload(
+            "https://api.xiaoheihe.cn/account/qr_login/?app=web&qr=state"
+        )
+
+        size = payload["size"]
+        rows = payload["rows"]
+        self.assertGreaterEqual(size, 21)
+        self.assertEqual(len(rows), size)
+        self.assertTrue(all(len(row) == size for row in rows))
+        self.assertTrue(all(set(row) <= {"0", "1"} for row in rows))
+        self.assertEqual(set(rows[0]), {"0"})
+
+    def test_dashboard_renders_qr_as_canvas_instead_of_data_image(self) -> None:
+        page = (
+            Path(__file__).parents[1] / "pages" / "dashboard" / "index.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("function renderQrMatrix(qrPayload)", page)
+        self.assertIn("payload.qr_matrix", page)
+        self.assertIn('document.createElement("canvas")', page)
+        self.assertNotIn("payload.qr_image", page)
+
+    async def test_login_payload_can_restore_qr_and_keeps_expiry_on_poll(
+        self,
+    ) -> None:
+        plugin = self.plugin()
+        plugin._login_task = SimpleNamespace(done=lambda: False)
+        plugin._web_login_challenge = SimpleNamespace(
+            qr_url="https://api.xiaoheihe.cn/account/qr_login/?app=web&qr=state",
+            expires_in=120,
+        )
+        plugin._web_login_started_at = 1000.0
+        plugin.auth = None
+        plugin._auth_source = "none"
+
+        initial = await plugin._web_login_payload(include_qr=True)
+        polled = await plugin._web_login_payload(include_qr=False)
+
+        self.assertIn("qr_matrix", initial)
+        self.assertNotIn("qr_matrix", polled)
+        self.assertEqual(initial["expires_at"], 1120.0)
+        self.assertEqual(polled["expires_at"], 1120.0)
+
+    async def test_login_session_requests_qr_for_page_refresh(self) -> None:
+        plugin = self.plugin()
+        plugin._worker_task = None
+        plugin._web_login_payload = AsyncMock(return_value={"ok": True})
+
+        with patch.object(main_module, "jsonify", side_effect=lambda value: value):
+            result = await plugin.web_login_session()
+
+        plugin._web_login_payload.assert_awaited_once_with(include_qr=True)
+        self.assertFalse(result["worker_running"])
+
     def test_clear_login_uses_in_page_confirmation_dialog(self) -> None:
         page = (
             Path(__file__).parents[1] / "pages" / "dashboard" / "index.html"
