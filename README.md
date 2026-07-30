@@ -138,17 +138,32 @@ https://github.com/Whereis-Alice/astrbot_plugin_xhhrobot
 
 私信自动回复默认关闭。开启 `direct_messages.enabled` 后，插件会轮询好友私信；开启 `direct_messages.reply_to_strangers` 后还会处理陌生人入口。
 
-首次启用默认只建立当前消息基线，不回复已经存在的历史私信。可以配置：
+首次启用默认只建立当前消息基线，不回复已经存在的历史私信。私信配置页各项含义如下：
 
-- 静默时段
-- 全局与单用户 24 小时回复上限
-- 单用户冷却时间
-- 每轮处理数量
-- 是否处理首次启用时可见的历史消息
+| 配置项中文名 | 配置键 | 说明 |
+| --- | --- | --- |
+| 启用私信自动回复 | `direct_messages.enabled` | 自动读取并回复新的好友私信；需要同时启用标准事件。 |
+| 回复陌生人私信 | `direct_messages.reply_to_strangers` | 额外轮询陌生人入口，默认关闭。 |
+| 私信轮询最短间隔（秒） | `direct_messages.poll_interval_min_sec` | 与最长间隔组成随机轮询区间，默认 90 秒。 |
+| 私信轮询最长间隔（秒） | `direct_messages.poll_interval_max_sec` | 随机轮询区间上限，默认 180 秒。 |
+| 单次会话列表上限 | `direct_messages.conversation_limit` | 每轮最多检查的最近私信会话数。 |
+| 单会话消息上限 | `direct_messages.history_limit` | 会话更新后最多读取的最近消息数。 |
+| 单轮最多提交私信数 | `direct_messages.max_dispatch_per_cycle` | 每轮最多交给 AstrBot 生成人设回复的私信数。 |
+| 首次处理历史私信 | `direct_messages.process_existing_on_first_start` | 开启后会处理首次启动时可见的历史私信，通常保持关闭。 |
+| 私信静默时段 | `direct_messages.quiet_hours` | 例如 `00:30-07:30`；使用云服务器本地时区。 |
+| 24 小时私信回复上限 | `direct_messages.max_replies_per_24h` | 限制滚动 24 小时内全部自动私信回复。 |
+| 单用户 24 小时上限 | `direct_messages.max_replies_per_user_24h` | 限制同一用户在滚动 24 小时内收到的自动回复。 |
+| 单用户回复冷却（秒） | `direct_messages.user_cooldown_sec` | 限制同一用户连续收到自动回复的频率。 |
+| 私信消息链间隔（秒） | `direct_messages.send_cooldown_sec` | 文本和多张图片拆成多条消息时的发送间隔。 |
+| 私信被拒后暂停（秒） | `direct_messages.restriction_pause_sec` | 平台明确拒绝发送时临时暂停后续私信，默认 1800 秒；`0` 表示只跳过当前消息。 |
+| 私信真实 API URL（可选） | `direct_messages.api_params_url` | 默认留空；严格校验时可复用浏览器真实请求中的白名单客户端参数。 |
+| 私信回复后通知 | `direct_messages.notify_on_reply` | 成功回复后向通知会话发送双方内容、图片数量和消息 ID。 |
 
-文本与多张图片会按小黑盒消息链顺序发送。如果发送过程中网络中断，插件会将结果标记为“发送结果不确定”，不会自动重发整条消息。
+私信发送使用独立的网页客户端参数、当前网页签名规则和 UTF-8 表单编码，不会沿用评论接口地址。文本与多张图片会按小黑盒消息链顺序发送。如果发送过程中网络中断，插件会将结果标记为“发送结果不确定”，不会自动重发整条消息。
 
-若小黑盒返回“禁止发送消息行为”等明确限制，插件会跳过触发消息，并在本次进程中暂停后续自动私信发送，避免继续触发限制。收信、SQLite 归档和 WebUI 查询仍会运行。该错误只表示插件当前请求被拒绝，不一定代表手机 App 也无法私信。
+若小黑盒返回“禁止发送消息行为”等明确限制，插件会跳过当前消息，并按“私信被拒后暂停（秒）”临时暂停后续外发；暂停到期后自动恢复处理新消息。收信、SQLite 归档和 WebUI 查询不会暂停。该错误只表示当前网页 API 请求被拒绝，不一定代表手机 App 也无法私信。
+
+“私信真实 API URL（可选）”通常不需要填写。默认请求仍被拒绝、但同一账号在网页版工作正常时，可以在浏览器开发者工具的 Network 中复制一条 `https://api.xiaoheihe.cn/...` 完整请求 URL。插件只读取 `app`、`version`、`web_version`、`device_id` 等客户端参数，忽略其中的签名、目标用户、Cookie 和其他字段；Cookie 不要粘贴到该配置项。修改后需要重载插件。
 
 ## 自主巡帖
 
@@ -417,7 +432,9 @@ curl --proxy 'socks5h://用户名:密码@主机:端口' https://api.ipify.org
 
 ### 私信提示“禁止发送消息行为”
 
-这表示插件当前会话的私信发送请求被小黑盒拒绝。插件会暂停本次运行中的后续自动私信发送，避免连续触发限制。手机 App 仍可能可以正常私信；应通过官方 App 或官方渠道确认账号状态，不要反复更换 Cookie、代理或快速重试。
+这表示当前网页 API 私信请求被小黑盒拒绝，不等于账号在手机 App 中也被禁言。插件默认跳过当前消息并暂停外发 1800 秒，暂停结束后自动恢复，收信和归档照常运行。可通过“私信被拒后暂停（秒）”调整时间，设为 `0` 时不会阻塞后续消息。
+
+新版本已经为私信单独使用 `app=heybox` 客户端参数、网页签名和 URL 编码表单。如果默认参数仍被拒绝、而网页版确实可以发送，可以填写“私信真实 API URL（可选）”复用同一浏览器会话的非敏感客户端参数。该选项不能绕过账号限制，也不能保证平台一定接受请求。
 
 ### 仍然出现重复回复
 
@@ -448,3 +465,11 @@ python -m unittest discover -s astrbot_plugin_xhhrobot/tests -t . -v
 ```
 
 项目许可证见 [LICENSE](./LICENSE)，第三方许可声明见 [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
+
+## 致谢
+
+- [AstrBot](https://github.com/AstrBotDevs/AstrBot) 提供插件、标准消息事件、LLM 工具与 WebUI 基础能力。
+- [SomeOvO/xhhRobot](https://github.com/SomeOvO/xhhRobot) 提供小黑盒社区接口与机器人流程的早期协议参考。
+- [advent259141/astrbot_plugin_xiaoheihe_adapter](https://github.com/advent259141/astrbot_plugin_xiaoheihe_adapter) 提供当前网页请求、私信、图片上传和 AstrBot 适配思路的实现参考。
+
+也感谢所有参与测试、反馈问题和完善使用说明的用户。

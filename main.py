@@ -163,6 +163,7 @@ class XhhRobotPlugin(Star):
         self._last_dm_error = ""
         self._dm_sending_blocked_reason = ""
         self._dm_sending_blocked_at = 0.0
+        self._dm_sending_blocked_until = 0.0
         self._web_login_challenge: QrChallenge | None = None
         self._web_login_started_at = 0.0
         self._register_web_apis()
@@ -194,6 +195,12 @@ class XhhRobotPlugin(Star):
                 "reliability.request_timeout_sec", 20, 5, 120
             ),
             proxy_url=self._str_cfg("connection.proxy_url", ""),
+            direct_message_api_params_url=self._str_cfg(
+                "direct_messages.api_params_url", ""
+            ),
+            direct_message_restriction_pause_seconds=self._int_cfg(
+                "direct_messages.restriction_pause_sec", 1800, 0, 86400
+            ),
             auth=self.auth,
         )
         await self.client.start()
@@ -355,6 +362,9 @@ class XhhRobotPlugin(Star):
                 "sending_blocked_reason": self._dm_sending_block_reason(),
                 "sending_blocked_at": float(
                     getattr(self, "_dm_sending_blocked_at", 0.0) or 0.0
+                ),
+                "sending_blocked_until": float(
+                    getattr(self, "_dm_sending_blocked_until", 0.0) or 0.0
                 ),
                 **direct_messages,
             },
@@ -2417,17 +2427,49 @@ class XhhRobotPlugin(Star):
         )
 
     def _dm_sending_block_reason(self) -> str:
-        return str(getattr(self, "_dm_sending_blocked_reason", "") or "").strip()
+        reason = str(
+            getattr(self, "_dm_sending_blocked_reason", "") or ""
+        ).strip()
+        if not reason:
+            return ""
+        blocked_until = float(
+            getattr(self, "_dm_sending_blocked_until", 0.0) or 0.0
+        )
+        if blocked_until > time.time():
+            return reason
+        self._dm_sending_blocked_reason = ""
+        self._dm_sending_blocked_at = 0.0
+        self._dm_sending_blocked_until = 0.0
+        if str(getattr(self, "_last_dm_error", "") or "") == reason:
+            self._last_dm_error = ""
+        return ""
 
     async def _block_automatic_direct_messages(
         self,
         reason: str,
         message: DirectMessage,
     ) -> None:
+        pause_seconds = self._int_cfg(
+            "direct_messages.restriction_pause_sec", 1800, 0, 86400
+        )
+        if pause_seconds <= 0:
+            self._last_dm_error = str(reason or "")[:2000]
+            logger.warning(
+                "%s direct-message request rejected without global pause: "
+                "message_id=%s user_id=%s reason=%s",
+                PLUGIN_ID,
+                message.message_id,
+                message.user_id,
+                self._last_dm_error,
+            )
+            return
         already_blocked = bool(self._dm_sending_block_reason())
         if not already_blocked:
             self._dm_sending_blocked_reason = str(reason or "")[:2000]
             self._dm_sending_blocked_at = time.time()
+            self._dm_sending_blocked_until = (
+                self._dm_sending_blocked_at + pause_seconds
+            )
         self._last_dm_error = self._dm_sending_block_reason()
         if already_blocked:
             return
@@ -2440,12 +2482,11 @@ class XhhRobotPlugin(Star):
             self._last_dm_error,
         )
         await self._notify(
-            "小黑盒已拒绝当前插件会话的私信发送请求，自动私信回复已在本次插件运行中暂停。\n\n"
+            "小黑盒拒绝了当前私信发送请求，自动私信回复已临时暂停。\n\n"
             f"原因：{self._last_dm_error}\n"
             f"消息 ID：{message.message_id}\n"
             f"用户 ID：{message.user_id}\n\n"
-            "收信和 SQLite 归档会继续运行。手机 App 可以发送不代表该插件会话一定被允许；"
-            "请不要重复尝试发送或规避限制，待请求恢复后再重载插件。"
+            f"暂停 {pause_seconds} 秒后会自动恢复尝试；收信和 SQLite 归档会继续运行。"
         )
 
     async def _process_mention(self, mention: Mention) -> str:

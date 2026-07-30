@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from http.cookies import SimpleCookie
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qsl, unquote, urlparse
+from urllib.parse import parse_qsl, unquote, urlencode, urlparse
 
 import aiohttp
 from aiohttp_socks import (
@@ -51,12 +51,31 @@ from .rich_content import (
     parse_inbound_content_blocks,
     platform_html_for_block,
 )
-from .signing import generate_xhh_token, get_request_keys
+from .signing import generate_xhh_token, get_heybox_request_keys, get_request_keys
 
 COS_UPLOAD_INFO_PATH = "/bbs/app/api/qcloud/cos/upload/info/v2"
 COS_UPLOAD_TOKEN_PATH = "/bbs/app/api/qcloud/cos/upload/token/v2"
 COS_UPLOAD_CALLBACK_PATH = "/bbs/app/api/qcloud/cos/upload/callback/v2"
 DEFAULT_COS_REGION = "ap-shanghai"
+DIRECT_MESSAGE_API_PARAM_KEYS = frozenset(
+    {
+        "os_type",
+        "app",
+        "client_type",
+        "version",
+        "web_version",
+        "x_client_type",
+        "x_app",
+        "x_os_type",
+        "device_info",
+        "device_id",
+    }
+)
+DIRECT_MESSAGE_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/125.0.0.0 Safari/537.36"
+)
 
 # The COS upload workflow is adapted from
 # advent259141/astrbot_plugin_xiaoheihe_adapter under Apache-2.0.
@@ -101,6 +120,8 @@ class XhhClient:
         device_id: str,
         timeout_seconds: int = 20,
         proxy_url: str = "",
+        direct_message_api_params_url: str = "",
+        direct_message_restriction_pause_seconds: int = 1800,
         auth: AuthInfo | None = None,
         session: aiohttp.ClientSession | None = None,
     ) -> None:
@@ -111,6 +132,12 @@ class XhhClient:
         self.device_id = device_id
         self.timeout_seconds = max(5, timeout_seconds)
         self.proxy_url = self._validate_proxy_url(proxy_url)
+        self._direct_message_api_params = self._parse_direct_message_api_params(
+            direct_message_api_params_url
+        )
+        self._direct_message_restriction_pause_seconds = max(
+            0, int(direct_message_restriction_pause_seconds)
+        )
         self.auth = auth
         self._session = session
         self._owns_session = session is None
@@ -118,6 +145,7 @@ class XhhClient:
         self._direct_message_send_lock = asyncio.Lock()
         self._last_direct_message_sent_at = 0.0
         self._direct_message_action_restriction = ""
+        self._direct_message_action_restricted_until = 0.0
 
     async def start(self) -> None:
         if self._session is None or self._session.closed:
@@ -1432,10 +1460,14 @@ class XhhClient:
                         "msg": str(text or ""),
                         "msg_type": "6",
                     },
+                    direct_message_request=True,
                 )
             except XhhError as exc:
                 if exc.action_restricted:
                     self._direct_message_action_restriction = str(exc)
+                    self._direct_message_action_restricted_until = (
+                        time.time() + self._direct_message_restriction_pause_seconds
+                    )
                 raise
             result = self._result_mapping(payload)
             acknowledged = any(
@@ -1498,12 +1530,18 @@ class XhhClient:
     def _ensure_direct_message_sending_allowed(self) -> None:
         if not self._direct_message_action_restriction:
             return
+        remaining = self._direct_message_action_restricted_until - time.time()
+        if remaining <= 0:
+            self._direct_message_action_restriction = ""
+            self._direct_message_action_restricted_until = 0.0
+            return
         raise XhhError(
-            "小黑盒已拒绝当前账号发送私信；为避免重复触发限制，"
-            "本次插件运行不会继续发送私信。",
+            "小黑盒刚刚拒绝了私信发送；为避免连续触发限制，"
+            f"将在约 {max(1, int(remaining))} 秒后允许再次尝试。",
             retryable=False,
             terminal=True,
             action_restricted=True,
+            retry_after=remaining,
         )
 
     async def send_reply(
@@ -1582,6 +1620,7 @@ class XhhClient:
         data: Mapping[str, str],
         params: Mapping[str, str] | None = None,
         use_reply_api: bool = False,
+        direct_message_request: bool = False,
     ) -> dict[str, Any]:
         response = await self._request_json(
             "POST",
@@ -1592,6 +1631,7 @@ class XhhClient:
             auth_required=True,
             allow_api_failure=True,
             write_request=True,
+            direct_message_request=direct_message_request,
         )
         status = self._api_status(response.payload)
         if status not in {"ok", "success"}:
@@ -1618,17 +1658,17 @@ class XhhClient:
         auth_required: bool,
         allow_api_failure: bool = False,
         write_request: bool = False,
+        direct_message_request: bool = False,
     ) -> _JsonResponse:
         await self.start()
         if auth_required and (self.auth is None or not self.auth.cookie):
             raise XhhError("尚未登录小黑盒。", auth_required=True, retryable=False)
 
-        hkey, nonce, request_time = get_request_keys(path)
-        query: dict[str, str] = dict(params or {})
-        query.update(
-            {
+        if direct_message_request:
+            hkey, nonce, request_time = get_heybox_request_keys(path)
+            query = {
                 "os_type": "web",
-                "app": "web",
+                "app": "heybox",
                 "client_type": "web",
                 "version": self.version,
                 "web_version": self.web_version,
@@ -1636,27 +1676,68 @@ class XhhClient:
                 "x_app": "heybox_website",
                 "x_os_type": "Windows",
                 "device_info": "Chrome",
-                "device_id": self.device_id,
-                "hkey": hkey,
-                "_time": str(request_time),
-                "nonce": nonce,
-                "_notip": "true",
             }
-        )
+            if self.device_id:
+                query["device_id"] = self.device_id
+            query.update(self._direct_message_api_params)
+            query.update(dict(params or {}))
+            query.update(
+                {
+                    "hkey": hkey,
+                    "_time": str(request_time),
+                    "nonce": nonce,
+                }
+            )
+        else:
+            hkey, nonce, request_time = get_request_keys(path)
+            query = dict(params or {})
+            query.update(
+                {
+                    "os_type": "web",
+                    "app": "web",
+                    "client_type": "web",
+                    "version": self.version,
+                    "web_version": self.web_version,
+                    "x_client_type": "web",
+                    "x_app": "heybox_website",
+                    "x_os_type": "Windows",
+                    "device_info": "Chrome",
+                    "device_id": self.device_id,
+                    "hkey": hkey,
+                    "_time": str(request_time),
+                    "nonce": nonce,
+                    "_notip": "true",
+                }
+            )
         if auth_required and self.auth is not None and self.auth.heybox_id:
             query["heybox_id"] = self.auth.heybox_id
 
-        headers = {
-            "Referer": "https://www.xiaoheihe.cn/",
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36"
-            ),
-            "Accept": "application/json, text/plain, */*",
-        }
+        if direct_message_request:
+            headers = {
+                "Accept": "application/json",
+                "Accept-Language": "zh,zh-CN;q=0.9",
+                "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+                "Origin": "https://www.xiaoheihe.cn",
+                "Referer": "https://www.xiaoheihe.cn/",
+                "User-Agent": DIRECT_MESSAGE_USER_AGENT,
+            }
+            request_data: Mapping[str, str] | str | None = (
+                urlencode(dict(data)) if data is not None else None
+            )
+        else:
+            headers = {
+                "Referer": "https://www.xiaoheihe.cn/",
+                "User-Agent": (
+                    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/131.0 Safari/537.36"
+                ),
+                "Accept": "application/json, text/plain, */*",
+            }
+            request_data = data
         if auth_required and self.auth is not None and self.auth.cookie:
             headers["Cookie"] = self.auth.cookie
-        if method.upper() == "POST":
+        if method.upper() == "POST" and not direct_message_request:
             headers["Origin"] = "https://www.xiaoheihe.cn"
 
         base_url = self.reply_base_url if use_reply_api else self.api_base_url
@@ -1664,7 +1745,7 @@ class XhhClient:
         assert self._session is not None
         try:
             async with self._session.request(
-                method, url, params=query, data=data, headers=headers
+                method, url, params=query, data=request_data, headers=headers
             ) as response:
                 raw = await response.text(errors="replace")
                 cookies = {
@@ -1711,6 +1792,23 @@ class XhhClient:
                 retryable=True,
                 delivery_uncertain=write_request,
             ) from exc
+
+    @staticmethod
+    def _parse_direct_message_api_params(value: str) -> dict[str, str]:
+        text = str(value or "").strip()
+        if not text:
+            return {}
+        try:
+            parsed = urlparse(text)
+            query_text = parsed.query if parsed.query else text.lstrip("?")
+            pairs = parse_qsl(query_text, keep_blank_values=False)
+        except ValueError:
+            return {}
+        return {
+            key: item
+            for key, item in pairs
+            if key in DIRECT_MESSAGE_API_PARAM_KEYS and str(item).strip()
+        }
 
     @staticmethod
     def _validate_proxy_url(proxy_url: str) -> str:

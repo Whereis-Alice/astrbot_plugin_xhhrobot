@@ -74,6 +74,19 @@ def build_hkey(request_path: str, timestamp: int, nonce: str) -> str:
     return _av(digest[:5], SIGNING_ALPHABET, -4) + suffix
 
 
+def build_heybox_hkey(request_path: str, timestamp: int, nonce: str) -> str:
+    normalized_path = "/" + "/".join(filter(None, request_path.split("/"))) + "/"
+    values = [
+        _av(str(timestamp + 1), SIGNING_ALPHABET, -2),
+        _sv(normalized_path, SIGNING_ALPHABET),
+        _sv(nonce, SIGNING_ALPHABET),
+    ]
+    digest = hashlib.md5(_interleave(values).encode("utf-8")[:20]).hexdigest()
+    mixed = _mixed([ord(char) for char in digest[-6:]])
+    suffix = f"{sum(mixed) % 100:02d}"
+    return _av(digest[:5], SIGNING_ALPHABET, -4) + suffix
+
+
 def generate_nonce(timestamp: int | None = None) -> str:
     now = int(timestamp if timestamp is not None else time.time())
     upper_bound = max(int(time.time() * 1000), 2)
@@ -87,6 +100,14 @@ def get_request_keys(
     now = int(timestamp if timestamp is not None else time.time())
     nonce = generate_nonce(now)
     return build_hkey(request_path, now, nonce), nonce, now
+
+
+def get_heybox_request_keys(
+    request_path: str, timestamp: int | None = None
+) -> tuple[str, str, int]:
+    now = int(timestamp if timestamp is not None else time.time())
+    nonce = generate_nonce(now)
+    return build_heybox_hkey(request_path, now, nonce), nonce, now
 
 
 def generate_xhh_token(timestamp: int | None = None) -> str:

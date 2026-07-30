@@ -507,7 +507,31 @@ class CommentImageGenerationTests(unittest.IsolatedAsyncioTestCase):
 
 
 class DirectMessageRestrictionTests(unittest.IsolatedAsyncioTestCase):
-    async def test_restriction_skips_triggering_message_and_pauses_automatic_sends(
+    async def test_zero_restriction_pause_does_not_block_later_messages(
+        self,
+    ) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {"direct_messages": {"restriction_pause_sec": 0}}
+        plugin._last_dm_error = ""
+        plugin._dm_sending_blocked_reason = ""
+        plugin._dm_sending_blocked_at = 0.0
+        plugin._dm_sending_blocked_until = 0.0
+        message = DirectMessage(
+            event_key="dm:99:1",
+            message_id="1",
+            user_id="99",
+            user_name="Alice",
+            text="你好",
+            image_urls=(),
+            timestamp=1,
+        )
+
+        await plugin._block_automatic_direct_messages("平台拒绝发送", message)
+
+        self.assertEqual(plugin._dm_sending_block_reason(), "")
+        self.assertEqual(plugin._last_dm_error, "平台拒绝发送")
+
+    async def test_restriction_skips_triggering_message_and_pauses_temporarily(
         self,
     ) -> None:
         temp_dir = tempfile.TemporaryDirectory()
@@ -544,6 +568,7 @@ class DirectMessageRestrictionTests(unittest.IsolatedAsyncioTestCase):
         plugin._last_dm_error = ""
         plugin._dm_sending_blocked_reason = ""
         plugin._dm_sending_blocked_at = 0.0
+        plugin._dm_sending_blocked_until = 0.0
 
         await plugin._handle_dm_event_error(
             first,
@@ -560,11 +585,18 @@ class DirectMessageRestrictionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await dm_store.status(first.event_key), "skipped")
         self.assertEqual(await dm_store.status(second.event_key), "pending")
         self.assertIn("禁止发送消息", plugin._dm_sending_blocked_reason)
+        self.assertGreater(
+            plugin._dm_sending_blocked_until, plugin._dm_sending_blocked_at
+        )
         self.assertEqual(len(plugin.context.sent), 1)
-        self.assertIn("自动私信回复已在本次插件运行中暂停", plugin.context.sent[0][1])
+        self.assertIn("自动私信回复已临时暂停", plugin.context.sent[0][1])
+        self.assertIn("暂停 1800 秒后会自动恢复", plugin.context.sent[0][1])
 
         await plugin._process_pending_direct_messages(CycleResult())
         self.assertEqual(await dm_store.status(second.event_key), "pending")
+
+        plugin._dm_sending_blocked_until = 0.0
+        self.assertEqual(plugin._dm_sending_block_reason(), "")
 
 
 if __name__ == "__main__":

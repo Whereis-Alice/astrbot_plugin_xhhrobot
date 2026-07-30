@@ -6,6 +6,7 @@ from collections import deque
 from http.cookies import SimpleCookie
 from typing import Any
 from unittest.mock import patch
+from urllib.parse import parse_qs
 
 from aiohttp_socks import ProxyConnectionError
 
@@ -526,6 +527,8 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         )
 
         method, url, kwargs = session.requests[1]
+        self.assertEqual(session.requests[0][2]["params"]["app"], "web")
+        self.assertEqual(session.requests[0][2]["params"]["_notip"], "true")
         self.assertEqual(method, "POST")
         self.assertEqual(url, "https://api.xiaoheihe.cn/bbs/app/api/link/post")
         self.assertEqual(kwargs["data"]["post_type"], "1")
@@ -598,7 +601,7 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(session.requests[2][2]["params"]["root_comment_id"], "123")
         self.assertEqual(session.requests[2][2]["params"]["lastval"], "456")
 
-    async def test_direct_message_uses_ack_and_copied_image(self) -> None:
+    async def test_direct_message_uses_heybox_profile_and_copied_image(self) -> None:
         client, session = self.make_client(
             [
                 FakeResponse(
@@ -621,30 +624,91 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(method, "POST")
         self.assertEqual(url, "https://api.xiaoheihe.cn/chatroom/v2/msg/user")
         self.assertEqual(kwargs["params"]["to_user_id"], "99")
-        self.assertEqual(kwargs["data"]["msg"], "你好")
-        self.assertEqual(kwargs["data"]["msg_type"], "6")
-        self.assertEqual(kwargs["data"]["img"], "https://cdn.xiaoheihe.cn/dm.png")
-        self.assertTrue(kwargs["data"]["heybox_ack_id"])
+        self.assertEqual(kwargs["params"]["app"], "heybox")
+        self.assertEqual(kwargs["params"]["heybox_id"], "42")
+        self.assertNotIn("_notip", kwargs["params"])
+        self.assertTrue(kwargs["params"]["hkey"])
+        body = parse_qs(kwargs["data"], keep_blank_values=True)
+        self.assertEqual(body["msg"], ["你好"])
+        self.assertEqual(body["msg_type"], ["6"])
+        self.assertEqual(body["img"], ["https://cdn.xiaoheihe.cn/dm.png"])
+        self.assertTrue(body["heybox_ack_id"][0])
+        self.assertEqual(
+            kwargs["headers"]["Content-Type"],
+            "application/x-www-form-urlencoded;charset=UTF-8",
+        )
+        self.assertEqual(kwargs["headers"]["Accept"], "application/json")
 
-    async def test_direct_message_restriction_is_terminal_and_stops_this_client(
+    async def test_direct_message_reuses_only_captured_whitelist_params(self) -> None:
+        session = FakeSession(
+            [FakeResponse({"status": "ok", "result": {"msg_id": "message-1"}})]
+        )
+        client = XhhClient(
+            api_base_url="https://api.xiaoheihe.cn",
+            reply_base_url="https://workshopapi.xiaoheihe.cn",
+            version="999.0.4",
+            web_version="2.5",
+            device_id="generated-device",
+            direct_message_api_params_url=(
+                "https://api.xiaoheihe.cn/bbs/app/feeds?app=heybox"
+                "&version=777.1&web_version=7.7&device_id=captured-device"
+                "&hkey=stale&_time=1&nonce=stale&to_user_id=attacker"
+            ),
+            auth=AuthInfo(
+                cookie="user_heybox_id=42; token=value", heybox_id="42"
+            ),
+            session=session,  # type: ignore[arg-type]
+        )
+
+        await client.send_direct_message(user_id="99", text="测试")
+
+        params = session.requests[0][2]["params"]
+        self.assertEqual(params["app"], "heybox")
+        self.assertEqual(params["version"], "777.1")
+        self.assertEqual(params["web_version"], "7.7")
+        self.assertEqual(params["device_id"], "captured-device")
+        self.assertEqual(params["to_user_id"], "99")
+        self.assertEqual(params["heybox_id"], "42")
+        self.assertNotEqual(params["hkey"], "stale")
+        self.assertNotEqual(params["nonce"], "stale")
+        self.assertNotEqual(params["_time"], "1")
+
+    async def test_direct_message_restriction_pauses_then_expires(
         self,
     ) -> None:
         client, session = self.make_client(
-            [FakeResponse({"status": "failed", "msg": "您已被禁止发送消息行为"})]
+            [
+                FakeResponse({"status": "failed", "msg": "您已被禁止发送消息行为"}),
+                FakeResponse({"status": "ok", "result": {"msg_id": "message-2"}}),
+            ]
         )
 
-        with self.assertRaises(XhhError) as first_error:
+        with (
+            patch("astrbot_plugin_xhhrobot.xhh_client.time.time", return_value=1000),
+            self.assertRaises(XhhError) as first_error,
+        ):
             await client.send_direct_message(user_id="99", text="测试")
 
         self.assertFalse(first_error.exception.retryable)
         self.assertTrue(first_error.exception.terminal)
         self.assertTrue(first_error.exception.action_restricted)
 
-        with self.assertRaises(XhhError) as second_error:
-            await client.send_direct_message(user_id="100", text="不应再次请求")
+        with (
+            patch("astrbot_plugin_xhhrobot.xhh_client.time.time", return_value=1001),
+            self.assertRaises(XhhError) as second_error,
+        ):
+            await client.send_direct_message(user_id="100", text="暂停期间不应请求")
 
         self.assertTrue(second_error.exception.action_restricted)
+        self.assertGreater(second_error.exception.retry_after or 0, 0)
         self.assertEqual(len(session.requests), 1)
+
+        with patch(
+            "astrbot_plugin_xhhrobot.xhh_client.time.time", return_value=2801
+        ):
+            await client.send_direct_message(user_id="100", text="暂停结束后发送")
+
+        self.assertEqual(len(session.requests), 2)
 
 
 if __name__ == "__main__":

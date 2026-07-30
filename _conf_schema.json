@@ -289,14 +289,14 @@
   "direct_messages": {
     "type": "object",
     "description": "私信自动回复",
-    "hint": "定时读取小黑盒好友私信，并作为 AstrBot 私聊事件交给当前人设和消息链决定回复。默认关闭；用户允许列表与黑名单同样生效。若小黑盒明确拒绝当前插件会话的私信请求，插件会停止本次运行中的自动私信外发，但继续收信和归档。",
+    "hint": "定时读取小黑盒好友私信，并作为 AstrBot 私聊事件交给当前人设和消息链决定回复。默认关闭；用户允许列表与黑名单同样生效。私信发送使用独立的网页请求指纹；若平台明确拒绝，插件会临时暂停外发，但继续收信和归档。",
     "obvious_hint": true,
     "items": {
       "enabled": {
         "type": "bool",
         "description": "启用私信自动回复",
         "default": false,
-        "hint": "开启后自动读取并回复新的好友私信。首次启用默认只建立基线，不回复已有历史消息。需要同时开启标准事件。遇到平台私信发送限制时不会自动重试；请等待平台恢复后再重载插件。",
+        "hint": "开启后自动读取并回复新的好友私信。首次启用默认只建立基线，不回复已有历史消息。需要同时开启标准事件。遇到平台私信发送限制时不会重试当前消息，暂停结束后会自动处理后续消息。",
         "obvious_hint": true
       },
       "reply_to_strangers": {
@@ -390,6 +390,21 @@
         "min": 0,
         "max": 300,
         "hint": "文本和多张图片需要分成多条小黑盒私信时，相邻消息之间的最短间隔。"
+      },
+      "restriction_pause_sec": {
+        "type": "int",
+        "description": "私信被拒后暂停（秒）",
+        "default": 1800,
+        "min": 0,
+        "max": 86400,
+        "hint": "小黑盒明确返回禁止发送消息等限制时，暂停后续私信外发的时间；暂停结束后自动恢复，当前失败消息不会重试。0 表示只跳过当前消息、不暂停后续私信。修改后请重载插件。"
+      },
+      "api_params_url": {
+        "type": "text",
+        "description": "私信真实 API URL（可选）",
+        "default": "",
+        "hint": "通常留空。若默认私信请求仍被平台拒绝，可粘贴浏览器 Network 中一条 api.xiaoheihe.cn 完整请求 URL；插件只复用 app、version、web_version、device_id 等白名单参数，不复用签名、目标用户或 Cookie。修改后请重载插件。",
+        "obvious_hint": true
       },
       "notify_on_reply": {
         "type": "bool",
