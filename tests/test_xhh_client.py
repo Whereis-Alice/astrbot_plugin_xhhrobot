@@ -8,6 +8,7 @@ from typing import Any
 from unittest.mock import patch
 from urllib.parse import parse_qs
 
+import aiohttp
 from aiohttp_socks import ProxyConnectionError
 
 from astrbot_plugin_xhhrobot.models import AuthInfo, QrChallenge
@@ -46,6 +47,9 @@ class FakeSession:
     def request(self, method: str, url: str, **kwargs: Any) -> FakeRequestContext:
         self.requests.append((method, url, kwargs))
         return FakeRequestContext(self.responses.popleft())
+
+    async def close(self) -> None:
+        self.closed = True
 
 
 class FailingSession(FakeSession):
@@ -96,6 +100,9 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
 
         connector_factory.assert_not_called()
         self.assertNotIn("connector", session_factory.call_args.kwargs)
+        self.assertIsInstance(
+            session_factory.call_args.kwargs["cookie_jar"], aiohttp.DummyCookieJar
+        )
 
     async def test_start_with_proxy_uses_remote_dns_connector(self) -> None:
         proxy_url = "socks5://xhhbot:secret@100.64.0.10:1080"
@@ -478,7 +485,11 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         first_request = session.requests[0][2]
         self.assertNotIn("Cookie", first_request["headers"])
         self.assertNotIn("heybox_id", first_request["params"])
-        self.assertEqual(challenge.state_params, {"app": "xhh", "qr": "state"})
+        self.assertEqual(challenge.state_params, {"qr": "state"})
+        self.assertEqual(
+            first_request["params"], {"app": "web", "_notip": "true"}
+        )
+        self.assertIn("Chrome/125.0.0.0", first_request["headers"]["User-Agent"])
 
         cookies = SimpleCookie()
         cookies.load("user_heybox_id=88; session=abc")
@@ -491,7 +502,144 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         assert result.auth is not None
         self.assertEqual(result.auth.heybox_id, "88")
         self.assertEqual(result.auth.nickname, "tester")
-        self.assertIn("x_xhh_tokenid=", result.auth.cookie)
+        self.assertEqual(result.auth.cookie, "user_heybox_id=88")
+        self.assertNotIn("session=", result.auth.cookie)
+        self.assertNotIn("x_xhh_tokenid=", result.auth.cookie)
+        poll_request = session.requests[1][2]
+        self.assertEqual(poll_request["params"], {"qr": "state", "app": "web"})
+        self.assertNotIn("hkey", poll_request["params"])
+
+    async def test_qr_login_uses_result_heyboxid_when_cookie_has_no_account_id(
+        self,
+    ) -> None:
+        session = FakeSession(
+            [
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {"error": "ok", "heyboxid": "88"},
+                    }
+                )
+            ]
+        )
+        cookies = SimpleCookie()
+        cookies.load("user_pkey=secret; tracking=value")
+        session.cookie_jar = list(cookies.values())
+        client = XhhClient(
+            api_base_url="https://api.xiaoheihe.cn",
+            reply_base_url="https://workshopapi.xiaoheihe.cn",
+            version="999.0.4",
+            web_version="2.5",
+            device_id="device",
+            session=session,  # type: ignore[arg-type]
+        )
+
+        result = await client.poll_qr_login(
+            QrChallenge("https://example.invalid", {"qr": "state"}, 120)
+        )
+
+        self.assertEqual(result.state, "success")
+        assert result.auth is not None
+        self.assertEqual(result.auth.heybox_id, "88")
+        self.assertEqual(result.auth.cookie, "user_pkey=secret")
+
+    async def test_qr_login_rebuilds_owned_session_after_success(self) -> None:
+        login_session = FakeSession(
+            [
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "qr_url": "https://api.xiaoheihe.cn/login?qr=state",
+                            "expire": 120,
+                        },
+                    }
+                ),
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {"error": "ok", "heyboxid": "88"},
+                    }
+                ),
+            ]
+        )
+        cookies = SimpleCookie()
+        cookies.load("user_pkey=secret; tracking=value")
+        login_session.cookie_jar = list(cookies.values())
+        authenticated_session = FakeSession([])
+        client = XhhClient(
+            api_base_url="https://api.xiaoheihe.cn",
+            reply_base_url="https://workshopapi.xiaoheihe.cn",
+            version="999.0.4",
+            web_version="2.5",
+            device_id="device",
+        )
+
+        with patch(
+            "astrbot_plugin_xhhrobot.xhh_client.aiohttp.ClientSession",
+            side_effect=[login_session, authenticated_session],
+        ) as session_factory:
+            challenge = await client.begin_qr_login()
+            result = await client.poll_qr_login(challenge)
+
+        self.assertEqual(result.state, "success")
+        self.assertTrue(login_session.closed)
+        self.assertIs(client._session, authenticated_session)
+        self.assertEqual(session_factory.call_count, 2)
+        self.assertIsInstance(
+            session_factory.call_args_list[0].kwargs["cookie_jar"], aiohttp.CookieJar
+        )
+        self.assertIsInstance(
+            session_factory.call_args_list[1].kwargs["cookie_jar"],
+            aiohttp.DummyCookieJar,
+        )
+
+    async def test_end_qr_login_rebuilds_session_after_pending_state(self) -> None:
+        login_session = FakeSession(
+            [
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "qr_url": "https://api.xiaoheihe.cn/login?qr=state",
+                            "expire": 120,
+                        },
+                    }
+                ),
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {"error": "wait"},
+                    }
+                ),
+            ]
+        )
+        daily_session = FakeSession([])
+        client = XhhClient(
+            api_base_url="https://api.xiaoheihe.cn",
+            reply_base_url="https://workshopapi.xiaoheihe.cn",
+            version="999.0.4",
+            web_version="2.5",
+            device_id="device",
+        )
+
+        with patch(
+            "astrbot_plugin_xhhrobot.xhh_client.aiohttp.ClientSession",
+            side_effect=[login_session, daily_session],
+        ) as session_factory:
+            challenge = await client.begin_qr_login()
+            result = await client.poll_qr_login(challenge)
+            self.assertEqual(result.state, "pending")
+            await client.end_qr_login()
+            await client.end_qr_login()
+
+        self.assertTrue(login_session.closed)
+        self.assertIs(client._session, daily_session)
+        self.assertEqual(session_factory.call_count, 2)
+        self.assertIsInstance(
+            session_factory.call_args_list[1].kwargs["cookie_jar"],
+            aiohttp.DummyCookieJar,
+        )
 
     async def test_publish_post_copies_images_and_uses_verified_form(self) -> None:
         client, session = self.make_client(
@@ -638,6 +786,35 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             "application/x-www-form-urlencoded;charset=UTF-8",
         )
         self.assertEqual(kwargs["headers"]["Accept"], "application/json")
+        self.assertEqual(kwargs["headers"]["Cookie"], "user_heybox_id=42")
+
+    def test_direct_message_diagnostics_do_not_expose_sensitive_values(self) -> None:
+        proxy_url = "socks5://user:password@127.0.0.1:1080"
+        client = XhhClient(
+            api_base_url="https://api.xiaoheihe.cn",
+            reply_base_url="https://workshopapi.xiaoheihe.cn",
+            version="999.0.4",
+            web_version="2.5",
+            device_id="sensitive-device-id",
+            proxy_url=proxy_url,
+            auth=AuthInfo(
+                cookie="user_heybox_id=42; user_pkey=secret; tracking=value",
+                heybox_id="42",
+            ),
+        )
+
+        diagnostics = client.direct_message_diagnostics()
+        rendered = repr(diagnostics)
+
+        self.assertEqual(
+            diagnostics["cookie_names"], ["user_heybox_id", "user_pkey"]
+        )
+        self.assertTrue(diagnostics["cookie_filtered"])
+        self.assertTrue(diagnostics["proxy_enabled"])
+        self.assertNotIn("secret", rendered)
+        self.assertNotIn("tracking", rendered)
+        self.assertNotIn("sensitive-device-id", rendered)
+        self.assertNotIn(proxy_url, rendered)
 
     async def test_direct_message_reuses_only_captured_whitelist_params(self) -> None:
         session = FakeSession(

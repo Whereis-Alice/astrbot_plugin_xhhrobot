@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import html
 import json
 import re
@@ -51,7 +52,7 @@ from .rich_content import (
     parse_inbound_content_blocks,
     platform_html_for_block,
 )
-from .signing import generate_xhh_token, get_heybox_request_keys, get_request_keys
+from .signing import get_heybox_request_keys, get_request_keys
 
 COS_UPLOAD_INFO_PATH = "/bbs/app/api/qcloud/cos/upload/info/v2"
 COS_UPLOAD_TOKEN_PATH = "/bbs/app/api/qcloud/cos/upload/token/v2"
@@ -75,6 +76,17 @@ DIRECT_MESSAGE_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/125.0.0.0 Safari/537.36"
+)
+LOGIN_COOKIE_NAMES = frozenset(
+    {
+        "user_pkey",
+        "user_heybox_id",
+        "heybox_id",
+        "avatar",
+        "level",
+        "nickname",
+        "x_xhh_tokenid",
+    }
 )
 
 # The COS upload workflow is adapted from
@@ -141,6 +153,7 @@ class XhhClient:
         self.auth = auth
         self._session = session
         self._owns_session = session is None
+        self._login_session_active = False
         self._direct_message_ack_id = int(time.time() * 1000) % 1_000_000_000
         self._direct_message_send_lock = asyncio.Lock()
         self._last_direct_message_sent_at = 0.0
@@ -152,7 +165,11 @@ class XhhClient:
             timeout = aiohttp.ClientTimeout(total=self.timeout_seconds)
             session_kwargs: dict[str, Any] = {
                 "timeout": timeout,
-                "cookie_jar": aiohttp.CookieJar(),
+                "cookie_jar": (
+                    aiohttp.CookieJar()
+                    if self._login_session_active
+                    else aiohttp.DummyCookieJar()
+                ),
             }
             if self.proxy_url:
                 try:
@@ -175,35 +192,63 @@ class XhhClient:
             and not self._session.closed
         ):
             await self._session.close()
+        if self._owns_session:
+            self._session = None
 
     def set_auth(self, auth: AuthInfo | None) -> None:
         self.auth = auth
+        self._direct_message_action_restriction = ""
+        self._direct_message_action_restricted_until = 0.0
 
     async def begin_qr_login(self) -> QrChallenge:
-        response = await self._request_json(
-            "GET",
-            "/account/get_qrcode_url/",
-            auth_required=False,
-            allow_api_failure=False,
-        )
+        self._login_session_active = True
+        await self._restart_owned_session()
+        try:
+            response = await self._request_json(
+                "GET",
+                "/account/get_qrcode_url/",
+                params={"app": "web", "_notip": "true"},
+                auth_required=False,
+                allow_api_failure=False,
+                login_request=True,
+            )
+        except BaseException:
+            await self._finish_login_session()
+            raise
         result = self._result_mapping(response.payload)
         qr_url = str(result.get("qr_url") or "").strip()
         if not qr_url:
+            await self._finish_login_session()
             raise XhhError("小黑盒没有返回登录二维码地址。", retryable=False)
         query = dict(parse_qsl(urlparse(qr_url).query, keep_blank_values=True))
+        qr_id = str(query.get("qr") or "").strip()
+        if not qr_id:
+            await self._finish_login_session()
+            raise XhhError("小黑盒登录二维码缺少二维码 ID。", retryable=False)
         expires_in = self._to_int(result.get("expire"), 120)
         return QrChallenge(
-            qr_url=qr_url, state_params=query, expires_in=max(30, expires_in)
+            qr_url=qr_url,
+            state_params={"qr": qr_id},
+            expires_in=max(30, expires_in),
         )
 
     async def poll_qr_login(self, challenge: QrChallenge) -> QrPollResult:
-        response = await self._request_json(
-            "GET",
-            "/account/qr_state/",
-            params=challenge.state_params,
-            auth_required=False,
-            allow_api_failure=True,
-        )
+        qr_id = str(challenge.state_params.get("qr") or "").strip()
+        if not qr_id:
+            await self._finish_login_session()
+            raise XhhError("登录二维码缺少二维码 ID。", retryable=False)
+        try:
+            response = await self._request_json(
+                "GET",
+                "/account/qr_state/",
+                params={"qr": qr_id, "app": "web"},
+                auth_required=False,
+                allow_api_failure=False,
+                login_request=True,
+            )
+        except BaseException:
+            await self._finish_login_session()
+            raise
         result = self._result_mapping(response.payload)
         state = str(result.get("error") or "").strip().lower()
         message = str(
@@ -211,13 +256,22 @@ class XhhClient:
         ).strip()
 
         if state == "ok":
-            cookies = self._all_session_cookies()
-            cookies.update(response.cookies)
-            cookies.setdefault("x_xhh_tokenid", generate_xhh_token())
-            heybox_id = str(cookies.get("user_heybox_id") or "").strip()
+            cookies = self._filter_login_cookies(self._all_session_cookies())
+            cookies.update(self._filter_login_cookies(response.cookies))
+            heybox_id = str(
+                result.get("heyboxid")
+                or result.get("heybox_id")
+                or cookies.get("heybox_id")
+                or cookies.get("user_heybox_id")
+                or ""
+            ).strip()
             cookie_header = self._format_cookie_header(cookies)
             if not cookie_header:
+                await self._finish_login_session()
                 return QrPollResult("failed", "登录成功但没有取得 Cookie。")
+            if not heybox_id:
+                await self._finish_login_session()
+                return QrPollResult("failed", "登录成功但没有取得账号 ID。")
             auth = AuthInfo(
                 cookie=cookie_header,
                 heybox_id=heybox_id,
@@ -225,14 +279,47 @@ class XhhClient:
                 login_at=int(time.time()),
             )
             self.set_auth(auth)
+            await self._finish_login_session()
             return QrPollResult("success", message or "登录成功。", auth)
 
         combined = f"{state} {message}".lower()
-        if any(word in combined for word in ("expire", "expired", "过期", "失效")):
+        if any(
+            word in combined
+            for word in ("expire", "expired", "timeout", "过期", "失效")
+        ):
+            await self._finish_login_session()
             return QrPollResult("expired", message or "二维码已过期。")
-        if any(word in combined for word in ("cancel", "拒绝", "取消")):
+        if any(
+            word in combined
+            for word in ("cancel", "canceled", "denied", "拒绝", "取消")
+        ):
+            await self._finish_login_session()
             return QrPollResult("failed", message or "登录已取消。")
         return QrPollResult("pending", message or "等待扫码确认。")
+
+    async def _restart_owned_session(self) -> None:
+        if not self._owns_session:
+            return
+        if self._session is not None and not self._session.closed:
+            await self._session.close()
+        self._session = None
+        await self.start()
+
+    async def end_qr_login(self) -> None:
+        await self._finish_login_session()
+
+    async def _finish_login_session(self) -> None:
+        if not self._login_session_active:
+            return
+        self._login_session_active = False
+        if self._owns_session:
+            await self._restart_owned_session()
+            return
+        if self._session is not None:
+            try:
+                self._session.cookie_jar.clear()
+            except (AttributeError, TypeError):
+                pass
 
     async def fetch_mentions(
         self, *, offset: int = 0, limit: int = 20
@@ -1659,12 +1746,19 @@ class XhhClient:
         allow_api_failure: bool = False,
         write_request: bool = False,
         direct_message_request: bool = False,
+        login_request: bool = False,
     ) -> _JsonResponse:
         await self.start()
         if auth_required and (self.auth is None or not self.auth.cookie):
             raise XhhError("尚未登录小黑盒。", auth_required=True, retryable=False)
 
-        if direct_message_request:
+        if login_request:
+            query = {
+                str(key): str(value)
+                for key, value in dict(params or {}).items()
+                if value is not None
+            }
+        elif direct_message_request:
             hkey, nonce, request_time = get_heybox_request_keys(path)
             query = {
                 "os_type": "web",
@@ -1724,6 +1818,14 @@ class XhhClient:
             request_data: Mapping[str, str] | str | None = (
                 urlencode(dict(data)) if data is not None else None
             )
+        elif login_request:
+            headers = {
+                "Accept": "application/json",
+                "Accept-Language": "zh,zh-CN;q=0.9",
+                "Referer": "https://www.xiaoheihe.cn/",
+                "User-Agent": DIRECT_MESSAGE_USER_AGENT,
+            }
+            request_data = data
         else:
             headers = {
                 "Referer": "https://www.xiaoheihe.cn/",
@@ -1736,7 +1838,11 @@ class XhhClient:
             }
             request_data = data
         if auth_required and self.auth is not None and self.auth.cookie:
-            headers["Cookie"] = self.auth.cookie
+            headers["Cookie"] = (
+                self._direct_message_cookie_header()
+                if direct_message_request
+                else self.auth.cookie
+            )
         if method.upper() == "POST" and not direct_message_request:
             headers["Origin"] = "https://www.xiaoheihe.cn"
 
@@ -1889,7 +1995,57 @@ class XhhClient:
     def _all_session_cookies(self) -> dict[str, str]:
         if self._session is None:
             return {}
-        return {morsel.key: morsel.value for morsel in self._session.cookie_jar}
+        try:
+            return {morsel.key: morsel.value for morsel in self._session.cookie_jar}
+        except (AttributeError, TypeError):
+            return {}
+
+    @staticmethod
+    def _filter_login_cookies(cookies: Mapping[str, str]) -> dict[str, str]:
+        return {
+            str(name): str(value)
+            for name, value in cookies.items()
+            if str(name) in LOGIN_COOKIE_NAMES and str(value)
+        }
+
+    def _direct_message_cookie_header(self) -> str:
+        if self.auth is None:
+            return ""
+        original = self.auth.cookie
+        filtered = self._filter_login_cookies(self.parse_cookie_header(original))
+        return self._format_cookie_header(filtered) or original
+
+    def direct_message_diagnostics(self) -> dict[str, Any]:
+        params = {
+            "app": "heybox",
+            "version": self.version,
+            "web_version": self.web_version,
+            "device_id": self.device_id,
+        }
+        params.update(self._direct_message_api_params)
+        effective_cookie = self._direct_message_cookie_header()
+        original_names = set(
+            self.parse_cookie_header(self.auth.cookie if self.auth is not None else "")
+        )
+        effective_names = sorted(self.parse_cookie_header(effective_cookie))
+        device_id = str(params.get("device_id") or "")
+        return {
+            "parameter_source": (
+                "api_params_url" if self._direct_message_api_params else "defaults"
+            ),
+            "app": str(params.get("app") or ""),
+            "version": str(params.get("version") or ""),
+            "web_version": str(params.get("web_version") or ""),
+            "device_id_sha256": (
+                hashlib.sha256(device_id.encode("utf-8")).hexdigest()[:12]
+                if device_id
+                else ""
+            ),
+            "cookie_names": effective_names,
+            "cookie_filtered": set(effective_names) != original_names,
+            "proxy_enabled": bool(self.proxy_url),
+            "user_agent": DIRECT_MESSAGE_USER_AGENT,
+        }
 
     def _current_auth_user_id(self) -> str:
         user_id = str(

@@ -2372,6 +2372,14 @@ class XhhRobotPlugin(Star):
         )
         if isinstance(exc, XhhError):
             if exc.action_restricted:
+                client = getattr(self, "client", None)
+                diagnostics = getattr(client, "direct_message_diagnostics", None)
+                if callable(diagnostics):
+                    logger.warning(
+                        "%s direct-message restriction diagnostics: %s",
+                        PLUGIN_ID,
+                        diagnostics(),
+                    )
                 if exc.delivery_uncertain:
                     await self.dm_store.mark_uncertain(
                         message.event_key,
@@ -2959,6 +2967,10 @@ class XhhRobotPlugin(Star):
                     self._auth_source = "qr"
                     self._auth_invalid = False
                     self._auth_error_notified = False
+                    self._dm_sending_blocked_reason = ""
+                    self._dm_sending_blocked_at = 0.0
+                    self._dm_sending_blocked_until = 0.0
+                    self._last_dm_error = ""
                     await self.put_kv_data(AUTH_STORAGE_KEY, result.auth.to_dict())
                     snapshot = await self.store.snapshot()
                     if self._bool_cfg("auto_start", True) and not snapshot["paused"]:
@@ -2980,6 +2992,8 @@ class XhhRobotPlugin(Star):
         except Exception as exc:
             self._last_error = str(exc)
             return f"小黑盒登录失败：{exc}"
+        finally:
+            await self.client.end_qr_login()
 
     async def _load_auth(self) -> tuple[AuthInfo | None, str]:
         stored = AuthInfo.from_dict(await self.get_kv_data(AUTH_STORAGE_KEY, None))
