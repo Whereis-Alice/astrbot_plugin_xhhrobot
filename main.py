@@ -422,10 +422,15 @@ class XhhRobotPlugin(Star):
     async def web_login_clear(self):
         if not self._webui_enabled():
             return jsonify({"ok": False, "error": "插件 WebUI 已在配置中关闭。"}), 403
-        await self._clear_login_credentials()
-        return jsonify(
-            {"ok": True, "state": "logged_out", "message": "登录凭据已清除。"}
-        )
+        try:
+            await self._clear_login_credentials()
+            message = "登录凭据已清除。"
+            if self._str_cfg("account.cookie", ""):
+                message += " 配置页仍有手动 Cookie，重载插件后会再次使用。"
+            return jsonify({"ok": True, "state": "logged_out", "message": message})
+        except Exception as exc:
+            logger.warning("%s WebUI login clear failed: %r", PLUGIN_ID, exc)
+            return jsonify({"ok": False, "error": f"清除登录凭据失败：{exc}"}), 500
 
     async def _web_login_payload(self, *, include_qr: bool) -> dict[str, Any]:
         task = self._login_task

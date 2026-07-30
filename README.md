@@ -82,6 +82,8 @@ https://github.com/Whereis-Alice/astrbot_plugin_xhhrobot
 > [!IMPORTANT]
 > 推荐将 `account.cookie` 留空并使用扫码登录。Cookie 等同账号凭据，不要放入群聊、日志、问题反馈或公开仓库。
 
+需要更换登录态时，可在插件扫码登录页点击“清除登录”，或由管理员执行 `/小黑盒退出`。两种方式都只清除登录凭据，不会删除消息数据库。
+
 ### 4. 小范围验证
 
 初次使用时建议保持 `filters.allow_all_users=false`，只在 `filters.allowed_user_ids` 中加入测试用户。可以先使用以下命令检查人设生成效果：

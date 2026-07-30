@@ -204,6 +204,42 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("const pageBridge = await getBridge();", page)
         self.assertNotIn("const bridge = window.AstrBotPluginPage;", page)
 
+    def test_clear_login_uses_in_page_confirmation_dialog(self) -> None:
+        page = (
+            Path(__file__).parents[1] / "pages" / "dashboard" / "index.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('id="clearLoginDialog"', page)
+        self.assertIn('id="confirmClearLoginButton"', page)
+        self.assertNotIn("window.confirm(", page)
+        self.assertIn(
+            'byId("clearLoginButton").addEventListener("click", openClearLoginDialog);',
+            page,
+        )
+        self.assertIn(
+            'byId("confirmClearLoginButton").addEventListener("click", clearLogin);',
+            page,
+        )
+
+    async def test_web_login_clear_returns_updated_state_and_cookie_warning(
+        self,
+    ) -> None:
+        plugin = self.plugin(
+            {
+                "webui": {"enabled": True},
+                "account": {"cookie": "user_pkey=manual"},
+            }
+        )
+        plugin._clear_login_credentials = AsyncMock()
+
+        with patch.object(main_module, "jsonify", side_effect=lambda value: value):
+            result = await plugin.web_login_clear()
+
+        plugin._clear_login_credentials.assert_awaited_once()
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["state"], "logged_out")
+        self.assertIn("手动 Cookie", result["message"])
+
 
 if __name__ == "__main__":
     unittest.main()

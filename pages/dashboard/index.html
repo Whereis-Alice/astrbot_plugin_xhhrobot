@@ -614,6 +614,22 @@
         overflow: auto;
       }
 
+      .confirm-dialog {
+        width: min(440px, calc(100% - 32px));
+      }
+
+      .dialog-copy {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .dialog-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 22px;
+      }
+
       .detail-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -994,6 +1010,28 @@
         <button class="button compact" type="button" id="closeDialogButton">关闭</button>
       </div>
       <div class="dialog-body" id="detailBody"></div>
+    </dialog>
+
+    <dialog
+      class="confirm-dialog"
+      id="clearLoginDialog"
+      aria-labelledby="clearLoginDialogTitle"
+      aria-describedby="clearLoginDialogDescription"
+    >
+      <div class="dialog-header">
+        <h2 id="clearLoginDialogTitle">清除登录凭据</h2>
+      </div>
+      <div class="dialog-body">
+        <p class="dialog-copy" id="clearLoginDialogDescription">
+          将退出当前小黑盒账号并清除插件保存的扫码登录凭据。消息数据库不会被删除。
+        </p>
+        <div class="dialog-actions">
+          <button class="button" id="cancelClearLoginButton" type="button">取消</button>
+          <button class="button danger" id="confirmClearLoginButton" type="button">
+            清除登录
+          </button>
+        </div>
+      </div>
     </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
@@ -1531,14 +1569,35 @@
         state.loginPollTimer = null;
       }
 
+      function openClearLoginDialog() {
+        const dialog = byId("clearLoginDialog");
+        if (typeof dialog.showModal !== "function") {
+          showToast("当前浏览器不支持页面确认对话框，请使用 /小黑盒退出", true);
+          return;
+        }
+        dialog.showModal();
+        byId("confirmClearLoginButton").focus();
+      }
+
       async function clearLogin() {
-        if (!window.confirm("清除插件保存的小黑盒扫码登录凭据？")) return;
+        const dialog = byId("clearLoginDialog");
+        const confirmButton = byId("confirmClearLoginButton");
+        const cancelButton = byId("cancelClearLoginButton");
+        confirmButton.disabled = true;
+        cancelButton.disabled = true;
+        confirmButton.textContent = "清除中";
         try {
-          renderLogin(await postApi("login/clear", {}));
-          showToast("登录凭据已清除");
+          const payload = await postApi("login/clear", {});
+          dialog.close();
+          renderLogin(payload);
+          showToast(payload.message || "登录凭据已清除");
           await loadStatus();
         } catch (error) {
           showToast(error.message, true);
+        } finally {
+          confirmButton.disabled = false;
+          cancelButton.disabled = false;
+          confirmButton.textContent = "清除登录";
         }
       }
 
@@ -1626,7 +1685,11 @@
           button.disabled = false;
         });
         byId("startLoginButton").addEventListener("click", startLogin);
-        byId("clearLoginButton").addEventListener("click", clearLogin);
+        byId("clearLoginButton").addEventListener("click", openClearLoginDialog);
+        byId("cancelClearLoginButton").addEventListener("click", () => {
+          byId("clearLoginDialog").close();
+        });
+        byId("confirmClearLoginButton").addEventListener("click", clearLogin);
         byId("filterForm").addEventListener("submit", (event) => {
           event.preventDefault();
           state.offset = 0;
