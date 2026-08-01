@@ -453,13 +453,34 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         client, session = self.make_client(
             [FakeResponse({"status": "ok", "msg": "done"})]
         )
-        receipt = await client.send_reply(text="回复", link_id=1, reply_id=2, root_id=3)
+        client._emoji_names = set()
+        receipt = await client.send_reply(
+            text="回复[cube_吐血]", link_id=1, reply_id=2, root_id=3
+        )
         self.assertEqual(receipt.status, "ok")
         method, url, kwargs = session.requests[0]
         self.assertEqual(method, "POST")
         self.assertEqual(url, "https://workshopapi.xiaoheihe.cn/bbs/app/comment/create")
-        self.assertEqual(kwargs["data"]["text"], "回复")
+        self.assertEqual(kwargs["data"]["text"], "回复[cube_吐]")
         self.assertEqual(kwargs["data"]["reply_id"], "2")
+
+    async def test_outgoing_emoji_tokens_use_account_supported_names(self) -> None:
+        client, _ = self.make_client([])
+        client._emoji_names = {"cube_喜欢", "cube_吐"}
+
+        result = await client.prepare_outgoing_text(
+            "有效[cube_喜欢]别名[cube_吐血]未知[cube_不存在]"
+        )
+
+        self.assertEqual(result, "有效[cube_喜欢]别名[cube_吐]未知[不存在]")
+
+    async def test_outgoing_known_emoji_alias_works_without_metadata(self) -> None:
+        client, _ = self.make_client([])
+        client._emoji_names = set()
+
+        result = await client.prepare_outgoing_text("回复[cube_吐血]")
+
+        self.assertEqual(result, "回复[cube_吐]")
 
     async def test_qr_login_does_not_send_old_auth_and_builds_new_auth(self) -> None:
         client, session = self.make_client(

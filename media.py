@@ -9,9 +9,11 @@ import json
 import mimetypes
 import re
 import struct
+from collections.abc import Iterable
 from dataclasses import dataclass
+from io import BytesIO
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 from urllib.parse import quote, unquote, urlparse
 
 SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
@@ -82,6 +84,70 @@ def is_xhh_image_url(value: Any) -> bool:
     )
 
 
+def is_gif_source(value: Any) -> bool:
+    """Return whether an image source is explicitly marked as a GIF."""
+
+    text = str(value or "").strip()
+    if text.casefold().startswith("data:image/gif"):
+        return True
+    if text.startswith("base64://"):
+        return False
+    try:
+        return Path(urlparse(text).path).suffix.casefold() == ".gif"
+    except (TypeError, ValueError, OSError):
+        return False
+
+
+def gif_to_png_payload(
+    image: ImagePayload,
+    *,
+    max_pixels: int = 16_000_000,
+) -> ImagePayload:
+    """Decode the first GIF frame into a PNG payload for vision providers."""
+
+    if image.mimetype != "image/gif":
+        return image
+    try:
+        from PIL import Image as PillowImage
+    except ImportError as exc:
+        raise ValueError("GIF 视觉兼容需要 Pillow 依赖。") from exc
+
+    try:
+        with PillowImage.open(BytesIO(image.data)) as source:
+            width, height = source.size
+            if width <= 0 or height <= 0:
+                raise ValueError("GIF 图片尺寸无效。")
+            if width * height > max(1, int(max_pixels)):
+                raise ValueError("GIF 图片分辨率超过视觉输入上限。")
+            source.seek(0)
+            frame = source.convert("RGBA")
+            output = BytesIO()
+            frame.save(output, format="PNG", optimize=True)
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError("GIF 图片无法解码为 PNG。") from exc
+
+    data = output.getvalue()
+    if not data:
+        raise ValueError("GIF 图片转换后为空。")
+    return ImagePayload(
+        name=Path(image.name).stem + ".png",
+        mimetype="image/png",
+        data=data,
+        width=width,
+        height=height,
+        duration=0,
+    )
+
+
+def image_payload_to_data_url(image: ImagePayload) -> str:
+    """Convert an image payload to the data URL AstrBot accepts as vision input."""
+
+    encoded = base64.b64encode(image.data).decode("ascii")
+    return f"data:{image.mimetype};base64,{encoded}"
+
+
 def extract_image_urls(value: Any) -> list[str]:
     urls: list[str] = []
 
@@ -97,7 +163,7 @@ def extract_image_urls(value: Any) -> list[str]:
                     pass
             pattern = re.compile(
                 r"<img\b[^>]*\b(?:data-original|data-src|src)=([\"'])(.*?)\1",
-                flags=re.I,
+                flags=re.IGNORECASE,
             )
             for match in pattern.finditer(text):
                 try:

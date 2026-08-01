@@ -8,7 +8,7 @@ import re
 import time
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from http.cookies import SimpleCookie
+from http.cookies import CookieError, SimpleCookie
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qsl, unquote, urlencode, urlparse
@@ -20,12 +20,17 @@ from aiohttp_socks import (
     ProxyError,
     ProxyTimeoutError,
 )
+from astrbot.api import logger
 
 from .media import (
     ImagePayload,
     cos_authorization,
     cos_quote,
+    detect_image,
     extract_image_urls,
+    gif_to_png_payload,
+    image_payload_to_data_url,
+    is_gif_source,
     is_http_url,
     is_xhh_image_url,
     load_image_payload,
@@ -76,6 +81,103 @@ DIRECT_MESSAGE_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/125.0.0.0 Safari/537.36"
+)
+_XHH_EMOJI_TOKEN_RE = re.compile(r"\[(?P<package>cube|heygirl)_(?P<name>[^\]\r\n]+)\]")
+_XHH_EMOJI_ALIASES = {
+    "cube_吐血": "cube_吐",
+}
+# The web client ships these standard packs even when the metadata endpoint
+# returns no groups. Keep them as a conservative fallback for outgoing text.
+_XHH_EMOJI_FALLBACK_NAMES = frozenset(
+    {
+        "cube_哭泣",
+        "cube_酷",
+        "cube_doge",
+        "cube_喜欢",
+        "cube_黑人问号",
+        "cube_惊讶",
+        "cube_开心",
+        "cube_捂脸哭",
+        "cube_晕",
+        "cube_感动",
+        "cube_委屈",
+        "cube_并不简单",
+        "cube_乖",
+        "cube_笑cry",
+        "cube_怒",
+        "cube_滑稽",
+        "cube_沧桑",
+        "cube_凄凉",
+        "cube_赞",
+        "cube_学习",
+        "cube_叹气",
+        "cube_加油",
+        "cube_摊手",
+        "cube_喷水",
+        "cube_打脸",
+        "cube_H币",
+        "cube_生气",
+        "cube_困",
+        "cube_闭嘴",
+        "cube_吐",
+        "cube_咕咕",
+        "cube_微笑",
+        "cube_哇",
+        "cube_汗",
+        "cube_吓",
+        "cube_睡觉",
+        "cube_2023",
+        "cube_圣诞树",
+        "cube_庆祝",
+        "cube_庆祝-圣诞",
+        "cube_你懂我",
+        "cube_我懂你",
+        "cube_阳",
+        "cube_比心",
+        "cube_wota",
+        "cube_鹅",
+        "cube_握草",
+        "cube_这是什么鸟",
+        "cube_上学-乐",
+        "cube_上学-丧",
+        "cube_打咩",
+        "cube_超人",
+        "cube_僵尸",
+        "cube_窝囊",
+        "cube_小鸡",
+        "cube_摸摸头",
+        "cube_电牛",
+        "cube_摘墨镜",
+        "cube_悟空",
+        "cube_2024",
+        "cube_良民",
+        "cube_嬉水女王",
+        "cube_2025",
+        "heygirl_诶嘿",
+        "heygirl_哭",
+        "heygirl_白嫖怪",
+        "heygirl_疑问",
+        "heygirl_痴",
+        "heygirl_喜欢",
+        "heygirl_捏脸",
+        "heygirl_害羞",
+        "heygirl_苦酒入喉",
+        "heygirl_秃",
+        "heygirl_rua!",
+        "heygirl_吃瓜",
+        "heygirl_茄化",
+        "heygirl_无语",
+        "heygirl_这…",
+        "heygirl_敲开心",
+        "heygirl_开可乐",
+        "heygirl_哈哈",
+        "heygirl_滑稽",
+        "heygirl_偷看",
+        "heygirl_喝奶茶",
+        "heygirl_惊",
+        "heygirl_记下来",
+        "heygirl_挨刀",
+    }
 )
 LOGIN_COOKIE_NAMES = frozenset(
     {
@@ -159,6 +261,7 @@ class XhhClient:
         self._last_direct_message_sent_at = 0.0
         self._direct_message_action_restriction = ""
         self._direct_message_action_restricted_until = 0.0
+        self._emoji_names: set[str] | None = None
 
     async def start(self) -> None:
         if self._session is None or self._session.closed:
@@ -199,6 +302,7 @@ class XhhClient:
         self.auth = auth
         self._direct_message_action_restriction = ""
         self._direct_message_action_restricted_until = 0.0
+        self._emoji_names = None
 
     async def begin_qr_login(self) -> QrChallenge:
         self._login_session_active = True
@@ -961,7 +1065,60 @@ class XhhClient:
             "/bbs/app/api/emojis/list",
             auth_required=True,
         )
+        self._emoji_names = self._extract_emoji_names(response.payload)
         return response.payload
+
+    async def prepare_outgoing_text(self, text: str) -> str:
+        """Keep valid Xiaoheihe emoji tokens and safely downgrade unknown ones."""
+
+        value = str(text or "")
+        if not _XHH_EMOJI_TOKEN_RE.search(value):
+            return value
+        if self._emoji_names is None:
+            try:
+                await self.fetch_emojis()
+            except Exception:  # noqa: BLE001 - emoji metadata is optional
+                # Emoji metadata is optional; a temporary metadata failure must
+                # never prevent an otherwise valid text reply.
+                pass
+        names = set(self._emoji_names or ()) | _XHH_EMOJI_FALLBACK_NAMES
+
+        def replace(match: re.Match[str]) -> str:
+            token = f"{match.group('package')}_{match.group('name')}"
+            canonical = _XHH_EMOJI_ALIASES.get(token, token)
+            if canonical in names:
+                return f"[{canonical}]"
+            logger.warning(
+                "xhhrobot replaced unsupported Xiaoheihe emoji token: %s",
+                token,
+            )
+            return f"[{match.group('name')}]"
+
+        return _XHH_EMOJI_TOKEN_RE.sub(replace, value)
+
+    @staticmethod
+    def _extract_emoji_names(payload: Mapping[str, Any]) -> set[str]:
+        result = payload.get("result")
+        result = result if isinstance(result, Mapping) else {}
+        groups = result.get("emoji_groups")
+        groups = groups if isinstance(groups, list) else []
+        names: set[str] = set()
+        for group in groups:
+            if not isinstance(group, Mapping):
+                continue
+            package = str(
+                group.get("package_name") or group.get("package") or ""
+            ).strip()
+            entries = group.get("list") or group.get("emojis") or []
+            if not package or not isinstance(entries, list):
+                continue
+            for entry in entries:
+                if not isinstance(entry, Mapping):
+                    continue
+                name = str(entry.get("name") or entry.get("emoji_name") or "").strip()
+                if name:
+                    names.add(f"{package}_{name}")
+        return names
 
     async def fetch_direct_message_entries(
         self,
@@ -1124,6 +1281,104 @@ class XhhClient:
                 raise XhhError(str(exc), retryable=False) from exc
             prepared.append(await self.upload_image_payload_to_cos(payload))
         return unique_strings(prepared)
+
+    async def prepare_llm_image_source(
+        self,
+        source: Any,
+        *,
+        max_bytes: int = 20 * 1024 * 1024,
+        max_pixels: int = 16_000_000,
+    ) -> str:
+        """Make GIF inputs compatible with AstrBot vision providers.
+
+        Non-GIF URLs remain URLs so normal vision requests do not pay an
+        unnecessary download and base64 conversion cost.
+        """
+
+        text = str(source or "").strip()
+        if not is_gif_source(text):
+            return text
+        payload = await self.fetch_image_payload(text, max_bytes=max_bytes)
+        if payload.mimetype != "image/gif":
+            return text
+        png = await asyncio.to_thread(
+            gif_to_png_payload,
+            payload,
+            max_pixels=max_pixels,
+        )
+        return image_payload_to_data_url(png)
+
+    async def fetch_image_payload(
+        self,
+        source: Any,
+        *,
+        max_bytes: int = 20 * 1024 * 1024,
+    ) -> ImagePayload:
+        """Fetch one public image for local preprocessing."""
+
+        text = str(source or "").strip()
+        if text.startswith(("base64://", "data:image/")):
+            try:
+                return await asyncio.to_thread(
+                    load_image_payload,
+                    text,
+                    max_bytes=max(1, int(max_bytes)),
+                )
+            except ValueError as exc:
+                raise XhhError(str(exc), retryable=False) from exc
+        try:
+            url = normalize_http_image_url(text)
+        except ValueError as exc:
+            raise XhhError(str(exc), retryable=False) from exc
+
+        await self.start()
+        assert self._session is not None
+        limit = max(1, int(max_bytes))
+        try:
+            async with self._session.request(
+                "GET",
+                url,
+                headers={"User-Agent": DIRECT_MESSAGE_USER_AGENT},
+            ) as response:
+                if response.status < 200 or response.status >= 300:
+                    raise XhhError(
+                        f"图片下载失败（HTTP {response.status}）。",
+                        retryable=response.status == 429 or response.status >= 500,
+                    )
+                data = await response.content.read(limit + 1)
+                if len(data) > limit:
+                    raise XhhError(
+                        f"图片超过视觉输入下载上限（{limit // (1024 * 1024)} MiB）。",
+                        retryable=False,
+                    )
+        except XhhError:
+            raise
+        except (
+            asyncio.TimeoutError,
+            aiohttp.ClientError,
+            ProxyConnectionError,
+            ProxyError,
+            ProxyTimeoutError,
+        ) as exc:
+            raise XhhError(
+                f"图片下载失败：{self._safe_network_error(exc)}",
+                retryable=True,
+            ) from exc
+
+        try:
+            mimetype, extension, width, height = detect_image(
+                data,
+                Path(urlparse(url).path).name or "image",
+            )
+        except ValueError as exc:
+            raise XhhError(str(exc), retryable=False) from exc
+        return ImagePayload(
+            name="astrbot-llm-image" + extension,
+            mimetype=mimetype,
+            data=data,
+            width=width,
+            height=height,
+        )
 
     async def upload_local_image_to_cos(
         self,
@@ -1414,6 +1669,7 @@ class XhhClient:
             allowed_local_roots=allowed_local_roots,
             max_local_image_bytes=max_local_image_bytes,
         )
+        text = await self.prepare_outgoing_text(text)
         data = {
             "is_cy": "0",
             "link_id": str(link_id),
@@ -1528,6 +1784,7 @@ class XhhClient:
     ) -> dict[str, Any]:
         if not str(user_id or "").strip():
             raise XhhError("缺少私信目标用户 ID。", retryable=False)
+        text = await self.prepare_outgoing_text(text)
         if not str(text or "").strip() and not image_url:
             raise XhhError("私信内容和图片不能同时为空。", retryable=False)
         async with self._direct_message_send_lock:
@@ -1647,6 +1904,7 @@ class XhhClient:
             allowed_local_roots=allowed_local_roots,
             max_local_image_bytes=max_local_image_bytes,
         )
+        text = await self.prepare_outgoing_text(text)
         data = {
             "is_cy": "",
             "link_id": str(link_id),
@@ -2064,7 +2322,7 @@ class XhhClient:
         parsed = SimpleCookie()
         try:
             parsed.load(header)
-        except Exception:
+        except (CookieError, TypeError, ValueError):
             return {}
         return {name: morsel.value for name, morsel in parsed.items()}
 

@@ -622,7 +622,7 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             "xhh_create_comment",
             "create_comment",
             _write_description(
-                "评论帖子，或通过 root_id/reply_id 回复指定评论。",
+                "评论帖子，或通过 root_id/reply_id 回复指定评论。小黑盒表情可使用已确认有效的完整标记，例如 [cube_喜欢]。",
                 confirmation_required=confirmation_required,
             ),
             _write_schema(
@@ -630,7 +630,7 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     "link_id": {"type": "string", "description": "帖子 ID。"},
                     "text": {
                         "type": "string",
-                        "description": "评论纯文本；有图片时可留空。",
+                        "description": "评论纯文本；有图片时可留空。需要表情时使用完整的小黑盒标记，如 [cube_喜欢]。",
                     },
                     "root_id": {
                         "type": "string",
@@ -742,7 +742,7 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             "xhh_send_direct_message",
             "send_direct_message",
             _write_description(
-                "向指定小黑盒用户发送私信文本和图片消息链。",
+                "向指定小黑盒用户发送私信文本和图片消息链。需要表情时使用已确认有效的完整小黑盒标记，如 [cube_喜欢]。",
                 confirmation_required=confirmation_required,
             ),
             _write_schema(

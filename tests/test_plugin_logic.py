@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 from astrbot_plugin_xhhrobot.comment_archive import CommentArchive
 from astrbot_plugin_xhhrobot.dm_store import DirectMessageStore
@@ -504,6 +505,34 @@ class CommentImageGenerationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("本评论图片 2 张", str(context.request["prompt"]))
         self.assertIn("被回复评论图片 1 张", str(context.request["prompt"]))
         self.assertIn("帖子图片 1 张", str(context.request["prompt"]))
+
+    async def test_gif_visual_input_is_converted_and_failed_gif_is_skipped(self) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {"media": {"max_local_image_bytes": 1024 * 1024}}
+        plugin.client = SimpleNamespace(
+            prepare_llm_image_source=AsyncMock(
+                side_effect=[
+                    "data:image/png;base64,ZmFrZQ==",
+                    RuntimeError("下载超时"),
+                ]
+            )
+        )
+
+        result = await plugin._prepare_llm_image_urls(
+            [
+                "https://cdn.example/first.gif",
+                "https://cdn.example/second.gif",
+                "https://cdn.example/ordinary.jpg",
+            ]
+        )
+
+        self.assertEqual(
+            result,
+            [
+                "data:image/png;base64,ZmFrZQ==",
+                "https://cdn.example/ordinary.jpg",
+            ],
+        )
 
 
 class DirectMessageRestrictionTests(unittest.IsolatedAsyncioTestCase):

@@ -3,11 +3,16 @@ from __future__ import annotations
 import base64
 import tempfile
 import unittest
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import AsyncMock
 
+from PIL import Image as PillowImage
+
 from astrbot_plugin_xhhrobot.media import (
     ImagePayload,
+    gif_to_png_payload,
+    image_payload_to_data_url,
     load_image_payload,
     local_path_from_source,
     normalize_http_image_url,
@@ -73,6 +78,47 @@ class MediaTests(unittest.IsolatedAsyncioTestCase):
     def test_private_network_image_url_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "私有"):
             normalize_http_image_url("http://127.0.0.1/image.png")
+
+    def test_gif_first_frame_is_converted_to_png(self) -> None:
+        first = PillowImage.new("RGBA", (2, 2), (255, 0, 0, 255))
+        second = PillowImage.new("RGBA", (2, 2), (0, 0, 255, 255))
+        encoded = BytesIO()
+        first.save(
+            encoded,
+            format="GIF",
+            save_all=True,
+            append_images=[second],
+            duration=100,
+            loop=0,
+        )
+        payload = gif_to_png_payload(
+            ImagePayload("reaction.gif", "image/gif", encoded.getvalue(), 2, 2)
+        )
+
+        self.assertEqual(payload.mimetype, "image/png")
+        self.assertEqual((payload.width, payload.height), (2, 2))
+        with PillowImage.open(BytesIO(payload.data)) as image:
+            self.assertEqual(image.getpixel((0, 0))[:3], (255, 0, 0))
+        self.assertTrue(image_payload_to_data_url(payload).startswith("data:image/png;base64,"))
+
+    async def test_llm_gif_source_becomes_png_data_url(self) -> None:
+        client = self.client()
+        first = PillowImage.new("RGBA", (2, 2), (255, 0, 0, 255))
+        encoded = BytesIO()
+        first.save(encoded, format="GIF")
+        gif = ImagePayload(
+            "reaction.gif",
+            "image/gif",
+            encoded.getvalue(),
+            2,
+            2,
+        )
+        client.fetch_image_payload = AsyncMock(return_value=gif)  # type: ignore[method-assign]
+
+        result = await client.prepare_llm_image_source("https://cdn.example/reaction.gif")
+
+        self.assertTrue(result.startswith("data:image/png;base64,"))
+        client.fetch_image_payload.assert_awaited_once()
 
     async def test_prepare_sources_copies_network_and_uploads_local_images(
         self,
