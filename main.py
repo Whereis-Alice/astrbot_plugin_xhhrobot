@@ -942,7 +942,9 @@ class XhhRobotPlugin(Star):
         async with self._cycle_lock:
             snapshot = await self.store.snapshot()
             now = time.time()
-            daily_limit = self._int_cfg("auto_browse.max_comments_per_24h", 3, 1, 50)
+            daily_limit = self._int_cfg(
+                "auto_browse.max_comments_per_24h", 3, 1, None
+            )
             written_before = self._browse_write_count(
                 snapshot,
                 since=now - 24 * 60 * 60,
@@ -3144,7 +3146,9 @@ class XhhRobotPlugin(Star):
         browse = snapshot["auto_browse"]
         browse_enabled = self._bool_cfg("auto_browse.enabled", False)
         browse_dry_run = self._bool_cfg("auto_browse.dry_run", False)
-        browse_limit = self._int_cfg("auto_browse.max_comments_per_24h", 3, 1, 50)
+        browse_limit = self._int_cfg(
+            "auto_browse.max_comments_per_24h", 3, 1, None
+        )
         browse_used = self._browse_write_count(
             snapshot,
             since=time.time() - 24 * 60 * 60,
@@ -3442,12 +3446,16 @@ class XhhRobotPlugin(Star):
             return value.strip().lower() in {"1", "true", "yes", "on", "是"}
         return bool(value)
 
-    def _int_cfg(self, path: str, default: int, minimum: int, maximum: int) -> int:
+    def _int_cfg(
+        self, path: str, default: int, minimum: int, maximum: int | None
+    ) -> int:
         try:
             value = int(self._cfg(path, default))
         except (TypeError, ValueError):
             value = default
-        return max(minimum, min(maximum, value))
+        if maximum is not None:
+            value = min(maximum, value)
+        return max(minimum, value)
 
     @property
     def _worker_running(self) -> bool:
