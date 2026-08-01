@@ -150,6 +150,24 @@ class AutoBrowseTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(client.feed_calls, 0)
         self.assertIn("额度已满", result.notes[0])
 
+    async def test_daily_limit_allows_configured_value_above_20(self) -> None:
+        plugin, client, store = await self.make_plugin(daily_limit=50)
+        now = time.time()
+        for link_id in range(400, 421):
+            await store.record_browse(
+                link_id=link_id,
+                title=f"已评论 {link_id}",
+                author_id=str(link_id),
+                status="commented",
+                comment_text="之前的评论",
+                now=now,
+            )
+
+        result = await plugin._run_auto_browse()
+
+        self.assertEqual(result.commented, 1)
+        self.assertEqual(len(client.comments), 1)
+
     async def test_cancellation_during_send_records_uncertain(self) -> None:
         plugin, client, store = await self.make_plugin(block_send=True)
         task = asyncio.create_task(plugin._run_auto_browse())

@@ -942,7 +942,7 @@ class XhhRobotPlugin(Star):
         async with self._cycle_lock:
             snapshot = await self.store.snapshot()
             now = time.time()
-            daily_limit = self._int_cfg("auto_browse.max_comments_per_24h", 3, 1, 20)
+            daily_limit = self._int_cfg("auto_browse.max_comments_per_24h", 3, 1, 50)
             written_before = self._browse_write_count(
                 snapshot,
                 since=now - 24 * 60 * 60,
@@ -3144,7 +3144,7 @@ class XhhRobotPlugin(Star):
         browse = snapshot["auto_browse"]
         browse_enabled = self._bool_cfg("auto_browse.enabled", False)
         browse_dry_run = self._bool_cfg("auto_browse.dry_run", False)
-        browse_limit = self._int_cfg("auto_browse.max_comments_per_24h", 3, 1, 20)
+        browse_limit = self._int_cfg("auto_browse.max_comments_per_24h", 3, 1, 50)
         browse_used = self._browse_write_count(
             snapshot,
             since=time.time() - 24 * 60 * 60,
