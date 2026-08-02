@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from io import BytesIO
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from PIL import Image as PillowImage
 
@@ -100,6 +100,28 @@ class MediaTests(unittest.IsolatedAsyncioTestCase):
         with PillowImage.open(BytesIO(payload.data)) as image:
             self.assertEqual(image.getpixel((0, 0))[:3], (255, 0, 0))
         self.assertTrue(image_payload_to_data_url(payload).startswith("data:image/png;base64,"))
+
+    def test_gif_falls_back_to_truncated_frame_decode(self) -> None:
+        first = PillowImage.new("RGBA", (2, 2), (255, 0, 0, 255))
+        encoded = BytesIO()
+        first.save(encoded, format="GIF")
+        original_open = PillowImage.open
+        calls = 0
+
+        def fail_once(*args: object, **kwargs: object) -> object:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise OSError("truncated GIF frame")
+            return original_open(*args, **kwargs)
+
+        with patch("PIL.Image.open", side_effect=fail_once):
+            payload = gif_to_png_payload(
+                ImagePayload("truncated.gif", "image/gif", encoded.getvalue(), 2, 2)
+            )
+
+        self.assertEqual(payload.mimetype, "image/png")
+        self.assertGreaterEqual(calls, 2)
 
     async def test_llm_gif_source_becomes_png_data_url(self) -> None:
         client = self.client()

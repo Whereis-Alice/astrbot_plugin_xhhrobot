@@ -9,6 +9,7 @@ import json
 import mimetypes
 import re
 import struct
+import threading
 from collections.abc import Iterable
 from dataclasses import dataclass
 from io import BytesIO
@@ -18,6 +19,7 @@ from urllib.parse import quote, unquote, urlparse
 
 SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
 XHH_IMAGE_HOST_SUFFIXES = ("max-c.com", "myqcloud.com", "xiaoheihe.cn")
+_GIF_DECODE_LOCK = threading.Lock()
 
 # COS signing logic is adapted from advent259141/astrbot_plugin_xiaoheihe_adapter
 # under Apache-2.0. See THIRD_PARTY_NOTICES.md for the modification notice.
@@ -112,7 +114,7 @@ def gif_to_png_payload(
     except ImportError as exc:
         raise ValueError("GIF 视觉兼容需要 Pillow 依赖。") from exc
 
-    try:
+    def render_first_frame() -> tuple[bytes, int, int]:
         with PillowImage.open(BytesIO(image.data)) as source:
             width, height = source.size
             if width <= 0 or height <= 0:
@@ -123,12 +125,31 @@ def gif_to_png_payload(
             frame = source.convert("RGBA")
             output = BytesIO()
             frame.save(output, format="PNG", optimize=True)
+            return output.getvalue(), width, height
+
+    try:
+        data, width, height = render_first_frame()
     except ValueError:
         raise
-    except Exception as exc:
-        raise ValueError("GIF 图片无法解码为 PNG。") from exc
+    except Exception:
+        # CDN responses can occasionally end mid-frame. Pillow exposes its
+        # truncated-image switch globally, so guard this fallback with a
+        # lock and always restore the previous process-wide value.
+        try:
+            from PIL import ImageFile
 
-    data = output.getvalue()
+            with _GIF_DECODE_LOCK:
+                previous = ImageFile.LOAD_TRUNCATED_IMAGES
+                ImageFile.LOAD_TRUNCATED_IMAGES = True
+                try:
+                    data, width, height = render_first_frame()
+                finally:
+                    ImageFile.LOAD_TRUNCATED_IMAGES = previous
+        except ValueError:
+            raise
+        except Exception as fallback_error:
+            raise ValueError("GIF 图片无法解码为 PNG。") from fallback_error
+
     if not data:
         raise ValueError("GIF 图片转换后为空。")
     return ImagePayload(
