@@ -8,6 +8,7 @@ from astrbot_plugin_xhhrobot.rich_content import (
     normalize_plain_text,
     normalize_rich_content_blocks,
     parse_inbound_content_blocks,
+    platform_html_for_block,
 )
 
 
@@ -18,6 +19,16 @@ class RichContentTests(unittest.TestCase):
             "第一行\n第二行\n第三行",
         )
         self.assertEqual(normalize_plain_text("第一行 <tag> 第二行"), "第一行 <tag> 第二行")
+        self.assertEqual(
+            normalize_plain_text(r"第一行\n第二行\r\n第三行"),
+            "第一行\n第二行\n第三行",
+        )
+
+    def test_plain_text_post_blocks_keep_real_newlines(self) -> None:
+        self.assertEqual(
+            platform_html_for_block({"type": "text", "text": "第一行\n第二行"}),
+            "第一行\n第二行",
+        )
 
     def test_normalizes_safe_blocks_without_losing_order(self) -> None:
         blocks = normalize_rich_content_blocks(

@@ -49,6 +49,7 @@ _PLAIN_TEXT_BLOCK_RE = re.compile(
     r"</?\s*(?:p|div)\b[^>]*>",
     re.IGNORECASE,
 )
+_PLAIN_TEXT_ESCAPED_BREAK_RE = re.compile(r"\\(?:r\\n|n|r)")
 
 
 class _HtmlSanitizer(HTMLParser):
@@ -234,6 +235,7 @@ def normalize_plain_text(value: Any) -> str:
         return ""
     text = _PLAIN_TEXT_BREAK_RE.sub("\n", text)
     text = _PLAIN_TEXT_BLOCK_RE.sub("\n", text)
+    text = _PLAIN_TEXT_ESCAPED_BREAK_RE.sub("\n", text)
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"\n[ \t]+", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
@@ -369,7 +371,7 @@ def platform_html_for_block(block: Mapping[str, Any]) -> str:
     if item_type == "html":
         return sanitize_rich_html(text)
     if item_type == "text":
-        return html.escape(text).replace("\n", "<br>")
+        return html.escape(text)
     raise RichContentError("只有文本内容块可以转换为帖子正文。")
 
 

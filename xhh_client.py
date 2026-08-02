@@ -2071,11 +2071,13 @@ class XhhClient:
 
         expected_title = str(title or "").strip()
         expected_body = self._plain_text(body)
-        result = self._result_mapping(payload)
+        raw_result = payload.get("result")
+        result = raw_result if isinstance(raw_result, Mapping) else {}
         items = self._first_mapping_list(
             result.get("links"),
             result.get("items"),
             result.get("list"),
+            raw_result,
             payload.get("links"),
             payload.get("items"),
             payload.get("list"),
