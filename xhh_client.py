@@ -2137,15 +2137,22 @@ class XhhClient:
             request_data = data
         else:
             headers = {
+                "Accept": "application/json",
+                "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
+                "Origin": "https://www.xiaoheihe.cn",
                 "Referer": "https://www.xiaoheihe.cn/",
                 "User-Agent": (
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
                     "Chrome/131.0 Safari/537.36"
                 ),
-                "Accept": "application/json, text/plain, */*",
+                "Accept-Language": "zh,zh-CN;q=0.9",
             }
-            request_data = data
+            request_data = (
+                urlencode(dict(data))
+                if method.upper() == "POST" and data is not None
+                else data
+            )
         if auth_required and self.auth is not None and self.auth.cookie:
             headers["Cookie"] = (
                 self._direct_message_cookie_header()

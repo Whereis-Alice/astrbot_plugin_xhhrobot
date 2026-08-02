@@ -2,6 +2,13 @@
 
 本文件记录“小黑盒bot”的版本变化。使用方法、配置与部署说明请查看 [README.md](./README.md)。
 
+## v0.6.21 - 2026-08-02
+
+### 修复
+
+- 修复本地图片上传初始化请求没有完全使用网页端 UTF-8 表单格式，导致 `/bbs/app/api/qcloud/cos/upload/info/v2` 返回“验证参数错误”的问题。
+- 普通 POST 请求现在统一显式发送 `application/x-www-form-urlencoded;charset=UTF-8`，并使用与网页端一致的表单编码。
+
 ## v0.6.20 - 2026-08-02
 
 ### 修复

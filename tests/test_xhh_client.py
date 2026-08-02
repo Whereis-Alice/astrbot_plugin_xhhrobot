@@ -13,6 +13,7 @@ from urllib.parse import parse_qs
 import aiohttp
 from aiohttp_socks import ProxyConnectionError
 
+from astrbot_plugin_xhhrobot.media import ImagePayload
 from astrbot_plugin_xhhrobot.models import AuthInfo, QrChallenge
 from astrbot_plugin_xhhrobot.xhh_client import XhhClient, XhhError
 
@@ -463,8 +464,70 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         method, url, kwargs = session.requests[0]
         self.assertEqual(method, "POST")
         self.assertEqual(url, "https://workshopapi.xiaoheihe.cn/bbs/app/comment/create")
-        self.assertEqual(kwargs["data"]["text"], "回复[cube_吐]")
-        self.assertEqual(kwargs["data"]["reply_id"], "2")
+        form = parse_qs(kwargs["data"], keep_blank_values=True)
+        self.assertEqual(form["text"], ["回复[cube_吐]"])
+        self.assertEqual(form["reply_id"], ["2"])
+
+    async def test_cos_upload_init_uses_web_form_payload(self) -> None:
+        client, session = self.make_client(
+            [
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "keys": ["uploads/test.jpg"],
+                            "bucket": "test-bucket",
+                            "region": "ap-shanghai",
+                        },
+                    }
+                ),
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "credentials": {
+                                "tmpSecretId": "secret-id",
+                                "tmpSecretKey": "secret-key",
+                                "sessionToken": "session-token",
+                            },
+                            "startTime": 1000,
+                            "expiredTime": 2000,
+                        },
+                    }
+                ),
+                FakeResponse({"status": "ok"}),
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "preview_urls": ["https://cdn.xiaoheihe.cn/test.jpg"]
+                        },
+                    }
+                ),
+            ]
+        )
+
+        uploaded = await client.upload_image_payload_to_cos(
+            ImagePayload("test.jpg", "image/jpeg", b"jpeg", 640, 480)
+        )
+
+        self.assertEqual(uploaded, "https://cdn.xiaoheihe.cn/test.jpg")
+        method, url, kwargs = session.requests[0]
+        self.assertEqual(method, "POST")
+        self.assertEqual(
+            url,
+            "https://api.xiaoheihe.cn/bbs/app/api/qcloud/cos/upload/info/v2",
+        )
+        self.assertEqual(
+            kwargs["headers"]["Content-Type"],
+            "application/x-www-form-urlencoded;charset=UTF-8",
+        )
+        form = parse_qs(kwargs["data"], keep_blank_values=True)
+        file_info = json.loads(form["file_infos"][0])[0]
+        self.assertEqual(file_info["mimetype"], "image/jpeg")
+        self.assertEqual(file_info["fsize"], 4)
+        self.assertEqual(file_info["width"], 640)
+        self.assertEqual(file_info["height"], 480)
 
     async def test_outgoing_emoji_tokens_use_account_supported_names(self) -> None:
         client, _ = self.make_client([])
@@ -702,11 +765,12 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(session.requests[0][2]["params"]["_notip"], "true")
         self.assertEqual(method, "POST")
         self.assertEqual(url, "https://api.xiaoheihe.cn/bbs/app/api/link/post")
-        self.assertEqual(kwargs["data"]["post_type"], "1")
-        self.assertEqual(kwargs["data"]["topic_ids"], "7214,18745")
-        self.assertEqual(kwargs["data"]["link_tag"], "27")
-        self.assertEqual(json.loads(kwargs["data"]["hashtags"]), ["AstrBot", "测试"])
-        content = json.loads(kwargs["data"]["text"])
+        form = parse_qs(kwargs["data"], keep_blank_values=True)
+        self.assertEqual(form["post_type"], ["1"])
+        self.assertEqual(form["topic_ids"], ["7214,18745"])
+        self.assertEqual(form["link_tag"], ["27"])
+        self.assertEqual(json.loads(form["hashtags"][0]), ["AstrBot", "测试"])
+        content = json.loads(form["text"][0])
         self.assertEqual(content[0]["type"], "text")
         self.assertEqual(content[0]["text"], "第一行 &lt;tag&gt;<br>第二行")
         self.assertEqual(
@@ -751,7 +815,8 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
                 image_urls=[str(image_path)],
             )
 
-        content = json.loads(session.requests[0][2]["data"]["text"])
+        form = parse_qs(session.requests[0][2]["data"], keep_blank_values=True)
+        content = json.loads(form["text"][0])
         self.assertEqual(
             content[1],
             {
@@ -773,8 +838,8 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             topic_ids=["58144"],
         )
 
-        data = session.requests[0][2]["data"]
-        self.assertEqual(data["link_tag"], "28")
+        data = parse_qs(session.requests[0][2]["data"], keep_blank_values=True)
+        self.assertEqual(data["link_tag"], ["28"])
 
     async def test_publish_post_preserves_rich_block_order(self) -> None:
         client, session = self.make_client(
@@ -799,7 +864,8 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             ],
         )
 
-        content = json.loads(session.requests[1][2]["data"]["text"])
+        form = parse_qs(session.requests[1][2]["data"], keep_blank_values=True)
+        content = json.loads(form["text"][0])
         self.assertEqual(
             content,
             [
