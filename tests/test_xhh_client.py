@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import json
+import tempfile
 import unittest
 from collections import deque
 from http.cookies import SimpleCookie
+from pathlib import Path
 from typing import Any
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 from urllib.parse import parse_qs
 
 import aiohttp
@@ -709,7 +711,44 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(content[0]["text"], "第一行 &lt;tag&gt;<br>第二行")
         self.assertEqual(
             content[1],
-            {"type": "img", "url": "https://cdn.xiaoheihe.cn/copied.jpg"},
+            {
+                "type": "img",
+                "url": "https://cdn.xiaoheihe.cn/copied.jpg",
+                "width": 0,
+                "height": 0,
+            },
+        )
+
+    async def test_publish_post_includes_local_image_dimensions(self) -> None:
+        client, session = self.make_client(
+            [FakeResponse({"status": "ok", "result": {"link_id": 324}})]
+        )
+        client.upload_image_payload_to_cos = AsyncMock(
+            return_value="https://cdn.xiaoheihe.cn/local.jpg"
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            image_path = Path(directory) / "local.png"
+            image_path.write_bytes(
+                b"\x89PNG\r\n\x1a\n"
+                + b"\x00" * 8
+                + b"\x00\x00\x00\x03\x00\x00\x00\x04"
+            )
+            await client.publish_post(
+                title="local image",
+                body="image body",
+                image_urls=[str(image_path)],
+            )
+
+        content = json.loads(session.requests[0][2]["data"]["text"])
+        self.assertEqual(
+            content[1],
+            {
+                "type": "img",
+                "url": "https://cdn.xiaoheihe.cn/local.jpg",
+                "width": 3,
+                "height": 4,
+            },
         )
 
     async def test_publish_post_uses_default_topic_link_tag(self) -> None:
@@ -755,7 +794,12 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             [
                 {"type": "text", "text": "第一段"},
                 {"type": "text", "text": "<p><strong>重点</strong></p>"},
-                {"type": "img", "url": "https://cdn.xiaoheihe.cn/rich.jpg"},
+                {
+                    "type": "img",
+                    "url": "https://cdn.xiaoheihe.cn/rich.jpg",
+                    "width": 0,
+                    "height": 0,
+                },
             ],
         )
 

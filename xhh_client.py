@@ -1284,6 +1284,43 @@ class XhhClient:
             prepared.append(await self.upload_image_payload_to_cos(payload))
         return unique_strings(prepared)
 
+    async def prepare_post_image_blocks(
+        self,
+        image_sources: Iterable[Any],
+        *,
+        allowed_local_roots: Sequence[Path] = (),
+        max_local_image_bytes: int = 20 * 1024 * 1024,
+    ) -> list[dict[str, Any]]:
+        """Prepare web-editor image blocks, including layout dimensions."""
+
+        prepared: list[dict[str, Any]] = []
+        for source in unique_strings(image_sources):
+            width = 0
+            height = 0
+            if is_http_url(source):
+                url = await self.copy_image_by_url(source)
+            else:
+                try:
+                    payload = await asyncio.to_thread(
+                        load_image_payload,
+                        source,
+                        max_bytes=max(1, int(max_local_image_bytes)),
+                        allowed_roots=allowed_local_roots,
+                    )
+                except ValueError as exc:
+                    raise XhhError(str(exc), retryable=False) from exc
+                url = await self.upload_image_payload_to_cos(payload)
+                width = payload.width
+                height = payload.height
+            prepared.append(
+                {
+                    "url": url,
+                    "width": width,
+                    "height": height,
+                }
+            )
+        return prepared
+
     async def prepare_llm_image_source(
         self,
         source: Any,
@@ -1606,15 +1643,15 @@ class XhhClient:
             body = await self.prepare_outgoing_text(body)
             blocks.insert(0, {"type": "text", "text": body})
 
-        content: list[dict[str, str]] = []
+        content: list[dict[str, Any]] = []
         for block in blocks:
             if block["type"] == "image":
-                copied = await self.prepare_image_sources(
+                copied = await self.prepare_post_image_blocks(
                     [block["url"]],
                     allowed_local_roots=allowed_local_roots,
                     max_local_image_bytes=max_local_image_bytes,
                 )
-                content.extend({"type": "img", "url": url} for url in copied)
+                content.extend({"type": "img", **image} for image in copied)
                 continue
             try:
                 content.append(
@@ -1623,12 +1660,12 @@ class XhhClient:
             except RichContentError as exc:
                 raise XhhError(str(exc), retryable=False) from exc
 
-        copied_images = await self.prepare_image_sources(
+        copied_images = await self.prepare_post_image_blocks(
             image_urls or [],
             allowed_local_roots=allowed_local_roots,
             max_local_image_bytes=max_local_image_bytes,
         )
-        content.extend({"type": "img", "url": url} for url in copied_images)
+        content.extend({"type": "img", **image} for image in copied_images)
         if not content:
             raise XhhError("帖子正文和图片不能同时为空。", retryable=False)
 
