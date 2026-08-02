@@ -762,7 +762,7 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
 
         method, url, kwargs = session.requests[1]
         self.assertEqual(session.requests[0][2]["params"]["app"], "heybox")
-        self.assertEqual(session.requests[0][2]["params"]["_notip"], "true")
+        self.assertNotIn("_notip", session.requests[0][2]["params"])
         self.assertEqual(method, "POST")
         self.assertEqual(url, "https://api.xiaoheihe.cn/bbs/app/api/link/post")
         form = parse_qs(kwargs["data"], keep_blank_values=True)

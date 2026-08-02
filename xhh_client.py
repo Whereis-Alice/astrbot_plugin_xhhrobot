@@ -57,7 +57,7 @@ from .rich_content import (
     parse_inbound_content_blocks,
     platform_html_for_block,
 )
-from .signing import get_heybox_request_keys, get_request_keys
+from .signing import get_heybox_request_keys
 
 COS_UPLOAD_INFO_PATH = "/bbs/app/api/qcloud/cos/upload/info/v2"
 COS_UPLOAD_TOKEN_PATH = "/bbs/app/api/qcloud/cos/upload/token/v2"
@@ -2089,7 +2089,9 @@ class XhhClient:
                 }
             )
         else:
-            hkey, nonce, request_time = get_request_keys(path)
+            # The web API signs the normalized path with the web timestamp
+            # offset. This is also what the web editor uses for COS uploads.
+            hkey, nonce, request_time = get_heybox_request_keys(path)
             query = dict(params or {})
             query.update(
                 {
@@ -2109,7 +2111,6 @@ class XhhClient:
                     "hkey": hkey,
                     "_time": str(request_time),
                     "nonce": nonce,
-                    "_notip": "true",
                 }
             )
         if auth_required and self.auth is not None and self.auth.heybox_id:
