@@ -175,6 +175,18 @@ WebUI 会在页面内绘制二维码，不需要浏览器直接加载小黑盒�
 
 “私信真实 API URL（可选）”通常不需要填写。默认请求仍被拒绝、但同一账号在网页版工作正常时，可以在浏览器开发者工具的 Network 中复制一条 `https://api.xiaoheihe.cn/...` 完整请求 URL。插件只读取 `app`、`version`、`web_version`、`device_id` 等客户端参数，忽略其中的签名、目标用户、Cookie 和其他字段；Cookie 不要粘贴到该配置项。修改后需要重载插件。
 
+## 错误通知
+
+错误通知默认关闭。先在配置中填写 `notifications.umo`，再开启 `notifications.notify_on_error`；UMO 必须是 AstrBot 能够主动发送消息的完整会话 ID，例如 `test:FriendMessage:123456`。开启后，后台轮询、自动评论或回复、私信、自动巡帖、图片处理、标准事件和 LLM 工具调用出现运行错误时，会立即发送摘要。
+
+通知包含错误类别、错误类型、错误信息和必要的消息/帖子/评论 ID，不会发送 Cookie、代理凭据或完整请求内容。相同错误在 60 秒内只通知一次；通知会话留空时不会主动发送，但后台日志和 WebUI 状态仍会记录。工具参数填写错误只返回当前对话，不会额外发错误通知。
+
+| 配置项中文名 | 配置键 | 说明 |
+| --- | --- | --- |
+| 通知会话 UMO | `notifications.umo` | 接收主动通知的完整 AstrBot 会话 ID；留空时只写后台日志。 |
+| 回复成功后通知 | `notifications.notify_on_reply` | 自动回复成功后，向通知会话发送对方内容、Bot 回复、图片数量和相关 ID。 |
+| 发生错误时通知 | `notifications.notify_on_error` | 开启后，遇到插件运行错误时向通知会话发送错误摘要；默认关闭，相同错误 60 秒内只通知一次。 |
+
 ## 自主巡帖
 
 自主巡帖默认关闭。开启 `auto_browse.enabled` 后，机器人会定时读取推荐流，从摘要中选择候选帖子，再读取完整正文并决定评论或跳过。
@@ -403,7 +415,7 @@ curl --proxy 'socks5h://用户名:密码@主机:端口' https://api.ipify.org
 | `media` | 回复图片数量、本地图片大小和允许上传目录。 |
 | `analytics` | SQLite 保留时间、容量和查询上限。 |
 | `webui` | 插件页面 API、正文显示和单页读取上限。 |
-| `notifications` | 主动通知目标和成功回复通知。 |
+| `notifications` | 主动通知目标、成功回复通知和错误通知。 |
 | `reliability` | HTTP 超时、失败重试、熔断和持久化记录上限。 |
 | `connection` | 可选 SOCKS5 代理、接口地址和客户端版本参数。 |
 

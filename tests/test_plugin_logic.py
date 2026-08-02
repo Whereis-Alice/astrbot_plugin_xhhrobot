@@ -644,5 +644,59 @@ class DirectMessageRestrictionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(plugin._dm_sending_block_reason(), "")
 
 
+class ErrorNotificationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_error_notification_is_disabled_by_default(self) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {"notifications": {"umo": "test:FriendMessage:notify"}}
+        plugin.context = RecordingNotificationContext()
+
+        await plugin._notify_error("后台轮询失败", TimeoutError("timeout"))
+
+        self.assertEqual(plugin.context.sent, [])
+
+    async def test_error_notification_sends_and_deduplicates(self) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "notifications": {
+                "umo": "test:FriendMessage:notify",
+                "notify_on_error": True,
+            }
+        }
+        plugin.context = RecordingNotificationContext()
+
+        await plugin._notify_error(
+            "LLM 工具执行失败",
+            XhhError("请求超时"),
+            details="工具：xhh_publish_post",
+        )
+        await plugin._notify_error(
+            "LLM 工具执行失败",
+            XhhError("请求超时"),
+            details="工具：xhh_publish_post",
+        )
+
+        self.assertEqual(len(plugin.context.sent), 1)
+        notification = plugin.context.sent[0][1]
+        self.assertIn("LLM 工具执行失败", notification)
+        self.assertIn("请求超时", notification)
+        self.assertIn("xhh_publish_post", notification)
+
+    async def test_notification_send_failure_does_not_escape(self) -> None:
+        class FailingNotificationContext:
+            async def send_message(self, umo: str, chain: object) -> None:
+                raise RuntimeError("notification transport failed")
+
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "notifications": {
+                "umo": "test:FriendMessage:notify",
+                "notify_on_error": True,
+            }
+        }
+        plugin.context = FailingNotificationContext()
+
+        await plugin._notify_error("后台轮询失败", RuntimeError("boom"))
+
+
 if __name__ == "__main__":
     unittest.main()

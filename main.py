@@ -159,6 +159,9 @@ class XhhRobotPlugin(Star):
         self._consecutive_errors = 0
         self._suspended_until = 0.0
         self._auth_error_notified = False
+        self._error_notification_lock = asyncio.Lock()
+        self._last_error_notification_key = ""
+        self._last_error_notification_at = 0.0
         self._next_dm_poll_at = 0.0
         self._last_dm_poll_at = 0.0
         self._last_dm_error = ""
@@ -177,6 +180,7 @@ class XhhRobotPlugin(Star):
             self._archive_error = str(exc)
             self.comment_archive.enabled = False
             logger.exception("%s comment archive initialization failed", PLUGIN_ID)
+            await self._notify_error("评论归档初始化失败", exc)
         await self.dm_store.initialize()
         if self._bool_cfg("tools.enable_draft_tools", False):
             await self.draft_store.initialize()
@@ -652,6 +656,7 @@ class XhhRobotPlugin(Star):
                     )
                 except Exception as exc:
                     self._last_error = str(exc)
+                    await self._notify_error("二维码登录失败", exc)
                     yield event.plain_result(f"创建登录二维码失败：{exc}")
                     return
                 task = asyncio.create_task(
@@ -841,6 +846,7 @@ class XhhRobotPlugin(Star):
                 except Exception as exc:
                     self._last_error = f"自动巡帖失败：{exc}"
                     logger.warning("%s auto browse failed: %r", PLUGIN_ID, exc)
+                    await self._notify_error("自动巡帖失败", exc)
                 await self._wait_or_stop(
                     self._int_cfg("polling.poll_interval_sec", 30, 5, 3600)
                 )
@@ -875,9 +881,11 @@ class XhhRobotPlugin(Star):
                     if exc.auth_required:
                         raise
                     logger.warning("%s direct-message poll failed: %r", PLUGIN_ID, exc)
+                    await self._notify_error("私信轮询失败", exc)
                 except Exception as exc:
                     self._last_dm_error = str(exc)
                     logger.warning("%s direct-message poll failed: %r", PLUGIN_ID, exc)
+                    await self._notify_error("私信轮询失败", exc)
             await self._process_pending(result)
             await self._process_pending_direct_messages(result)
             self._last_poll_at = time.time()
@@ -1036,6 +1044,11 @@ class XhhRobotPlugin(Star):
                         reason=f"读取帖子失败：{exc}",
                     )
                     result.failed += 1
+                    await self._notify_error(
+                        "自动巡帖读取帖子失败",
+                        exc,
+                        details=f"帖子 ID：{selected.link_id}",
+                    )
                     if exc.auth_required or exc.retryable:
                         raise
                     continue
@@ -1048,6 +1061,11 @@ class XhhRobotPlugin(Star):
                         reason=f"读取帖子异常：{exc}",
                     )
                     result.failed += 1
+                    await self._notify_error(
+                        "自动巡帖读取帖子失败",
+                        exc,
+                        details=f"帖子 ID：{selected.link_id}",
+                    )
                     continue
 
                 content_text = searchable_text(selected, post)
@@ -1098,6 +1116,11 @@ class XhhRobotPlugin(Star):
                         reason=f"模型决策失败：{exc}",
                     )
                     result.failed += 1
+                    await self._notify_error(
+                        "自动巡帖模型决策失败",
+                        exc,
+                        details=f"帖子 ID：{selected.link_id}",
+                    )
                     continue
 
                 result.evaluated += 1
@@ -1213,6 +1236,11 @@ class XhhRobotPlugin(Star):
                         )
                         break
                     result.failed += 1
+                    await self._notify_error(
+                        "自动巡帖评论失败",
+                        exc,
+                        details=f"帖子 ID：{selected.link_id}",
+                    )
                     if exc.auth_required:
                         await self._set_auth_invalid(str(exc))
                         raise
@@ -2126,6 +2154,17 @@ class XhhRobotPlugin(Star):
         except Exception as exc:
             self._last_error = f"提交 AstrBot 标准事件失败：{exc}"
             logger.warning("%s event queue submission failed: %r", PLUGIN_ID, exc)
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(
+                    self._notify_error(
+                        "AstrBot 标准事件提交失败",
+                        exc,
+                        details=f"事件键：{event_key}",
+                    )
+                )
+            except RuntimeError:
+                logger.debug("%s cannot schedule event error notification", PLUGIN_ID)
             return False
         task = asyncio.create_task(
             self._monitor_standard_event(event_key, event, on_timeout),
@@ -2163,6 +2202,11 @@ class XhhRobotPlugin(Star):
                 PLUGIN_ID,
                 event_key,
                 exc,
+            )
+            await self._notify_error(
+                "AstrBot 标准事件监控失败",
+                exc,
+                details=f"事件键：{event_key}",
             )
         finally:
             self._event_tasks.pop(event_key, None)
@@ -2255,6 +2299,11 @@ class XhhRobotPlugin(Star):
                     PLUGIN_ID,
                     source,
                 )
+                await self._notify_error(
+                    "GIF 图片处理失败",
+                    "图片转换器不可用",
+                    details="已跳过该 GIF，文字处理仍会继续。",
+                )
                 continue
             try:
                 converted = await converter(source, max_bytes=max_bytes)
@@ -2264,6 +2313,11 @@ class XhhRobotPlugin(Star):
                     PLUGIN_ID,
                     source,
                     exc,
+                )
+                await self._notify_error(
+                    "GIF 图片处理失败",
+                    exc,
+                    details="已跳过该 GIF，文字处理仍会继续。",
                 )
                 continue
             if converted:
@@ -2363,6 +2417,21 @@ class XhhRobotPlugin(Star):
             len(images),
             exc,
         )
+        if not (
+            isinstance(exc, XhhError)
+            and (exc.delivery_uncertain or exc.auth_required)
+        ):
+            await self._notify_error(
+                "评论自动回复失败",
+                exc,
+                details=(
+                    f"来源：{mention.source}\n"
+                    f"消息 ID：{mention.message_id}\n"
+                    f"帖子 ID：{mention.link_id}\n"
+                    f"评论 ID：{mention.comment_id}\n"
+                    f"用户 ID：{mention.user_id}"
+                ),
+            )
         if isinstance(exc, XhhError):
             if exc.delivery_uncertain:
                 await self._mark_comment_event_uncertain(mention, reason, text, images)
@@ -2430,6 +2499,23 @@ class XhhRobotPlugin(Star):
             len(images),
             exc,
         )
+        if not (
+            isinstance(exc, XhhError)
+            and (
+                exc.action_restricted
+                or exc.delivery_uncertain
+                or exc.auth_required
+            )
+        ):
+            await self._notify_error(
+                "私信自动回复失败",
+                exc,
+                details=(
+                    f"来源：{message.source}\n"
+                    f"消息 ID：{message.message_id}\n"
+                    f"用户 ID：{message.user_id}"
+                ),
+            )
         if isinstance(exc, XhhError):
             if exc.action_restricted:
                 client = getattr(self, "client", None)
@@ -2755,6 +2841,15 @@ class XhhRobotPlugin(Star):
             await self._archive_received_status(mention, "auth_deferred", str(exc))
             await self._set_auth_invalid(str(exc))
             return "auth"
+        await self._notify_error(
+            "读取帖子或准备回复失败",
+            exc,
+            details=(
+                f"消息 ID：{mention.message_id}\n"
+                f"帖子 ID：{mention.link_id}\n"
+                f"评论 ID：{mention.comment_id}"
+            ),
+        )
         if exc.terminal:
             await self.store.mark_skipped(mention.message_id, str(exc))
             await self._archive_received_status(mention, "skipped", str(exc))
@@ -2994,6 +3089,12 @@ class XhhRobotPlugin(Star):
             return
         self._consecutive_errors += 1
         threshold = self._int_cfg("reliability.circuit_breaker_errors", 5, 1, 50)
+        if self._consecutive_errors < threshold:
+            await self._notify_error(
+                "后台轮询失败",
+                exc,
+                details=f"连续失败：{self._consecutive_errors} 次",
+            )
         if self._consecutive_errors >= threshold:
             pause = self._int_cfg(
                 "reliability.circuit_breaker_pause_sec", 600, 30, 86400
@@ -3052,6 +3153,7 @@ class XhhRobotPlugin(Star):
             raise
         except Exception as exc:
             self._last_error = str(exc)
+            await self._notify_error("二维码登录失败", exc)
             return f"小黑盒登录失败：{exc}"
         finally:
             await self.client.end_qr_login()
@@ -3312,6 +3414,57 @@ class XhhRobotPlugin(Star):
         if self._last_error:
             lines.append("最近错误：" + self._last_error[:300])
         return "\n".join(lines)
+
+    async def _notify_error(
+        self,
+        category: str,
+        error: BaseException | str,
+        *,
+        details: str = "",
+    ) -> None:
+        """Optionally send a deduplicated operational error notification."""
+
+        if not self._bool_cfg("notifications.notify_on_error", False):
+            return
+        if not self._str_cfg("notifications.umo", ""):
+            return
+
+        error_type = type(error).__name__ if isinstance(error, BaseException) else "Error"
+        error_text = self._safe_notification_text(error, limit=800)
+        detail_text = self._safe_notification_text(details, limit=800) if details else ""
+        key = f"{category}|{error_type}|{error_text}"
+        lock = getattr(self, "_error_notification_lock", None)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._error_notification_lock = lock
+        now = time.monotonic()
+        async with lock:
+            last_key = str(getattr(self, "_last_error_notification_key", "") or "")
+            last_at = float(getattr(self, "_last_error_notification_at", 0.0) or 0.0)
+            if key == last_key and now - last_at < 60:
+                return
+            self._last_error_notification_key = key
+            self._last_error_notification_at = now
+
+        message = (
+            "小黑盒插件错误通知\n\n"
+            f"类别：{self._safe_notification_text(category, limit=120)}\n"
+            f"错误类型：{error_type}\n"
+            f"错误信息：{error_text}"
+        )
+        if detail_text:
+            message += "\n" + detail_text
+        await self._notify(message)
+
+    @staticmethod
+    def _safe_notification_text(value: Any, *, limit: int) -> str:
+        text = str(value or "").strip() or "未知错误"
+        text = re.sub(
+            r"(?i)(cookie|authorization|token|signature|sign)\s*[:=]\s*[^\s,;]+",
+            r"\1=[已隐藏]",
+            text,
+        )
+        return text[:limit]
 
     async def _notify(self, text: str) -> None:
         umo = self._str_cfg("notifications.umo", "")

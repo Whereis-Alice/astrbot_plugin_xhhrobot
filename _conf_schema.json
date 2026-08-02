@@ -877,6 +877,12 @@
         "description": "回复成功后通知",
         "default": false,
         "hint": "每次小黑盒自动回复成功后，发送对方评论、Bot 回复、消息 ID、帖子 ID、评论 ID 和用户 ID。"
+      },
+      "notify_on_error": {
+        "type": "bool",
+        "description": "发生错误时通知",
+        "default": false,
+        "hint": "开启后，插件遇到后台轮询、自动回复、私信、自动巡帖、图片处理、标准事件或 LLM 工具错误时，向通知会话发送错误类别、类型、信息和相关 ID；通知会话留空时只写后台日志，相同错误 60 秒内只通知一次。"
       }
     }
   },

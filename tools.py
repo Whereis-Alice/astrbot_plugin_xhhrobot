@@ -887,6 +887,7 @@ class XhhToolRuntime:
         except ToolInputError as exc:
             return self._error(str(exc))
         except XhhError as exc:
+            await self._notify_operational_error(action, exc)
             return self._error(
                 str(exc),
                 auth_required=exc.auth_required,
@@ -895,7 +896,29 @@ class XhhToolRuntime:
             )
         except Exception as exc:
             logger.exception("小黑盒 LLM 工具执行失败: action=%s", action)
+            await self._notify_operational_error(action, exc)
             return self._error(f"小黑盒工具执行失败：{type(exc).__name__}")
+
+    async def _notify_operational_error(
+        self,
+        action: str,
+        error: BaseException,
+    ) -> None:
+        notifier = getattr(self.plugin, "_notify_error", None)
+        if not callable(notifier):
+            return
+        try:
+            await notifier(
+                "LLM 工具执行失败",
+                error,
+                details=f"工具：{action}",
+            )
+        except Exception as notify_error:  # noqa: BLE001 - notifications must not break tool results
+            logger.warning(
+                "小黑盒 LLM 工具错误通知失败: action=%s error=%r",
+                action,
+                notify_error,
+            )
 
     async def _execute_write_once(
         self,
