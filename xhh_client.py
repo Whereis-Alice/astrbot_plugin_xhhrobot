@@ -54,6 +54,7 @@ from .rich_content import (
     content_blocks_image_sources,
     content_blocks_plain_text,
     normalize_rich_content_blocks,
+    normalize_plain_text,
     parse_inbound_content_blocks,
     platform_html_for_block,
 )
@@ -1071,9 +1072,9 @@ class XhhClient:
         return response.payload
 
     async def prepare_outgoing_text(self, text: str) -> str:
-        """Keep valid Xiaoheihe emoji tokens and safely downgrade unknown ones."""
+        """Normalize plain text breaks and safely downgrade unknown emojis."""
 
-        value = str(text or "")
+        value = normalize_plain_text(text)
         if not _XHH_EMOJI_TOKEN_RE.search(value):
             return value
         if self._emoji_names is None:
@@ -1639,6 +1640,7 @@ class XhhClient:
                 "使用 content_blocks 发帖时，第一项必须是 text 或 html 内容块。",
                 retryable=False,
             )
+        body = normalize_plain_text(body)
         if body:
             body = await self.prepare_outgoing_text(body)
             blocks.insert(0, {"type": "text", "text": body})
@@ -1689,10 +1691,19 @@ class XhhClient:
             data["hashtags"] = json.dumps(
                 hashtags, ensure_ascii=False, separators=(",", ":")
             )
-        payload = await self._write_json(
-            "/bbs/app/api/link/post",
-            data=data,
-        )
+        try:
+            payload = await self._write_json(
+                "/bbs/app/api/link/post",
+                data=data,
+            )
+        except XhhError as exc:
+            if not self._looks_like_post_topic_false_failure(str(exc)):
+                raise
+            payload = await self._recover_published_post(
+                title=title,
+                body=body or content_blocks_plain_text(blocks),
+                original_error=exc,
+            )
         result = self._result_mapping(payload)
         link_id = payload.get("link_id") or result.get("link_id")
         if not str(link_id or "").strip():
@@ -2028,6 +2039,10 @@ class XhhClient:
         )
         status = self._api_status(response.payload)
         if status not in {"ok", "success"}:
+            if path == "/bbs/app/link/delete" and self._looks_like_deleted_message(
+                response.payload
+            ):
+                return response.payload
             if status:
                 self._raise_for_api_failure(response.payload, endpoint=path)
             raise XhhError(
@@ -2035,6 +2050,82 @@ class XhhClient:
                 retryable=False,
             )
         return response.payload
+
+    async def _recover_published_post(
+        self,
+        *,
+        title: str,
+        body: str,
+        original_error: XhhError,
+    ) -> dict[str, Any]:
+        """Confirm a post created despite a misleading editor response."""
+
+        try:
+            payload = await self.fetch_user_posts(
+                self._current_auth_user_id(),
+                offset=0,
+                limit=20,
+            )
+        except Exception:
+            raise original_error
+
+        expected_title = str(title or "").strip()
+        expected_body = self._plain_text(body)
+        result = self._result_mapping(payload)
+        items = self._first_mapping_list(
+            result.get("links"),
+            result.get("items"),
+            result.get("list"),
+            payload.get("links"),
+            payload.get("items"),
+            payload.get("list"),
+        )
+        for raw in items:
+            link = raw.get("link")
+            link = link if isinstance(link, Mapping) else raw
+            candidate_title = str(link.get("title") or "").strip()
+            if candidate_title != expected_title:
+                continue
+            candidate_content = (
+                link.get("text")
+                or link.get("content")
+                or link.get("description")
+                or link.get("desc")
+                or ""
+            )
+            candidate_body = self._plain_text(
+                content_blocks_plain_text(parse_inbound_content_blocks(candidate_content))
+                or candidate_content
+            )
+            if expected_body and candidate_body != expected_body:
+                continue
+            link_id = str(
+                link.get("linkid") or link.get("link_id") or link.get("id") or ""
+            ).strip()
+            if not link_id:
+                continue
+            logger.warning(
+                "xhhrobot recovered published post after misleading API response: "
+                "link_id=%s title=%r error=%s",
+                link_id,
+                expected_title,
+                original_error,
+            )
+            return {
+                "status": "ok",
+                "msg": "已在当前账号帖子列表确认发布。",
+                "result": {"link_id": link_id, "recovered": True},
+            }
+        raise original_error
+
+    @staticmethod
+    def _looks_like_post_topic_false_failure(value: str) -> bool:
+        return "请添加分区" in str(value or "")
+
+    @staticmethod
+    def _looks_like_deleted_message(payload: Mapping[str, Any]) -> bool:
+        message = str(payload.get("msg") or "").strip().lower()
+        return any(phrase in message for phrase in ("已删除", "已经删除", "already deleted"))
 
     async def validate_auth(self) -> bool:
         await self.fetch_mentions(offset=0, limit=1)

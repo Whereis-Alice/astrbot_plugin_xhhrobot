@@ -5,12 +5,20 @@ import unittest
 from astrbot_plugin_xhhrobot.rich_content import (
     RichContentError,
     content_blocks_plain_text,
+    normalize_plain_text,
     normalize_rich_content_blocks,
     parse_inbound_content_blocks,
 )
 
 
 class RichContentTests(unittest.TestCase):
+    def test_plain_text_converts_common_model_break_tags(self) -> None:
+        self.assertEqual(
+            normalize_plain_text("第一行<br>第二行<br />第三行"),
+            "第一行\n第二行\n第三行",
+        )
+        self.assertEqual(normalize_plain_text("第一行 <tag> 第二行"), "第一行 <tag> 第二行")
+
     def test_normalizes_safe_blocks_without_losing_order(self) -> None:
         blocks = normalize_rich_content_blocks(
             [

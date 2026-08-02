@@ -44,6 +44,11 @@ _BLOCK_TAGS = frozenset(
     {"blockquote", "h1", "h2", "h3", "h4", "li", "ol", "p", "pre", "ul"}
 )
 _OUTBOUND_TYPES = frozenset({"text", "html", "image"})
+_PLAIN_TEXT_BREAK_RE = re.compile(r"<\s*br\s*/?\s*>", re.IGNORECASE)
+_PLAIN_TEXT_BLOCK_RE = re.compile(
+    r"</?\s*(?:p|div)\b[^>]*>",
+    re.IGNORECASE,
+)
 
 
 class _HtmlSanitizer(HTMLParser):
@@ -217,6 +222,20 @@ def html_to_plain_text(value: Any) -> str:
     text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"[^\S\n]+", " ", text)
     text = re.sub(r" *\n *", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def normalize_plain_text(value: Any) -> str:
+    """Convert common model HTML line breaks in a plain text field."""
+
+    text = str(value or "")
+    if not text:
+        return ""
+    text = _PLAIN_TEXT_BREAK_RE.sub("\n", text)
+    text = _PLAIN_TEXT_BLOCK_RE.sub("\n", text)
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"\n[ \t]+", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 

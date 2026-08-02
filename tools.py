@@ -23,6 +23,7 @@ from .rich_content import (
     RichContentError,
     content_blocks_plain_text,
     normalize_rich_content_blocks,
+    normalize_plain_text,
 )
 from .xhh_client import XhhError
 
@@ -1274,6 +1275,7 @@ class XhhToolRuntime:
                 "body",
                 self._int_cfg("tools.max_post_body_chars", 20000, 100, 100000),
             )
+            body = normalize_plain_text(body)
             if not body and not image_urls and not content_blocks:
                 raise ToolInputError("帖子正文、内容块和图片不能同时为空。")
             if (

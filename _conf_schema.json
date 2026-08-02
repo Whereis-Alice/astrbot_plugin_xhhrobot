@@ -151,6 +151,13 @@
         "min": 10,
         "max": 600,
         "hint": "等待 AstrBot 模型生成回复的最长时间。"
+      },
+      "allow_external_search": {
+        "type": "bool",
+        "description": "允许回复时使用外部搜索",
+        "default": true,
+        "hint": "开启后，自动评论、评论回复和私信回复在遇到可能过时或不确定的信息时，可以自主调用当前已启用的联网搜索工具，例如 anysearch_search、anysearch_extract 和 anysearch_batch_search；搜索工具只用于查资料，不会开放发帖、评论、私信等写操作。",
+        "obvious_hint": true
       }
     }
   },

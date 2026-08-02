@@ -468,6 +468,34 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(form["text"], ["回复[cube_吐]"])
         self.assertEqual(form["reply_id"], ["2"])
 
+    async def test_send_reply_converts_model_break_tags_to_real_newlines(self) -> None:
+        client, session = self.make_client(
+            [FakeResponse({"status": "ok", "msg": "done"})]
+        )
+
+        await client.send_reply(
+            text="第一行<br>第二行<p>第三行</p>",
+            link_id=1,
+            reply_id=2,
+            root_id=3,
+        )
+
+        form = parse_qs(session.requests[0][2]["data"], keep_blank_values=True)
+        self.assertEqual(form["text"], ["第一行\n第二行\n第三行"])
+
+    async def test_create_comment_converts_model_break_tags_to_real_newlines(self) -> None:
+        client, session = self.make_client(
+            [FakeResponse({"status": "ok", "result": {"comment_id": 7}})]
+        )
+
+        await client.create_comment(
+            text="第一行<br />第二行<div>第三行</div>",
+            link_id=1,
+        )
+
+        form = parse_qs(session.requests[0][2]["data"], keep_blank_values=True)
+        self.assertEqual(form["text"], ["第一行\n第二行\n第三行"])
+
     async def test_cos_upload_init_uses_web_form_payload(self) -> None:
         client, session = self.make_client(
             [
@@ -742,7 +770,7 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
 
         payload = await client.publish_post(
             title="测试标题",
-            body="第一行 <tag>\n第二行",
+            body="第一行 <tag><br>第二行",
             description="测试摘要",
             topic_ids=["7214", "18745"],
             hashtags=["AstrBot", "测试"],
@@ -793,6 +821,50 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
                 title="被拒绝的帖子",
                 body="测试正文",
             )
+
+    async def test_publish_post_recovers_after_misleading_topic_error(self) -> None:
+        client, session = self.make_client(
+            [
+                FakeResponse({"status": "failed", "msg": "请添加分区"}),
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "links": [
+                                {
+                                    "linkid": 321,
+                                    "title": "已发布标题",
+                                    "text": '[{"type":"text","text":"已发布正文"}]',
+                                }
+                            ]
+                        },
+                    }
+                ),
+            ]
+        )
+
+        payload = await client.publish_post(
+            title="已发布标题",
+            body="已发布正文",
+        )
+
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["result"]["link_id"], "321")
+        self.assertTrue(payload["result"]["recovered"])
+        self.assertEqual(
+            session.requests[1][1],
+            "https://api.xiaoheihe.cn/bbs/web/profile/post/links",
+        )
+
+    async def test_delete_post_treats_already_deleted_as_success(self) -> None:
+        client, _ = self.make_client(
+            [FakeResponse({"status": "failed", "msg": "帖子已经删除"})]
+        )
+
+        payload = await client.delete_post(link_id=321)
+
+        self.assertEqual(payload["status"], "failed")
+        self.assertEqual(payload["msg"], "帖子已经删除")
 
     async def test_publish_post_includes_local_image_dimensions(self) -> None:
         client, session = self.make_client(
@@ -943,6 +1015,19 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(kwargs["headers"]["Accept"], "application/json")
         self.assertEqual(kwargs["headers"]["Cookie"], "user_heybox_id=42")
+
+    async def test_direct_message_converts_model_break_tags_to_real_newlines(self) -> None:
+        client, session = self.make_client(
+            [FakeResponse({"status": "ok", "result": {"msg_id": "message-1"}})]
+        )
+
+        await client.send_direct_message(
+            user_id="99",
+            text="第一行<br>第二行<div>第三行</div>",
+        )
+
+        body = parse_qs(session.requests[0][2]["data"], keep_blank_values=True)
+        self.assertEqual(body["msg"], ["第一行\n第二行\n第三行"])
 
     def test_direct_message_diagnostics_do_not_expose_sensitive_values(self) -> None:
         proxy_url = "socks5://user:password@127.0.0.1:1080"

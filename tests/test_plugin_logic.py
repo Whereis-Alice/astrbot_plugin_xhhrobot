@@ -8,6 +8,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+from astrbot.api import FunctionTool, ToolSet
+
 from astrbot_plugin_xhhrobot.comment_archive import CommentArchive
 from astrbot_plugin_xhhrobot.dm_store import DirectMessageStore
 from astrbot_plugin_xhhrobot.main import CycleResult, XhhRobotPlugin
@@ -465,6 +467,91 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
 
 
 class CommentImageGenerationTests(unittest.IsolatedAsyncioTestCase):
+    def _search_context(self, response_text: str = "已核验回复"):
+        tools = ToolSet(
+            [
+                FunctionTool(
+                    name="anysearch_search",
+                    description="联网搜索网页资料",
+                    parameters={"type": "object", "properties": {}},
+                ),
+                FunctionTool(
+                    name="anysearch_extract",
+                    description="提取网页正文",
+                    parameters={"type": "object", "properties": {}},
+                ),
+                FunctionTool(
+                    name="xhh_publish_post",
+                    description="发布帖子",
+                    parameters={"type": "object", "properties": {}},
+                ),
+                FunctionTool(
+                    name="xhh_send_direct_message",
+                    description="发送私信",
+                    parameters={"type": "object", "properties": {}},
+                ),
+            ]
+        )
+        context = RecordingGenerationContext()
+        context.get_llm_tool_manager = lambda: SimpleNamespace(  # type: ignore[attr-defined]
+            get_full_tool_set=lambda: tools
+        )
+        context.tool_loop_agent = AsyncMock(  # type: ignore[attr-defined]
+            return_value=SimpleNamespace(completion_text=response_text)
+        )
+        return context
+
+    async def test_current_time_metadata_is_added_to_compatibility_prompt(self) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {"ai": {"allow_external_search": True}}
+        plugin.context = SimpleNamespace(persona_manager=None)
+
+        prompt = await plugin._build_system_prompt()
+
+        self.assertRegex(prompt, r"当前日期：\d{4}-\d{2}-\d{2}")
+        self.assertRegex(prompt, r"当前时间：\d{2}:\d{2}:\d{2}")
+        self.assertIn("当前日期时间元数据", prompt)
+        self.assertIn("联网搜索工具", prompt)
+
+    async def test_search_tools_keep_read_only_search_and_remove_write_tools(self) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {"ai": {"allow_external_search": True}}
+        context = self._search_context()
+        plugin.context = context
+
+        result = plugin._external_search_tool_set()
+
+        self.assertIsNotNone(result)
+        self.assertEqual(
+            {tool.name for tool in result.tools},
+            {"anysearch_search", "anysearch_extract"},
+        )
+
+    async def test_optional_search_uses_tool_loop_before_plain_generation(self) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "ai": {"allow_external_search": True, "generation_timeout_sec": 10}
+        }
+        context = self._search_context()
+        plugin.context = context
+
+        response = await plugin._llm_generate_with_optional_search(
+            provider_id="model",
+            prompt="核实这条信息",
+            system_prompt="system",
+            image_urls=None,
+            event=SimpleNamespace(),
+            allow_search=True,
+        )
+
+        self.assertEqual(response.completion_text, "已核验回复")
+        context.tool_loop_agent.assert_awaited_once()
+        self.assertEqual(
+            {tool.name for tool in context.tool_loop_agent.call_args.kwargs["tools"].tools},
+            {"anysearch_search", "anysearch_extract"},
+        )
+        self.assertEqual(context.request, {})
+
     async def test_compatibility_generation_receives_labeled_comment_images(self) -> None:
         plugin = object.__new__(XhhRobotPlugin)
         plugin.config = {
