@@ -698,7 +698,7 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         )
 
         method, url, kwargs = session.requests[1]
-        self.assertEqual(session.requests[0][2]["params"]["app"], "web")
+        self.assertEqual(session.requests[0][2]["params"]["app"], "heybox")
         self.assertEqual(session.requests[0][2]["params"]["_notip"], "true")
         self.assertEqual(method, "POST")
         self.assertEqual(url, "https://api.xiaoheihe.cn/bbs/app/api/link/post")
@@ -718,6 +718,17 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
                 "height": 0,
             },
         )
+
+    async def test_publish_post_reports_rejected_endpoint(self) -> None:
+        client, _ = self.make_client(
+            [FakeResponse({"status": "failed", "msg": "验证参数错误"})]
+        )
+
+        with self.assertRaisesRegex(XhhError, r"验证参数错误.*bbs/app/api/link/post"):
+            await client.publish_post(
+                title="被拒绝的帖子",
+                body="测试正文",
+            )
 
     async def test_publish_post_includes_local_image_dimensions(self) -> None:
         client, session = self.make_client(

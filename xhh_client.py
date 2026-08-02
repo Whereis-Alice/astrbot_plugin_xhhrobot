@@ -2029,7 +2029,7 @@ class XhhClient:
         status = self._api_status(response.payload)
         if status not in {"ok", "success"}:
             if status:
-                self._raise_for_api_failure(response.payload)
+                self._raise_for_api_failure(response.payload, endpoint=path)
             raise XhhError(
                 str(response.payload.get("msg") or "小黑盒写入接口没有返回成功状态。"),
                 retryable=False,
@@ -2094,7 +2094,10 @@ class XhhClient:
             query.update(
                 {
                     "os_type": "web",
-                    "app": "web",
+                    # The web editor uses the heybox app namespace for normal
+                    # community APIs. QR login endpoints intentionally use
+                    # app=web in the separate login request branch above.
+                    "app": "heybox",
                     "client_type": "web",
                     "version": self.version,
                     "web_version": self.web_version,
@@ -2188,7 +2191,7 @@ class XhhClient:
                         retry_after=retry_after,
                     )
                 if not allow_api_failure:
-                    self._raise_for_api_failure(payload)
+                    self._raise_for_api_failure(payload, endpoint=path)
                 return _JsonResponse(payload=payload, cookies=cookies)
         except XhhError:
             raise
@@ -2268,11 +2271,22 @@ class XhhClient:
             message,
         )
 
-    def _raise_for_api_failure(self, payload: Mapping[str, Any]) -> None:
+    def _raise_for_api_failure(
+        self,
+        payload: Mapping[str, Any],
+        *,
+        endpoint: str = "",
+    ) -> None:
         status = self._api_status(payload)
         if not status or status in {"ok", "success"}:
             return
         message = str(payload.get("msg") or "").strip()
+        if endpoint:
+            message = (
+                f"{message}（接口：{endpoint}）"
+                if message
+                else f"接口：{endpoint}"
+            )
         combined = f"{status} {message}".lower()
         if self._looks_like_auth_error(combined):
             raise XhhError(
