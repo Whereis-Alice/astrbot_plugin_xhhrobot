@@ -770,7 +770,7 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
 
         payload = await client.publish_post(
             title="测试标题",
-            body="第一行 <tag><br>第二行",
+            body="第一行 <tag><br>第二行\\n第三行",
             description="测试摘要",
             topic_ids=["7214", "18745"],
             hashtags=["AstrBot", "测试"],
@@ -800,7 +800,10 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(json.loads(form["hashtags"][0]), ["AstrBot", "测试"])
         content = json.loads(form["text"][0])
         self.assertEqual(content[0]["type"], "text")
-        self.assertEqual(content[0]["text"], "第一行 &lt;tag&gt;<br>第二行")
+        self.assertEqual(
+            content[0]["text"],
+            "第一行 &lt;tag&gt;\n第二行\n第三行",
+        )
         self.assertEqual(
             content[1],
             {
