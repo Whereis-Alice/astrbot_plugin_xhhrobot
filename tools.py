@@ -532,7 +532,12 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     },
                     "topic_ids": {
                         "type": "array",
-                        "items": {"type": "string"},
+                        "items": {
+                            "anyOf": [
+                                {"type": "string"},
+                                {"type": "integer"},
+                            ]
+                        },
                         "maxItems": 2,
                         "description": "可选。最多两个话题 ID；传入空数组可清空。",
                     },
@@ -594,9 +599,14 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     },
                     "topic_ids": {
                         "type": "array",
-                        "items": {"type": "string"},
+                        "items": {
+                            "anyOf": [
+                                {"type": "string"},
+                                {"type": "integer"},
+                            ]
+                        },
                         "maxItems": 2,
-                        "description": "最多两个话题 ID。",
+                        "description": "最多两个话题 ID，可填写数字或字符串。",
                     },
                     "hashtags": {
                         "type": "array",

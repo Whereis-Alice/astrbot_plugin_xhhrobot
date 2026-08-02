@@ -7,6 +7,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import jsonschema
+
 from astrbot_plugin_xhhrobot.draft_store import DraftStore
 from astrbot_plugin_xhhrobot.main import XhhRobotPlugin
 from astrbot_plugin_xhhrobot.tools import WRITE_ACTIONS, XhhToolRuntime
@@ -279,6 +281,23 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
             self.assertNotIn("confirm", tool.parameters["properties"])
             self.assertNotIn("confirm", tool.parameters["required"])
             self.assertIn("不要求额外确认", tool.description)
+
+    async def test_publish_post_schema_accepts_numeric_topic_ids(self) -> None:
+        runtime = XhhToolRuntime(
+            FakePlugin(self.config(require_explicit_confirmation=False))
+        )
+        tool = next(
+            tool for tool in runtime.build_tools() if tool.name == "xhh_publish_post"
+        )
+
+        jsonschema.validate(
+            {
+                "title": "标题",
+                "body": "正文",
+                "topic_ids": [7214],
+            },
+            tool.parameters,
+        )
 
     async def test_write_can_run_directly_when_confirmation_is_disabled(self) -> None:
         plugin = FakePlugin(self.config(require_explicit_confirmation=False))

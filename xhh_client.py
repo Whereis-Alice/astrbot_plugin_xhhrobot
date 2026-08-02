@@ -63,6 +63,8 @@ COS_UPLOAD_INFO_PATH = "/bbs/app/api/qcloud/cos/upload/info/v2"
 COS_UPLOAD_TOKEN_PATH = "/bbs/app/api/qcloud/cos/upload/token/v2"
 COS_UPLOAD_CALLBACK_PATH = "/bbs/app/api/qcloud/cos/upload/callback/v2"
 DEFAULT_COS_REGION = "ap-shanghai"
+POST_LINK_TAG_DEFAULT_TOPIC = 28
+POST_LINK_TAG_NORMAL = 27
 DIRECT_MESSAGE_API_PARAM_KEYS = frozenset(
     {
         "os_type",
@@ -1601,6 +1603,7 @@ class XhhClient:
                 retryable=False,
             )
         if body:
+            body = await self.prepare_outgoing_text(body)
             blocks.insert(0, {"type": "text", "text": body})
 
         content: list[dict[str, str]] = []
@@ -1615,7 +1618,7 @@ class XhhClient:
                 continue
             try:
                 content.append(
-                    {"type": "html", "text": platform_html_for_block(block)}
+                    {"type": "text", "text": platform_html_for_block(block)}
                 )
             except RichContentError as exc:
                 raise XhhError(str(exc), retryable=False) from exc
@@ -1629,21 +1632,29 @@ class XhhClient:
         if not content:
             raise XhhError("帖子正文和图片不能同时为空。", retryable=False)
 
-        content_text = content_blocks_plain_text(blocks)
+        content_text = body or content_blocks_plain_text(blocks)
+        data: dict[str, str] = {
+            "title": title,
+            "desc": (description or content_text or title)[:100],
+            "post_type": "1",
+            "text": json.dumps(content, ensure_ascii=False, separators=(",", ":")),
+        }
+        if topic_ids:
+            data["topic_ids"] = ",".join(topic_ids)
+            data["link_tag"] = str(
+                POST_LINK_TAG_DEFAULT_TOPIC
+                if data["topic_ids"] == "58144"
+                else POST_LINK_TAG_NORMAL
+            )
+        else:
+            data["link_tag"] = str(POST_LINK_TAG_NORMAL)
+        if hashtags:
+            data["hashtags"] = json.dumps(
+                hashtags, ensure_ascii=False, separators=(",", ":")
+            )
         payload = await self._write_json(
             "/bbs/app/api/link/post",
-            data={
-                "title": title,
-                "desc": (description or content_text or title)[:100],
-                "post_type": "1",
-                "words_count": str(len(content_text)),
-                "topic_ids": ",".join(topic_ids or []),
-                "hashtags": json.dumps(
-                    hashtags or [], ensure_ascii=False, separators=(",", ":")
-                ),
-                "text": json.dumps(content, ensure_ascii=False, separators=(",", ":")),
-                "link_tag": "11",
-            },
+            data=data,
         )
         result = self._result_mapping(payload)
         link_id = payload.get("link_id") or result.get("link_id")

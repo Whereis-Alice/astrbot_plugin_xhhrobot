@@ -777,9 +777,9 @@
       },
       "allow_system_temp": {
         "type": "bool",
-        "description": "允许系统临时目录",
+        "description": "允许系统临时目录与 AstrBot 临时目录",
         "default": true,
-        "hint": "允许发送 AstrBot 或图片插件生成在系统临时目录中的图片。插件自己的数据目录始终允许。"
+        "hint": "允许发送 AstrBot 或图片插件生成在系统临时目录、AstrBot data/temp 目录中的图片。插件自己的数据目录始终允许。"
       },
       "allowed_local_roots": {
         "type": "list",

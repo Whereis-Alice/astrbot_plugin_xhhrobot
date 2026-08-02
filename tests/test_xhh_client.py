@@ -702,14 +702,29 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(url, "https://api.xiaoheihe.cn/bbs/app/api/link/post")
         self.assertEqual(kwargs["data"]["post_type"], "1")
         self.assertEqual(kwargs["data"]["topic_ids"], "7214,18745")
+        self.assertEqual(kwargs["data"]["link_tag"], "27")
         self.assertEqual(json.loads(kwargs["data"]["hashtags"]), ["AstrBot", "测试"])
         content = json.loads(kwargs["data"]["text"])
-        self.assertEqual(content[0]["type"], "html")
+        self.assertEqual(content[0]["type"], "text")
         self.assertEqual(content[0]["text"], "第一行 &lt;tag&gt;<br>第二行")
         self.assertEqual(
             content[1],
             {"type": "img", "url": "https://cdn.xiaoheihe.cn/copied.jpg"},
         )
+
+    async def test_publish_post_uses_default_topic_link_tag(self) -> None:
+        client, session = self.make_client(
+            [FakeResponse({"status": "ok", "result": {"link_id": 323}})]
+        )
+
+        await client.publish_post(
+            title="default topic",
+            body="post body",
+            topic_ids=["58144"],
+        )
+
+        data = session.requests[0][2]["data"]
+        self.assertEqual(data["link_tag"], "28")
 
     async def test_publish_post_preserves_rich_block_order(self) -> None:
         client, session = self.make_client(
@@ -738,12 +753,11 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             content,
             [
-                {"type": "html", "text": "第一段"},
-                {"type": "html", "text": "<p><strong>重点</strong></p>"},
+                {"type": "text", "text": "第一段"},
+                {"type": "text", "text": "<p><strong>重点</strong></p>"},
                 {"type": "img", "url": "https://cdn.xiaoheihe.cn/rich.jpg"},
             ],
         )
-        self.assertEqual(session.requests[1][2]["data"]["words_count"], "6")
 
     async def test_search_profile_and_sub_comments_use_expected_parameters(
         self,

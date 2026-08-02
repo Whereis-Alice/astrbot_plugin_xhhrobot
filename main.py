@@ -3442,6 +3442,9 @@ class XhhRobotPlugin(Star):
         candidates: list[Path] = [self.data_dir]
         if self._bool_cfg("media.allow_system_temp", True):
             candidates.append(Path(tempfile.gettempdir()))
+            # AstrBot generated media is stored beside plugin_data, not in
+            # Python's system temp directory.
+            candidates.append(self.data_dir.parent.parent / "temp")
         candidates.extend(
             Path(value).expanduser()
             for value in self._string_list_cfg("media.allowed_local_roots")

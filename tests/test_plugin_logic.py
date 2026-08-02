@@ -119,6 +119,22 @@ class RecordingGenerationContext:
 
 
 class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
+    async def test_allowed_roots_include_astrbot_temp_directory(self) -> None:
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {"media": {"allow_system_temp": True}}
+        plugin.data_dir = (
+            Path(temp_dir.name)
+            / "data"
+            / "plugin_data"
+            / "astrbot_plugin_xhhrobot"
+        )
+
+        roots = plugin._allowed_local_upload_roots()
+
+        self.assertIn(plugin.data_dir.parent.parent / "temp", roots)
+
     async def make_plugin(
         self, config: dict, pages: list[list[Mention]]
     ) -> XhhRobotPlugin:
