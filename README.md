@@ -299,7 +299,7 @@ WebUI 会在页面内绘制二维码，不需要浏览器直接加载小黑盒�
 确认执行小黑盒操作：在帖子 123456 下评论“写得很清楚，谢谢分享”。
 ```
 
-不需要逐次确认时，可以关闭 `tools.require_explicit_confirmation` 并重载插件。关闭后，用户明确要求执行写操作时模型可以直接调用工具，但管理员权限、允许列表、冷却和重复写入保护仍然生效。
+不需要逐次确认时，可以关闭 `tools.require_explicit_confirmation`。该开关在每次工具执行时读取，保存后无需重载插件；关闭后，用户明确要求执行写操作时模型可以直接调用工具，但管理员权限、允许列表、冷却和重复写入保护仍然生效。
 
 | 配置项 | 默认值 | 作用 |
 | --- | --- | --- |
@@ -307,7 +307,7 @@ WebUI 会在页面内绘制二维码，不需要浏览器直接加载小黑盒�
 | `tools.enable_draft_tools` | `false` | 不注册插件本地草稿工具。 |
 | `tools.write_admin_only` | `true` | 仅 AstrBot 管理员可执行写操作。 |
 | `tools.private_tools_admin_only` | `true` | 仅 AstrBot 管理员可读取账号私密内容。 |
-| `tools.require_explicit_confirmation` | `true` | 要求工具参数和用户当前原始消息同时满足确认条件。 |
+| `tools.require_explicit_confirmation` | `true` | 要求用户当前原始消息包含配置的确认词；关闭后直接执行明确请求。 |
 | `tools.duplicate_guard_sec` | `120` | 阻止同一消息和相同参数被短期重复执行。 |
 | `tools.write_cooldown_sec` | `3` | 限制连续写操作频率。 |
 
@@ -432,7 +432,7 @@ curl --proxy 'socks5h://用户名:密码@主机:端口' https://api.ipify.org
 | `reliability` | HTTP 超时、失败重试、熔断和持久化记录上限。 |
 | `connection` | 可选 SOCKS5 代理、接口地址和客户端版本参数。 |
 
-影响工具注册或 schema 的配置需要重载插件，包括 `tools.enabled`、`tools.enable_write_tools`、`tools.enable_draft_tools` 和 `tools.require_explicit_confirmation`。修改登录、代理、归档或 WebUI 配置后也建议重载。
+影响工具注册的配置需要重载插件，包括 `tools.enabled`、`tools.enable_write_tools` 和 `tools.enable_draft_tools`。`tools.require_explicit_confirmation` 在每次执行时动态读取，不需要重载。修改登录、代理、归档或 WebUI 配置后也建议重载。
 
 ## 数据与隐私
 

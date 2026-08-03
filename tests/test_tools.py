@@ -256,7 +256,7 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(remote_drafts["data"]["drafts"][0]["link_id"], "99")
         self.assertEqual(plugin.client.remote_drafts_calls, 1)
 
-    async def test_build_tools_adapts_confirmation_schema(self) -> None:
+    async def test_build_tools_keep_confirmation_schema_stable(self) -> None:
         required_runtime = XhhToolRuntime(FakePlugin(self.config()))
         required_tools = [
             tool
@@ -265,8 +265,9 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         ]
         self.assertEqual(len(required_tools), 7)
         for tool in required_tools:
-            self.assertIn("confirm", tool.parameters["properties"])
-            self.assertIn("confirm", tool.parameters["required"])
+            self.assertNotIn("confirm", tool.parameters["properties"])
+            self.assertNotIn("confirm", tool.parameters.get("required", []))
+            self.assertIn("用户明确要求执行时直接调用", tool.description)
 
         direct_runtime = XhhToolRuntime(
             FakePlugin(self.config(require_explicit_confirmation=False))
@@ -279,8 +280,54 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(direct_tools), 7)
         for tool in direct_tools:
             self.assertNotIn("confirm", tool.parameters["properties"])
-            self.assertNotIn("confirm", tool.parameters["required"])
-            self.assertIn("不要求额外确认", tool.description)
+            self.assertNotIn("confirm", tool.parameters.get("required", []))
+            self.assertEqual(
+                tool.description,
+                next(
+                    required.description
+                    for required in required_tools
+                    if required.action == tool.action
+                ),
+            )
+
+    async def test_confirmation_switch_is_read_after_tools_are_built(self) -> None:
+        config = self.config()
+        plugin = FakePlugin(config)
+        runtime = XhhToolRuntime(plugin)
+        runtime.build_tools()
+        config["tools"]["require_explicit_confirmation"] = False
+
+        result = json.loads(
+            await runtime.execute(
+                "publish_post",
+                FakeEvent(admin=True, message="直接发布这篇帖子"),
+                {"title": "标题", "body": "正文"},
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(len(plugin.client.published), 1)
+
+    async def test_enabling_confirmation_after_tools_are_built_blocks_write(
+        self,
+    ) -> None:
+        config = self.config(require_explicit_confirmation=False)
+        plugin = FakePlugin(config)
+        runtime = XhhToolRuntime(plugin)
+        runtime.build_tools()
+        config["tools"]["require_explicit_confirmation"] = True
+
+        result = json.loads(
+            await runtime.execute(
+                "publish_post",
+                FakeEvent(admin=True, message="直接发布这篇帖子"),
+                {"title": "标题", "body": "正文"},
+            )
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertIn("写操作尚未确认", result["error"])
+        self.assertEqual(plugin.client.published, [])
 
     async def test_publish_post_schema_accepts_numeric_topic_ids(self) -> None:
         runtime = XhhToolRuntime(
@@ -382,7 +429,7 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
             await runtime.execute(
                 "publish_post",
                 event,
-                {"title": "标题", "body": "正文", "confirm": True},
+                {"title": "标题", "body": "正文"},
             )
         )
 
@@ -404,7 +451,6 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
                     "body": "正文",
                     "topic_ids": ["7214"],
                     "hashtags": ["AstrBot"],
-                    "confirm": True,
                 },
             )
         )

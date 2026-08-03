@@ -22,8 +22,8 @@ from .media import local_path_from_source
 from .rich_content import (
     RichContentError,
     content_blocks_plain_text,
-    normalize_rich_content_blocks,
     normalize_plain_text,
+    normalize_rich_content_blocks,
 )
 from .xhh_client import XhhError
 
@@ -93,40 +93,20 @@ def _object_schema(
     return schema
 
 
-def _confirm_property() -> dict[str, Any]:
-    return {
-        "type": "boolean",
-        "description": (
-            "仅当用户当前这条原始消息明确包含插件配置的确认词时设为 true；"
-            "模型不得自行代替用户确认。"
-        ),
-        "default": False,
-    }
-
-
-def _write_description(description: str, *, confirmation_required: bool) -> str:
-    base = description + " 这是会改变小黑盒账号或公开内容的写操作。"
-    if confirmation_required:
-        return (
-            base
-            + "调用前先向用户复述目标与内容；只有用户当前消息明确给出配置中的确认词后，"
-            "才以 confirm=true 调用。"
-        )
-    return base + "当前配置不要求额外确认；用户明确要求执行时可直接调用。"
+def _write_description(description: str) -> str:
+    return (
+        description
+        + " 这是会改变小黑盒账号或公开内容的写操作。"
+        "用户明确要求执行时直接调用，不要自行增加确认轮次；"
+        "如果当前配置要求逐次确认但用户原始消息缺少确认词，工具会返回提示。"
+    )
 
 
 def _write_schema(
     properties: dict[str, Any],
     required: tuple[str, ...],
-    *,
-    confirmation_required: bool,
 ) -> dict[str, Any]:
-    if not confirmation_required:
-        return _object_schema(properties, required)
-    return _object_schema(
-        {**properties, "confirm": _confirm_property()},
-        (*required, "confirm"),
-    )
+    return _object_schema(properties, required)
 
 
 def _content_blocks_schema() -> dict[str, Any]:
@@ -165,7 +145,7 @@ def _content_blocks_schema() -> dict[str, Any]:
     }
 
 
-def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
+def tool_specs() -> tuple[ToolSpec, ...]:
     pagination = {
         "offset": {
             "type": "number",
@@ -511,7 +491,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             _write_description(
                 "保存或更新一篇本地发帖草稿，不会发布到小黑盒。"
                 "未提供 draft_id 时创建新草稿；提供 draft_id 时仅更新这次给出的字段。",
-                confirmation_required=confirmation_required,
             ),
             _write_schema(
                 {
@@ -559,7 +538,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     "content_blocks": _content_blocks_schema(),
                 },
                 (),
-                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
@@ -567,7 +545,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             "delete_draft",
             _write_description(
                 "删除一篇本地草稿。删除后不可恢复，也不会影响已发布的小黑盒帖子。",
-                confirmation_required=confirmation_required,
             ),
             _write_schema(
                 {
@@ -577,7 +554,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     }
                 },
                 ("draft_id",),
-                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
@@ -585,7 +561,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             "publish_post",
             _write_description(
                 "发布一篇小黑盒普通图文帖。先用 xhh_get_topics 取得最多两个 topic_id。",
-                confirmation_required=confirmation_required,
             ),
             _write_schema(
                 {
@@ -626,7 +601,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     "content_blocks": _content_blocks_schema(),
                 },
                 ("title",),
-                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
@@ -634,7 +608,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             "create_comment",
             _write_description(
                 "评论帖子，或通过 root_id/reply_id 回复指定评论。小黑盒表情可使用已确认有效的完整标记，例如 [cube_喜欢]。",
-                confirmation_required=confirmation_required,
             ),
             _write_schema(
                 {
@@ -661,7 +634,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     },
                 },
                 ("link_id",),
-                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
@@ -669,7 +641,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             "set_favorite",
             _write_description(
                 "收藏或取消收藏指定帖子。收藏前可读取收藏夹取得 folder_id。",
-                confirmation_required=confirmation_required,
             ),
             _write_schema(
                 {
@@ -681,7 +652,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     "folder_id": {"type": "string", "description": "可选收藏夹 ID。"},
                 },
                 ("link_id", "favorite"),
-                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
@@ -689,7 +659,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             "set_like",
             _write_description(
                 "点赞或取消点赞一个帖子或评论。",
-                confirmation_required=confirmation_required,
             ),
             _write_schema(
                 {
@@ -705,7 +674,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     },
                 },
                 ("target_type", "target_id", "liked"),
-                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
@@ -713,7 +681,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             "set_follow",
             _write_description(
                 "关注或取消关注一个小黑盒用户。",
-                confirmation_required=confirmation_required,
             ),
             _write_schema(
                 {
@@ -728,7 +695,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     },
                 },
                 ("user_id", "followed"),
-                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
@@ -736,7 +702,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             "delete_post",
             _write_description(
                 "删除当前登录账号自己发布的帖子。删除不可撤销。",
-                confirmation_required=confirmation_required,
             ),
             _write_schema(
                 {
@@ -746,7 +711,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     },
                 },
                 ("link_id",),
-                confirmation_required=confirmation_required,
             ),
         ),
         ToolSpec(
@@ -754,7 +718,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
             "send_direct_message",
             _write_description(
                 "向指定小黑盒用户发送私信文本和图片消息链。需要表情时使用已确认有效的完整小黑盒标记，如 [cube_喜欢]。",
-                confirmation_required=confirmation_required,
             ),
             _write_schema(
                 {
@@ -780,7 +743,6 @@ def tool_specs(*, confirmation_required: bool = True) -> tuple[ToolSpec, ...]:
                     },
                 },
                 ("user_id",),
-                confirmation_required=confirmation_required,
             ),
         ),
     )
@@ -811,10 +773,7 @@ class XhhToolRuntime:
     def build_tools(self) -> list[FunctionTool]:
         write_enabled = self._bool_cfg("tools.enable_write_tools", False)
         draft_enabled = self._bool_cfg("tools.enable_draft_tools", False)
-        confirmation_required = self._bool_cfg(
-            "tools.require_explicit_confirmation", True
-        )
-        specs = tool_specs(confirmation_required=confirmation_required)
+        specs = tool_specs()
         return [
             XhhLlmTool(
                 name=spec.name,
@@ -853,7 +812,7 @@ class XhhToolRuntime:
             denied = self._write_permission_error(event, is_admin)
             if denied:
                 return self._error(denied)
-            confirmation_error = await self._confirmation_error(event, kwargs)
+            confirmation_error = await self._confirmation_error(event)
             if confirmation_error:
                 return self._error(confirmation_error)
         elif is_private:
@@ -1440,11 +1399,9 @@ class XhhToolRuntime:
             return "当前发送者或会话不在小黑盒工具允许列表中。"
         return ""
 
-    async def _confirmation_error(self, event: Any, kwargs: Mapping[str, Any]) -> str:
+    async def _confirmation_error(self, event: Any) -> str:
         if not self._bool_cfg("tools.require_explicit_confirmation", True):
             return ""
-        if not self._as_bool(kwargs.get("confirm"), False):
-            return "写操作尚未确认：confirm 必须为 true，且确认必须来自用户当前消息。"
         message = (await self._event_message(event)).casefold()
         keywords = self._confirmation_keywords()
         if not message or not any(
@@ -1453,7 +1410,7 @@ class XhhToolRuntime:
             return (
                 "写操作尚未确认：请让用户在新的消息中明确发送确认词“"
                 + keywords[0]
-                + "”，模型不能代替用户补充确认。"
+                + "”。确认只校验用户当前原始消息，模型不能代替用户补充。"
             )
         return ""
 
