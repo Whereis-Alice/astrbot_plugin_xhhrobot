@@ -85,6 +85,36 @@ class MentionParsingTests(unittest.TestCase):
             ),
         )
 
+    def test_comment_image_aliases_and_delimited_urls_are_extracted(self) -> None:
+        mention = Mention.from_mapping(
+            {
+                "message_id": 2,
+                "comment_a_id": 3,
+                "linkid": 4,
+                "userid_a": 5,
+                "comment_a": {
+                    "img": "https://cdn.example/a.jpg;https://cdn.example/b.jpg"
+                },
+                "comment_b": {
+                    "comment_b_images": [
+                        {"url": "https://cdn.example/replied.jpg"}
+                    ]
+                },
+            }
+        )
+
+        self.assertEqual(
+            mention.image_urls,
+            (
+                "https://cdn.example/a.jpg",
+                "https://cdn.example/b.jpg",
+            ),
+        )
+        self.assertEqual(
+            mention.replied_image_urls,
+            ("https://cdn.example/replied.jpg",),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

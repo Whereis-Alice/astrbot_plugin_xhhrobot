@@ -11,6 +11,7 @@ from PIL import Image as PillowImage
 
 from astrbot_plugin_xhhrobot.media import (
     ImagePayload,
+    extract_image_urls,
     gif_to_png_payload,
     image_payload_to_data_url,
     load_image_payload,
@@ -78,6 +79,21 @@ class MediaTests(unittest.IsolatedAsyncioTestCase):
     def test_private_network_image_url_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "私有"):
             normalize_http_image_url("http://127.0.0.1/image.png")
+
+    def test_image_url_lists_and_nested_img_fields_are_supported(self) -> None:
+        self.assertEqual(
+            extract_image_urls(
+                {
+                    "comment_a": {
+                        "img": "https://cdn.example/a.jpg;https://cdn.example/b.jpg"
+                    }
+                }
+            ),
+            [
+                "https://cdn.example/a.jpg",
+                "https://cdn.example/b.jpg",
+            ],
+        )
 
     def test_gif_first_frame_is_converted_to_png(self) -> None:
         first = PillowImage.new("RGBA", (2, 2), (255, 0, 0, 255))

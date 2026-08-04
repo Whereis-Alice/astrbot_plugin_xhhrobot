@@ -9,6 +9,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from astrbot.api import FunctionTool, ToolSet
+from astrbot.api.message_components import Image
 
 from astrbot_plugin_xhhrobot.comment_archive import CommentArchive
 from astrbot_plugin_xhhrobot.dm_store import DirectMessageStore
@@ -464,6 +465,132 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.queued, 1)
         self.assertEqual(snapshot["last_message_id"], 0)
         self.assertEqual(snapshot["last_comment_message_id"], 12)
+
+    async def test_pending_batch_waits_for_standard_event_capacity(self) -> None:
+        backend = MemoryBackend()
+        store = StateStore(load_value=backend.load, save_value=backend.save)
+        await store.initialize()
+        mentions = [self.mention(index, 1) for index in range(1, 6)]
+        await store.ingest(newest_message_id=5, queued=mentions, ignored=[])
+
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "polling": {"max_replies_per_cycle": 5},
+            "event_bridge": {
+                "enabled": True,
+                "max_in_flight": 2,
+                "event_timeout_sec": 30,
+            },
+        }
+        plugin.store = store
+        plugin._event_tasks = {}
+        plugin._stop_event = asyncio.Event()
+        release = asyncio.Event()
+        dispatched: list[int] = []
+
+        async def hold_until_released() -> None:
+            await release.wait()
+
+        async def dispatch(mention: Mention) -> str:
+            dispatched.append(mention.message_id)
+            task = asyncio.create_task(hold_until_released())
+            plugin._event_tasks[f"comment:{mention.message_id}"] = task
+            if len(dispatched) == 2:
+                asyncio.get_running_loop().call_later(0.01, release.set)
+            return "dispatched"
+
+        plugin._dispatch_mention_event = dispatch  # type: ignore[method-assign]
+        wait_calls = 0
+        original_wait = plugin._wait_for_event_capacity
+
+        async def wait_for_capacity() -> bool:
+            nonlocal wait_calls
+            wait_calls += 1
+            return await original_wait()
+
+        plugin._wait_for_event_capacity = wait_for_capacity  # type: ignore[method-assign]
+
+        result = CycleResult()
+        await plugin._process_pending(result)
+
+        self.assertEqual(dispatched, [1, 2, 3, 4, 5])
+        self.assertEqual(result.dispatched, 5)
+        self.assertGreaterEqual(wait_calls, 1)
+        release.set()
+        await asyncio.gather(*plugin._event_tasks.values(), return_exceptions=True)
+
+    async def test_standard_comment_event_includes_prepared_comment_images(self) -> None:
+        backend = MemoryBackend()
+        store = StateStore(load_value=backend.load, save_value=backend.save)
+        await store.initialize()
+        mention = Mention(
+            message_id=31,
+            comment_id=131,
+            root_comment_id=131,
+            link_id=531,
+            user_id=1,
+            comment_text="带图评论",
+            source="own_post_comment",
+            image_urls=("https://cdn.example/comment.jpg",),
+            replied_image_urls=("https://cdn.example/quoted.jpg",),
+        )
+        await store.ingest(
+            newest_message_id=31,
+            queued=[mention],
+            ignored=[],
+            source="own_post_comment",
+        )
+
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "ai": {
+                "include_post_context": True,
+                "include_post_images": False,
+                "max_context_images": 8,
+            },
+            "event_bridge": {"enabled": True, "max_in_flight": 2},
+            "filters": {"allow_all_users": True},
+            "media": {"max_outgoing_images": 4},
+        }
+        plugin.store = store
+        plugin.auth = AuthInfo(cookie="cookie=value", heybox_id="999")
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        plugin.data_dir = Path(temp_dir.name)
+        plugin.client = SimpleNamespace(
+            fetch_post_context=AsyncMock(
+                return_value=PostContext(title="帖子", author_id="999")
+            )
+        )
+        plugin._event_tasks = {}
+        plugin._stop_event = asyncio.Event()
+        plugin._archive_received_status = AsyncMock()
+        captured: dict[str, object] = {}
+
+        def queue_event(event_key: str, event: object, on_timeout: object) -> bool:
+            del on_timeout
+            captured[event_key] = event
+            return True
+
+        plugin._queue_standard_event = queue_event  # type: ignore[method-assign]
+
+        outcome = await plugin._dispatch_mention_event(mention)
+
+        self.assertEqual(outcome, "dispatched")
+        event = captured["comment:531:131"]
+        message_obj = event.message_obj  # type: ignore[union-attr]
+        image_urls = [
+            str(item.url or item.file or item.path or "")
+            for item in message_obj.message
+            if isinstance(item, Image)
+        ]
+        self.assertEqual(
+            image_urls,
+            [
+                "https://cdn.example/comment.jpg",
+                "https://cdn.example/quoted.jpg",
+            ],
+        )
 
 
 class CommentImageGenerationTests(unittest.IsolatedAsyncioTestCase):

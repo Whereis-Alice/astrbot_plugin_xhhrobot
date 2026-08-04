@@ -1860,10 +1860,26 @@ class XhhRobotPlugin(Star):
     async def _process_pending(self, result: CycleResult) -> None:
         limit = self._int_cfg("polling.max_replies_per_cycle", 3, 1, 20)
         mentions = await self.store.due_items(limit=limit)
+        bridge_enabled = self._event_bridge_enabled()
+        capacity_waited = False
+        deferred_count = 0
         for index, mention in enumerate(mentions):
+            if bridge_enabled and self._event_capacity() <= 0:
+                capacity_waited = True
+                if not await self._wait_for_event_capacity():
+                    deferred_count += len(mentions) - index
+                    logger.warning(
+                        "%s comment dispatch cycle paused at the standard-event "
+                        "concurrency limit: deferred=%d in_flight=%d/%d",
+                        PLUGIN_ID,
+                        deferred_count,
+                        self._event_in_flight_count(),
+                        self._event_max_in_flight(),
+                    )
+                    break
             outcome = (
                 await self._dispatch_mention_event(mention)
-                if self._event_bridge_enabled()
+                if bridge_enabled
                 else await self._process_mention(mention)
             )
             if outcome == "replied":
@@ -1879,14 +1895,73 @@ class XhhRobotPlugin(Star):
             elif outcome == "auth":
                 result.retried += 1
                 break
+            elif outcome == "deferred":
+                deferred_count += 1
 
             if outcome == "replied" and index < len(mentions) - 1:
                 await self._wait_or_stop(
                     self._int_cfg("polling.reply_interval_sec", 30, 5, 3600)
                 )
+        if capacity_waited:
+            logger.info(
+                "%s comment dispatch cycle continued after standard-event "
+                "capacity became available: selected=%d dispatched=%d deferred=%d",
+                PLUGIN_ID,
+                len(mentions),
+                result.dispatched,
+                deferred_count,
+            )
+
+    async def _wait_for_event_capacity(self) -> bool:
+        """Wait for one standard event to finish before taking another item.
+
+        ``polling.max_replies_per_cycle`` is a per-cycle work limit, while
+        ``event_bridge.max_in_flight`` protects the model and platform from
+        concurrent work.  Waiting here lets a cycle process its configured
+        batch without weakening that pressure limit.
+        """
+
+        if self._event_capacity() > 0:
+            return True
+        tasks = tuple(
+            task
+            for task in getattr(self, "_event_tasks", {}).values()
+            if not task.done()
+        )
+        if not tasks:
+            return self._event_capacity() > 0
+
+        maximum = self._event_max_in_flight()
+        timeout = self._int_cfg("event_bridge.event_timeout_sec", 300, 30, 1800)
+        logger.info(
+            "%s waiting for a standard-event slot: in_flight=%d/%d "
+            "wait_timeout=%ss",
+            PLUGIN_ID,
+            self._event_in_flight_count(),
+            maximum,
+            timeout,
+        )
+        done, _ = await asyncio.wait(
+            tasks,
+            timeout=float(timeout) + 1.0,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if done and self._event_capacity() > 0:
+            return True
+        return self._event_capacity() > 0
 
     async def _dispatch_mention_event(self, mention: Mention) -> str:
         if self._event_capacity() <= 0:
+            logger.info(
+                "%s deferred comment event because standard-event capacity is full: "
+                "message_id=%s link_id=%s comment_id=%s in_flight=%d/%d",
+                PLUGIN_ID,
+                mention.message_id,
+                mention.link_id,
+                mention.comment_id,
+                self._event_in_flight_count(),
+                self._event_max_in_flight(),
+            )
             return "deferred"
         eligibility_error = self._ineligible_reason(mention)
         if eligibility_error:
@@ -1944,6 +2019,7 @@ class XhhRobotPlugin(Star):
             sender_name=mention.user_name or str(mention.user_id),
             message_text=message_text,
             image_urls=(),
+            image_groups=image_groups,
             link_id=mention.link_id,
             link_title=post.title or mention.link_title,
             timestamp=mention.message_time or int(time.time()),
@@ -2279,6 +2355,9 @@ class XhhRobotPlugin(Star):
             self._event_tasks.pop(event_key, None)
 
     def _event_capacity(self) -> int:
+        return max(0, self._event_max_in_flight() - self._event_in_flight_count())
+
+    def _event_in_flight_count(self) -> int:
         tasks = getattr(self, "_event_tasks", None)
         if tasks is None:
             self._event_tasks = {}
@@ -2286,8 +2365,10 @@ class XhhRobotPlugin(Star):
         for key, task in list(tasks.items()):
             if task.done():
                 tasks.pop(key, None)
-        maximum = self._int_cfg("event_bridge.max_in_flight", 2, 1, 20)
-        return max(0, maximum - len(tasks))
+        return len(tasks)
+
+    def _event_max_in_flight(self) -> int:
+        return self._int_cfg("event_bridge.max_in_flight", 2, 1, 20)
 
     def _event_bridge_enabled(self) -> bool:
         return self._bool_cfg("event_bridge.enabled", True)

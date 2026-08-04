@@ -225,9 +225,16 @@ class Mention:
             image_urls=tuple(
                 extract_image_urls(
                     [
+                        value.get("img"),
                         value.get("imgs"),
                         value.get("images"),
+                        value.get("image_list"),
+                        value.get("img_list"),
+                        value.get("comment_imgs"),
                         value.get("comment_a_imgs"),
+                        value.get("comment_a_images"),
+                        value.get("comment_a_image"),
+                        value.get("comment_image"),
                         value.get("comment_images"),
                         value.get("comment_a"),
                         value.get("comment"),
@@ -240,8 +247,12 @@ class Mention:
             replied_image_urls=tuple(
                 extract_image_urls(
                     [
+                        value.get("comment_b_img"),
                         value.get("comment_b_imgs"),
+                        value.get("comment_b_images"),
                         value.get("reply_imgs"),
+                        value.get("reply_images"),
+                        value.get("reply_image"),
                         value.get("comment_b"),
                         value.get("reply"),
                         value.get("comment_b_text"),

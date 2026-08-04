@@ -20,6 +20,10 @@ from urllib.parse import quote, unquote, urlparse
 SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
 XHH_IMAGE_HOST_SUFFIXES = ("max-c.com", "myqcloud.com", "xiaoheihe.cn")
 _GIF_DECODE_LOCK = threading.Lock()
+_EMBEDDED_HTTP_URL_RE = re.compile(
+    r"(?:https?:)?//[^\s,;|\"'<>]+",
+    flags=re.IGNORECASE,
+)
 
 # COS signing logic is adapted from advent259141/astrbot_plugin_xiaoheihe_adapter
 # under Apache-2.0. See THIRD_PARTY_NOTICES.md for the modification notice.
@@ -177,11 +181,22 @@ def extract_image_urls(value: Any) -> list[str]:
             return
         if isinstance(item, str):
             text = _decode_htmlish_text(item)
-            if is_http_url(text):
+            stripped = text.strip()
+            looks_like_url_list = bool(re.search(r"[,;|\s]", stripped))
+            if is_http_url(stripped) and not looks_like_url_list:
                 try:
-                    urls.append(normalize_http_image_url(text))
+                    urls.append(normalize_http_image_url(stripped))
                 except ValueError:
                     pass
+            elif looks_like_url_list:
+                for match in _EMBEDDED_HTTP_URL_RE.finditer(stripped):
+                    candidate = match.group(0).rstrip(".,，。；;、)]}>")
+                    if not candidate:
+                        continue
+                    try:
+                        urls.append(normalize_http_image_url(candidate))
+                    except ValueError:
+                        pass
             pattern = re.compile(
                 r"<img\b[^>]*\b(?:data-original|data-src|src)=([\"'])(.*?)\1",
                 flags=re.IGNORECASE,
@@ -207,6 +222,7 @@ def extract_image_urls(value: Any) -> list[str]:
                 "url",
                 "thumb",
                 "src",
+                "img",
                 "image",
                 "image_url",
                 "img_url",
@@ -216,11 +232,8 @@ def extract_image_urls(value: Any) -> list[str]:
                 "data-original",
             ):
                 candidate = item.get(key)
-                if is_http_url(candidate):
-                    try:
-                        urls.append(normalize_http_image_url(candidate))
-                    except ValueError:
-                        pass
+                if candidate is not None:
+                    visit(candidate)
             for key in (
                 "text",
                 "content",
@@ -231,8 +244,35 @@ def extract_image_urls(value: Any) -> list[str]:
                 "segments",
                 "spans",
                 "blocks",
+                "comment",
+                "comment_a",
+                "comment_b",
+                "reply",
+                "img",
                 "imgs",
                 "images",
+                "image_list",
+                "img_list",
+                "comment_img",
+                "comment_imgs",
+                "comment_a_img",
+                "comment_a_imgs",
+                "comment_a_image",
+                "comment_a_images",
+                "comment_b_img",
+                "comment_b_imgs",
+                "comment_b_image",
+                "comment_b_images",
+                "reply_img",
+                "reply_imgs",
+                "reply_image",
+                "reply_images",
+                "picture",
+                "pictures",
+                "attachments",
+                "attachment",
+                "media",
+                "media_list",
             ):
                 if key in item:
                     visit(item.get(key))
