@@ -276,6 +276,20 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
             page,
         )
 
+    def test_dashboard_pagination_shows_current_and_total_pages(self) -> None:
+        page = (
+            Path(__file__).parents[1] / "pages" / "dashboard" / "index.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("function paginationSummary(", page)
+        self.assertIn("Math.ceil(safeTotal / safeLimit)", page)
+        self.assertIn("第 ${fmtNumber(currentPage)} / ${fmtNumber(totalPages)} 页", page)
+        self.assertIn('id="paginationText">0 条记录，共 0 页', page)
+        self.assertIn(
+            'byId("paginationText").textContent = paginationSummary(',
+            page,
+        )
+
     async def test_web_login_clear_returns_updated_state_and_cookie_warning(
         self,
     ) -> None:

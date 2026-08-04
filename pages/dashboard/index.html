@@ -993,7 +993,7 @@
           <div class="empty" id="messageEmpty">正在读取消息</div>
         </div>
         <div class="pagination">
-          <div class="toolbar-note" id="paginationText">0 条记录</div>
+          <div class="toolbar-note" id="paginationText">0 条记录，共 0 页</div>
           <div class="pagination-actions">
             <button class="button compact" type="button" id="previousPageButton">
               上一页
@@ -1064,6 +1064,25 @@
 
       function fmtNumber(value) {
         return new Intl.NumberFormat("zh-CN").format(Number(value || 0));
+      }
+
+      function paginationSummary(total, offset, limit, returnedCount) {
+        const safeTotal = Math.max(0, Number(total) || 0);
+        const safeOffset = Math.max(0, Number(offset) || 0);
+        const safeLimit = Math.max(1, Number(limit) || 1);
+        const safeReturned = Math.max(0, Number(returnedCount) || 0);
+        const totalPages = safeTotal ? Math.ceil(safeTotal / safeLimit) : 0;
+        if (!totalPages) return "0 条记录，共 0 页";
+
+        const currentPage = Math.min(
+          Math.floor(safeOffset / safeLimit) + 1,
+          totalPages,
+        );
+        const start = safeReturned ? safeOffset + 1 : 0;
+        const end = safeReturned
+          ? Math.min(safeOffset + safeReturned, safeTotal)
+          : 0;
+        return `${fmtNumber(safeTotal)} 条记录，第 ${fmtNumber(currentPage)} / ${fmtNumber(totalPages)} 页，显示 ${fmtNumber(start)}-${fmtNumber(end)}`;
       }
 
       function fmtTime(value) {
@@ -1422,9 +1441,12 @@
             })
             .join("");
         }
-        const start = state.total ? state.offset + 1 : 0;
-        const end = Math.min(state.offset + state.records.length, state.total);
-        byId("paginationText").textContent = `${fmtNumber(state.total)} 条记录，显示 ${fmtNumber(start)}-${fmtNumber(end)}`;
+        byId("paginationText").textContent = paginationSummary(
+          state.total,
+          state.offset,
+          state.limit,
+          state.records.length,
+        );
         byId("previousPageButton").disabled = state.offset <= 0;
         byId("nextPageButton").disabled =
           state.offset + state.records.length >= state.total || !state.records.length;
