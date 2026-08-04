@@ -180,6 +180,13 @@
         font-size: 12px;
       }
 
+      .toolbar-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        gap: 8px;
+      }
+
       .button {
         min-height: 36px;
         padding: 7px 14px;
@@ -625,6 +632,10 @@
         color: var(--muted);
       }
 
+      .dialog-field {
+        margin-top: 18px;
+      }
+
       .dialog-actions {
         display: flex;
         justify-content: flex-end;
@@ -751,6 +762,16 @@
 
         .toolbar {
           align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .toolbar-actions {
+          width: 100%;
+          justify-content: flex-start;
+        }
+
+        .toolbar-actions .button {
+          flex: 1 1 150px;
         }
 
         .metrics {
@@ -837,6 +858,17 @@
           <div>
             <h2>运行状态</h2>
             <div class="toolbar-note" id="runtimeNote">正在读取插件状态</div>
+          </div>
+          <div class="toolbar-actions">
+            <button class="button compact primary" id="startRuntimeButton" type="button" hidden>
+              继续后台任务
+            </button>
+            <button class="button compact" id="stopRuntimeButton" type="button" hidden>
+              停止后台任务
+            </button>
+            <button class="button compact danger" id="clearQueueButton" type="button" disabled>
+              取消待处理队列
+            </button>
           </div>
         </div>
 
@@ -1036,6 +1068,39 @@
       </div>
     </dialog>
 
+    <dialog
+      class="confirm-dialog"
+      id="clearQueueDialog"
+      aria-labelledby="clearQueueDialogTitle"
+      aria-describedby="clearQueueDialogDescription"
+    >
+      <div class="dialog-header">
+        <h2 id="clearQueueDialogTitle">取消评论待处理队列</h2>
+      </div>
+      <div class="dialog-body">
+        <p class="dialog-copy" id="clearQueueDialogDescription">
+          待处理和已提交的评论会标记为管理员取消；已经开始向小黑盒发送的项目会保留。消息游标、失败记录、SQLite 归档、统计和登录信息不会删除。
+        </p>
+        <label class="field dialog-field">
+          <span>帖子 ID（可选）</span>
+          <input
+            id="clearQueueLinkId"
+            type="number"
+            min="1"
+            step="1"
+            inputmode="numeric"
+            placeholder="留空则取消全部帖子"
+          />
+        </label>
+        <div class="dialog-actions">
+          <button class="button" id="cancelClearQueueButton" type="button">取消</button>
+          <button class="button danger" id="confirmClearQueueButton" type="button">
+            确认取消队列
+          </button>
+        </div>
+      </div>
+    </dialog>
+
     <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
     <script src="/api/plugin/page/bridge-sdk.js"></script>
@@ -1228,6 +1293,9 @@
           : runtime.paused
             ? "后台任务已手动停止"
             : "后台任务未运行";
+        byId("startRuntimeButton").hidden = Boolean(runtime.worker_running);
+        byId("stopRuntimeButton").hidden = !runtime.worker_running;
+        byId("clearQueueButton").disabled = Number(events.queue_total || 0) <= 0;
 
         byId("accountStatus").innerHTML = kvRows([
           ["登录状态", badge(accountLabel, account.state === "authenticated" ? "good" : account.state === "invalid" ? "bad" : "warn")],
@@ -1247,6 +1315,7 @@
 
         byId("featureStatus").innerHTML = kvRows([
           ["自己帖子评论", badge(features.reply_to_own_post_comments ? "启用" : "关闭", features.reply_to_own_post_comments ? "good" : "")],
+          ["单帖回复上限", comments.own_post_reply_limit ? `${fmtNumber(comments.own_post_reply_limit)} 条` : "不限"],
           ["私信自动回复", badge(dms.sending_blocked ? "已暂停" : dms.enabled ? "启用" : "关闭", dms.sending_blocked ? "bad" : dms.enabled ? "good" : "")],
           ["自动巡帖", badge(features.auto_browse ? "启用" : "关闭", features.auto_browse ? "warn" : "")],
           ["LLM 工具", badge(features.llm_tools ? "启用" : "关闭", features.llm_tools ? "info" : "")],
@@ -1499,6 +1568,80 @@
         } catch (error) {
           byId("databaseSummary").textContent = error.message;
           showToast(error.message, true);
+        }
+      }
+
+      async function startRuntime() {
+        const button = byId("startRuntimeButton");
+        button.disabled = true;
+        button.textContent = "启动中";
+        try {
+          const payload = await postApi("runtime/start", {});
+          if (payload.status) renderRuntime(payload.status);
+          showToast(payload.message || "后台任务已启动");
+        } catch (error) {
+          showToast(error.message, true);
+        } finally {
+          button.disabled = false;
+          button.textContent = "继续后台任务";
+        }
+      }
+
+      async function stopRuntime() {
+        const button = byId("stopRuntimeButton");
+        button.disabled = true;
+        button.textContent = "停止中";
+        try {
+          const payload = await postApi("runtime/stop", {});
+          if (payload.status) renderRuntime(payload.status);
+          showToast(payload.message || "后台任务已停止");
+        } catch (error) {
+          showToast(error.message, true);
+        } finally {
+          button.disabled = false;
+          button.textContent = "停止后台任务";
+        }
+      }
+
+      function openClearQueueDialog() {
+        const dialog = byId("clearQueueDialog");
+        if (typeof dialog.showModal !== "function") {
+          showToast("当前浏览器不支持页面确认对话框，请使用 /小黑盒清空队列 确认", true);
+          return;
+        }
+        byId("clearQueueLinkId").value = "";
+        dialog.showModal();
+        byId("clearQueueLinkId").focus();
+      }
+
+      async function clearQueue() {
+        const dialog = byId("clearQueueDialog");
+        const confirmButton = byId("confirmClearQueueButton");
+        const cancelButton = byId("cancelClearQueueButton");
+        const rawLinkId = byId("clearQueueLinkId").value.trim();
+        if (rawLinkId && !/^[1-9]\d*$/.test(rawLinkId)) {
+          showToast("帖子 ID 必须是正整数，或留空取消全部队列", true);
+          return;
+        }
+        confirmButton.disabled = true;
+        cancelButton.disabled = true;
+        confirmButton.textContent = "取消中";
+        try {
+          const payload = await postApi("queue/clear", {
+            confirm: true,
+            link_id: rawLinkId ? Number(rawLinkId) : 0,
+          });
+          dialog.close();
+          if (payload.status) renderRuntime(payload.status);
+          showToast(payload.message || "待处理队列已取消");
+          await loadAnalytics();
+          if (state.activeTab === "database") await loadMessages();
+        } catch (error) {
+          showToast(error.message, true);
+        } finally {
+          confirmButton.disabled = false;
+          cancelButton.disabled = false;
+          confirmButton.textContent = "确认取消队列";
         }
       }
 
@@ -1764,6 +1907,13 @@
           if (state.activeTab === "database") await loadMessages();
           button.disabled = false;
         });
+        byId("startRuntimeButton").addEventListener("click", startRuntime);
+        byId("stopRuntimeButton").addEventListener("click", stopRuntime);
+        byId("clearQueueButton").addEventListener("click", openClearQueueDialog);
+        byId("cancelClearQueueButton").addEventListener("click", () => {
+          byId("clearQueueDialog").close();
+        });
+        byId("confirmClearQueueButton").addEventListener("click", clearQueue);
         byId("startLoginButton").addEventListener("click", startLogin);
         byId("clearLoginButton").addEventListener("click", openClearLoginDialog);
         byId("cancelClearLoginButton").addEventListener("click", () => {

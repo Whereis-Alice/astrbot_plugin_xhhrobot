@@ -39,11 +39,11 @@ class StateStoreTests(unittest.IsolatedAsyncioTestCase):
         counts = await self.store.ingest(
             newest_message_id=101, queued=[self.mention], ignored=[]
         )
-        self.assertEqual(counts, (1, 0))
+        self.assertEqual(counts, (1, 0, []))
         counts = await self.store.ingest(
             newest_message_id=101, queued=[self.mention], ignored=[]
         )
-        self.assertEqual(counts, (0, 0))
+        self.assertEqual(counts, (0, 0, []))
 
         due = await self.store.due_items(limit=10)
         self.assertEqual(due, [self.mention])
@@ -126,7 +126,7 @@ class StateStoreTests(unittest.IsolatedAsyncioTestCase):
             source="mention",
         )
 
-        self.assertEqual(counts, (0, 0))
+        self.assertEqual(counts, (0, 0, []))
         due = await self.store.due_items(limit=10)
         self.assertEqual(len(due), 1)
         self.assertEqual(due[0].message_id, 102)
@@ -155,8 +155,163 @@ class StateStoreTests(unittest.IsolatedAsyncioTestCase):
             source="own_post_comment",
         )
 
-        self.assertEqual(counts, (0, 0))
+        self.assertEqual(counts, (0, 0, []))
         self.assertEqual(await self.store.due_items(limit=10), [])
+
+    async def test_own_post_observation_applies_limit_to_queued_mention(self) -> None:
+        await self.store.seed_own_post_reply_counts({self.mention.link_id: 1})
+        await self.store.ingest(
+            newest_message_id=self.mention.message_id,
+            queued=[self.mention],
+            ignored=[],
+            source="mention",
+            max_own_post_replies_per_post=1,
+        )
+        ordinary = Mention(
+            message_id=102,
+            comment_id=self.mention.comment_id,
+            root_comment_id=self.mention.root_comment_id,
+            link_id=self.mention.link_id,
+            user_id=self.mention.user_id,
+            comment_text="同一评论的自己帖子通知",
+            source="own_post_comment",
+        )
+
+        queued, ignored, skipped = await self.store.ingest(
+            newest_message_id=102,
+            queued=[ordinary],
+            ignored=[],
+            source="own_post_comment",
+            max_own_post_replies_per_post=1,
+        )
+
+        self.assertEqual((queued, ignored), (0, 0))
+        self.assertEqual([item.message_id for item in skipped], [102])
+        self.assertEqual(await self.store.due_items(limit=10), [])
+
+    async def test_own_post_reply_limit_reserves_and_persists_capacity(self) -> None:
+        comments = [
+            Mention(
+                message_id=200 + index,
+                comment_id=300 + index,
+                root_comment_id=300 + index,
+                link_id=500,
+                user_id=600 + index,
+                comment_text=f"评论 {index}",
+                source="own_post_comment",
+            )
+            for index in range(3)
+        ]
+
+        queued, ignored, skipped = await self.store.ingest(
+            newest_message_id=202,
+            queued=comments,
+            ignored=[],
+            source="own_post_comment",
+            max_own_post_replies_per_post=2,
+        )
+
+        self.assertEqual((queued, ignored), (2, 0))
+        self.assertEqual([item.message_id for item in skipped], [202])
+        self.assertEqual(len(await self.store.due_items(limit=10)), 2)
+        await self.store.mark_sending(
+            200,
+            max_own_post_replies_per_post=2,
+        )
+        await self.store.mark_done(200, "回复 0")
+        snapshot = await self.store.snapshot()
+        self.assertEqual(snapshot["own_post_reply_counts"], {"500": 1})
+
+        fourth = Mention(
+            message_id=203,
+            comment_id=303,
+            root_comment_id=303,
+            link_id=500,
+            user_id=603,
+            comment_text="评论 3",
+            source="own_post_comment",
+        )
+        queued, ignored, skipped = await self.store.ingest(
+            newest_message_id=203,
+            queued=[fourth],
+            ignored=[],
+            source="own_post_comment",
+            max_own_post_replies_per_post=2,
+        )
+        self.assertEqual((queued, ignored), (0, 0))
+        self.assertEqual([item.message_id for item in skipped], [203])
+
+    async def test_limit_enforcement_cancels_excess_but_preserves_sending(self) -> None:
+        comments = [
+            Mention(
+                message_id=300 + index,
+                comment_id=400 + index,
+                root_comment_id=400 + index,
+                link_id=700,
+                user_id=800 + index,
+                comment_text=f"积压 {index}",
+                source="own_post_comment",
+            )
+            for index in range(3)
+        ]
+        await self.store.ingest(
+            newest_message_id=302,
+            queued=comments,
+            ignored=[],
+            source="own_post_comment",
+        )
+        await self.store.mark_sending(300)
+        skipped = await self.store.enforce_own_post_reply_limit(1)
+
+        self.assertEqual({item.message_id for item in skipped}, {301, 302})
+        snapshot = await self.store.snapshot()
+        self.assertEqual(set(snapshot["queue"]), {"300"})
+        self.assertEqual(snapshot["queue"]["300"]["status"], "sending")
+
+    async def test_cancel_queue_can_target_one_post_and_preserves_sending(self) -> None:
+        first = Mention(
+            message_id=401,
+            comment_id=501,
+            root_comment_id=501,
+            link_id=801,
+            user_id=901,
+            comment_text="帖子一待处理",
+            source="own_post_comment",
+        )
+        sending = Mention(
+            message_id=402,
+            comment_id=502,
+            root_comment_id=502,
+            link_id=801,
+            user_id=902,
+            comment_text="帖子一发送中",
+            source="own_post_comment",
+        )
+        other = Mention(
+            message_id=403,
+            comment_id=503,
+            root_comment_id=503,
+            link_id=802,
+            user_id=903,
+            comment_text="帖子二",
+            source="own_post_comment",
+        )
+        await self.store.ingest(
+            newest_message_id=403,
+            queued=[first, sending, other],
+            ignored=[],
+            source="own_post_comment",
+        )
+        await self.store.mark_sending(402)
+
+        cancelled, result = await self.store.cancel_queue(link_id=801)
+
+        self.assertEqual([item.message_id for item in cancelled], [401])
+        self.assertEqual(result["cancelled_total"], 1)
+        self.assertEqual(result["sending_preserved"], 1)
+        snapshot = await self.store.snapshot()
+        self.assertEqual(set(snapshot["queue"]), {"402", "403"})
+        self.assertEqual(snapshot["last_comment_message_id"], 403)
 
     async def test_old_state_starts_comment_stream_uninitialized(self) -> None:
         self.backend.values["runtime_state_v1"] = {

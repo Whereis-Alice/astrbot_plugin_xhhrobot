@@ -190,6 +190,51 @@ class CommentArchiveTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["records"][0]["status"], "sent")
         self.assertEqual(result["records"][0]["comment_id"], 456)
 
+    async def test_recovers_per_post_counts_for_own_post_auto_replies(self) -> None:
+        own_first = self.mention(
+            31,
+            601,
+            text="自己帖子评论一",
+            link_id=301,
+            source="own_post_comment",
+        )
+        own_second = self.mention(
+            32,
+            602,
+            text="自己帖子评论二",
+            link_id=301,
+            source="own_post_comment",
+        )
+        external = self.mention(
+            33,
+            603,
+            text="其他帖子明确提及",
+            link_id=302,
+            source="mention",
+        )
+        await self.archive.record_received(
+            [
+                (own_first, "replied", ""),
+                (own_second, "uncertain", ""),
+                (external, "replied", ""),
+            ]
+        )
+        for mention, status in (
+            (own_first, "sent"),
+            (own_second, "uncertain"),
+            (external, "sent"),
+        ):
+            await self.archive.record_bot_comment(
+                kind="auto_reply",
+                content="Bot 回复",
+                link_id=mention.link_id,
+                status=status,
+                target_comment_id=mention.comment_id,
+                event_key=f"auto_reply:{mention.link_id}:{mention.comment_id}",
+            )
+
+        self.assertEqual(await self.archive.own_post_reply_counts(), {301: 2})
+
     async def test_record_cap_limits_observations_and_removes_orphans(self) -> None:
         capped = CommentArchive(
             Path(self.temp_dir.name) / "capped.sqlite3",

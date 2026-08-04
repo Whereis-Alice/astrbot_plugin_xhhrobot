@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import time
 import unittest
 from pathlib import Path
@@ -8,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 import astrbot_plugin_xhhrobot.main as main_module
 from astrbot_plugin_xhhrobot.main import PLUGIN_ID, XhhRobotPlugin
+from astrbot_plugin_xhhrobot.models import Mention
 
 
 class FakeArchive:
@@ -188,8 +190,12 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
 
         plugin._register_web_apis()
 
-        self.assertEqual(len(routes), 7)
+        self.assertEqual(len(routes), 10)
         self.assertTrue(all(route[0].startswith(f"/{PLUGIN_ID}/") for route in routes))
+        suffixes = {route[0].rsplit("/", 1)[-1] for route in routes}
+        self.assertIn("start", suffixes)
+        self.assertIn("stop", suffixes)
+        self.assertIn("clear", suffixes)
 
     def test_dashboard_loads_bridge_before_inline_application(self) -> None:
         page = (
@@ -276,6 +282,22 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
             page,
         )
 
+    def test_dashboard_exposes_runtime_and_queue_emergency_controls(self) -> None:
+        page = (
+            Path(__file__).parents[1] / "pages" / "dashboard" / "index.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('id="startRuntimeButton"', page)
+        self.assertIn('id="stopRuntimeButton"', page)
+        self.assertIn('id="clearQueueButton"', page)
+        self.assertIn('id="clearQueueDialog"', page)
+        self.assertIn('id="clearQueueLinkId"', page)
+        self.assertIn('postApi("runtime/start", {})', page)
+        self.assertIn('postApi("runtime/stop", {})', page)
+        self.assertIn('postApi("queue/clear", {', page)
+        self.assertIn("消息游标、失败记录、SQLite 归档、统计和登录信息不会删除", page)
+        self.assertNotIn("window.confirm(", page)
+
     def test_dashboard_pagination_shows_current_and_total_pages(self) -> None:
         page = (
             Path(__file__).parents[1] / "pages" / "dashboard" / "index.html"
@@ -308,6 +330,64 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["state"], "logged_out")
         self.assertIn("手动 Cookie", result["message"])
+
+    async def test_queue_clear_api_requires_confirmation_and_returns_counts(
+        self,
+    ) -> None:
+        plugin = self.plugin()
+        mention = Mention(
+            message_id=1,
+            comment_id=2,
+            root_comment_id=2,
+            link_id=3,
+            user_id=4,
+            comment_text="积压评论",
+            source="own_post_comment",
+        )
+        plugin.store = SimpleNamespace(
+            cancel_queue=AsyncMock(
+                side_effect=[
+                    (
+                        [mention],
+                        {
+                            "cancelled_total": 1,
+                            "cancelled_pending": 1,
+                            "cancelled_dispatched": 0,
+                            "sending_preserved": 1,
+                            "queue_remaining": 1,
+                        },
+                    ),
+                    (
+                        [],
+                        {
+                            "cancelled_total": 0,
+                            "cancelled_pending": 0,
+                            "cancelled_dispatched": 0,
+                            "sending_preserved": 1,
+                            "queue_remaining": 1,
+                        },
+                    ),
+                ]
+            )
+        )
+        plugin._cycle_lock = asyncio.Lock()
+        plugin._archive_received = AsyncMock()
+        plugin._web_status_payload = AsyncMock(return_value={"ok": True})
+        fake_request = SimpleNamespace(
+            get_json=AsyncMock(return_value={"confirm": True, "link_id": 3})
+        )
+
+        with (
+            patch.object(main_module, "request", fake_request),
+            patch.object(main_module, "jsonify", side_effect=lambda value: value),
+        ):
+            result = await plugin.web_queue_clear()
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["cancelled_total"], 1)
+        self.assertEqual(result["sending_preserved"], 1)
+        self.assertEqual(plugin.store.cancel_queue.await_count, 2)
+        plugin._archive_received.assert_awaited_once()
 
 
 if __name__ == "__main__":

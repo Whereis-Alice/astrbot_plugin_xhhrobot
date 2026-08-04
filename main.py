@@ -205,6 +205,9 @@ class XhhRobotPlugin(Star):
         await self.store.initialize()
         try:
             await self.comment_archive.initialize()
+            await self.store.seed_own_post_reply_counts(
+                await self.comment_archive.own_post_reply_counts()
+            )
         except Exception as exc:
             self._archive_error = str(exc)
             self.comment_archive.enabled = False
@@ -314,6 +317,9 @@ class XhhRobotPlugin(Star):
             return
         routes = (
             ("status", self.web_status, ["GET"], "小黑盒bot运行状态"),
+            ("runtime/start", self.web_runtime_start, ["POST"], "启动小黑盒后台任务"),
+            ("runtime/stop", self.web_runtime_stop, ["POST"], "停止小黑盒后台任务"),
+            ("queue/clear", self.web_queue_clear, ["POST"], "取消小黑盒评论待处理队列"),
             ("login/start", self.web_login_start, ["POST"], "开始小黑盒扫码登录"),
             ("login/poll", self.web_login_poll, ["GET"], "查询小黑盒扫码登录进度"),
             ("login/session", self.web_login_session, ["GET"], "查询小黑盒登录会话"),
@@ -341,6 +347,60 @@ class XhhRobotPlugin(Star):
         if not self._webui_enabled():
             return jsonify({"ok": False, "error": "插件 WebUI 已在配置中关闭。"}), 403
         return jsonify(await self._web_status_payload())
+
+    async def web_runtime_start(self):
+        if not self._webui_enabled():
+            return jsonify({"ok": False, "error": "插件 WebUI 已在配置中关闭。"}), 403
+        await self.store.set_paused(False)
+        self._suspended_until = 0.0
+        self._ensure_worker()
+        return jsonify(
+            {
+                "ok": True,
+                "message": "小黑盒后台任务已启动。",
+                "status": await self._web_status_payload(),
+            }
+        )
+
+    async def web_runtime_stop(self):
+        if not self._webui_enabled():
+            return jsonify({"ok": False, "error": "插件 WebUI 已在配置中关闭。"}), 403
+        await self.store.set_paused(True)
+        await self._stop_worker()
+        return jsonify(
+            {
+                "ok": True,
+                "message": "小黑盒后台任务已停止；登录和队列均已保留。",
+                "status": await self._web_status_payload(),
+            }
+        )
+
+    async def web_queue_clear(self):
+        if not self._webui_enabled():
+            return jsonify({"ok": False, "error": "插件 WebUI 已在配置中关闭。"}), 403
+        payload = await request.get_json(silent=True)
+        payload = payload if isinstance(payload, Mapping) else {}
+        if payload.get("confirm") is not True:
+            return jsonify({"ok": False, "error": "取消队列需要明确确认。"}), 400
+        try:
+            link_id = int(payload.get("link_id") or 0)
+        except (TypeError, ValueError):
+            return jsonify({"ok": False, "error": "帖子 ID 必须是整数。"}), 400
+        if link_id < 0:
+            return jsonify({"ok": False, "error": "帖子 ID 不能小于 0。"}), 400
+        result = await self._cancel_comment_queue(link_id=link_id)
+        target = f"帖子 {link_id}" if link_id else "全部帖子"
+        return jsonify(
+            {
+                "ok": True,
+                "message": (
+                    f"已取消{target}的 {result['cancelled_total']} 条待处理评论；"
+                    f"保留 {result['sending_preserved']} 条正在发送的评论。"
+                ),
+                **result,
+                "status": await self._web_status_payload(),
+            }
+        )
 
     async def _web_status_payload(self) -> dict[str, Any]:
         snapshot = await self.store.snapshot()
@@ -394,6 +454,10 @@ class XhhRobotPlugin(Star):
                 **archive,
                 "cursor": int(snapshot.get("last_message_id") or 0),
                 "own_post_cursor": int(snapshot.get("last_comment_message_id") or 0),
+                "own_post_reply_limit": self._own_post_reply_limit(),
+                "tracked_own_posts": len(
+                    snapshot.get("own_post_reply_counts") or {}
+                ),
                 "stats": dict(snapshot.get("stats") or {}),
             },
             "direct_messages": {
@@ -653,6 +717,8 @@ class XhhRobotPlugin(Star):
             "/小黑盒登录 - 获取二维码并登录\n"
             "/小黑盒退出 - 清除二维码登录凭据\n"
             "/小黑盒启动 / /小黑盒停止 - 控制后台轮询\n"
+            "/小黑盒清空队列 确认 - 取消全部待处理评论，保留正在发送的项目\n"
+            "/小黑盒清空队列 帖子ID 确认 - 只取消指定帖子的待处理评论\n"
             "/小黑盒检查 - 立即拉取并处理一次\n"
             "/小黑盒重试 - 重试普通失败项\n"
             "/小黑盒重试 确认 - 连同“发送结果不确定”的项目一起重试，可能重复回帖\n"
@@ -754,6 +820,114 @@ class XhhRobotPlugin(Star):
         await self.store.set_paused(True)
         await self._stop_worker()
         yield event.plain_result("小黑盒后台任务已停止；登录凭据和待处理队列均已保留。")
+
+    @filter.permission_type(filter.PermissionType.ADMIN)
+    @filter.command(
+        "小黑盒清空队列",
+        alias={"小黑盒取消队列", "xhh清空队列", "xhh_clear_queue"},
+    )
+    async def xhh_clear_queue(
+        self,
+        event: AstrMessageEvent,
+        target: str = "",
+        confirmation: str = "",
+    ):
+        """取消评论待处理队列，不删除游标、归档或统计。"""
+
+        tokens = [
+            token
+            for token in re.split(
+                r"\s+",
+                " ".join((str(target or ""), str(confirmation or ""))).strip(),
+            )
+            if token
+        ]
+        confirmed = bool(tokens) and tokens[-1].casefold() in {
+            "确认",
+            "confirm",
+            "yes",
+        }
+        if not confirmed:
+            yield event.plain_result(
+                "该操作会放弃尚未发送的评论回复。\n"
+                "取消全部：/小黑盒清空队列 确认\n"
+                "取消单帖：/小黑盒清空队列 帖子ID 确认"
+            )
+            return
+        tokens.pop()
+        if len(tokens) > 1 or (tokens and not tokens[0].isdigit()):
+            yield event.plain_result(
+                "用法：/小黑盒清空队列 确认\n"
+                "或：/小黑盒清空队列 帖子ID 确认"
+            )
+            return
+        link_id = int(tokens[0]) if tokens else 0
+        if tokens and link_id <= 0:
+            yield event.plain_result("帖子 ID 必须是正整数。")
+            return
+
+        result = await self._cancel_comment_queue(link_id=link_id)
+        target_label = f"帖子 {link_id}" if link_id else "全部帖子"
+        yield event.plain_result(
+            f"已取消{target_label}的 {result['cancelled_total']} 条待处理评论："
+            f"待处理 {result['cancelled_pending']} 条，"
+            f"已提交 {result['cancelled_dispatched']} 条。\n"
+            f"正在发送的 {result['sending_preserved']} 条已保留；"
+            f"当前评论队列剩余 {result['queue_remaining']} 条。\n"
+            "消息游标、失败记录、SQLite 归档、统计和登录信息均未删除。"
+        )
+
+    async def _cancel_comment_queue(self, *, link_id: int = 0) -> dict[str, int]:
+        reason = "管理员取消待处理队列"
+        cancelled_by_id: dict[int, Mention] = {}
+        first_mentions, first = await self.store.cancel_queue(
+            link_id=link_id,
+            reason=reason,
+        )
+        for mention in first_mentions:
+            cancelled_by_id[mention.message_id] = mention
+
+        async with self._cycle_lock:
+            second_mentions, second = await self.store.cancel_queue(
+                link_id=link_id,
+                reason=reason,
+            )
+        for mention in second_mentions:
+            cancelled_by_id[mention.message_id] = mention
+
+        if cancelled_by_id:
+            await self._archive_received(
+                [
+                    (mention, "skipped", reason)
+                    for mention in cancelled_by_id.values()
+                ]
+            )
+        result = {
+            "cancelled_total": len(cancelled_by_id),
+            "cancelled_pending": (
+                first["cancelled_pending"] + second["cancelled_pending"]
+            ),
+            "cancelled_dispatched": (
+                first["cancelled_dispatched"] + second["cancelled_dispatched"]
+            ),
+            "sending_preserved": max(
+                first["sending_preserved"], second["sending_preserved"]
+            ),
+            "queue_remaining": second["queue_remaining"],
+        }
+        logger.info(
+            "%s administrator cleared comment queue: link_id=%s "
+            "cancelled=%d pending=%d dispatched=%d sending_preserved=%d "
+            "remaining=%d",
+            PLUGIN_ID,
+            link_id or "all",
+            result["cancelled_total"],
+            result["cancelled_pending"],
+            result["cancelled_dispatched"],
+            result["sending_preserved"],
+            result["queue_remaining"],
+        )
+        return result
 
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command("小黑盒检查", alias={"xhh检查", "xhh_check"})
@@ -1660,20 +1834,38 @@ class XhhRobotPlugin(Star):
             (message_id for page in pages for message_id in page.message_ids),
             default=cursor,
         )
-        await self._archive_received(
-            [
-                *((mention, "queued", "") for mention in queued),
-                *((mention, "ignored", reason) for mention, reason in ignored),
-            ]
-        )
-        queued_count, ignored_count = await self.store.ingest(
+        queued_count, ignored_count, limit_skipped = await self.store.ingest(
             newest_message_id=newest_id,
             queued=queued,
             ignored=ignored,
             source=source,
+            max_own_post_replies_per_post=self._own_post_reply_limit(),
+        )
+        limit_skipped_ids = {
+            mention.message_id for mention in limit_skipped
+        }
+        await self._archive_received(
+            [
+                *(
+                    (
+                        mention,
+                        "skipped" if mention.message_id in limit_skipped_ids else "queued",
+                        (
+                            self._own_post_limit_reason()
+                            if mention.message_id in limit_skipped_ids
+                            else ""
+                        ),
+                    )
+                    for mention in queued
+                ),
+                *((mention, "ignored", reason) for mention, reason in ignored),
+            ]
         )
         return CycleResult(
-            fetched=len(collected), queued=queued_count, ignored=ignored_count
+            fetched=len(collected),
+            queued=queued_count,
+            ignored=ignored_count,
+            skipped=len(limit_skipped),
         )
 
     async def _poll_direct_messages_if_due(self) -> int:
@@ -1858,6 +2050,22 @@ class XhhRobotPlugin(Star):
         return max(60.0, minutes * 60.0)
 
     async def _process_pending(self, result: CycleResult) -> None:
+        limit_skipped = await self.store.enforce_own_post_reply_limit(
+            self._own_post_reply_limit()
+        )
+        if limit_skipped:
+            reason = self._own_post_limit_reason()
+            await self._archive_received(
+                [(mention, "skipped", reason) for mention in limit_skipped]
+            )
+            result.skipped += len(limit_skipped)
+            logger.info(
+                "%s removed %d queued own-post replies that exceeded the "
+                "per-post limit of %d",
+                PLUGIN_ID,
+                len(limit_skipped),
+                self._own_post_reply_limit(),
+            )
         limit = self._int_cfg("polling.max_replies_per_cycle", 3, 1, 20)
         mentions = await self.store.due_items(limit=limit)
         bridge_enabled = self._event_bridge_enabled()
@@ -2043,14 +2251,26 @@ class XhhRobotPlugin(Star):
         )
 
         async def on_start(text: str, images: list[str]) -> bool:
-            if not await self.store.mark_sending(mention.message_id):
+            if not await self.store.mark_sending(
+                mention.message_id,
+                max_own_post_replies_per_post=self._own_post_reply_limit(),
+            ):
+                status, reason = await self.store.item_outcome(mention.message_id)
+                if status == "skipped":
+                    await self._archive_received_status(
+                        mention,
+                        "skipped",
+                        reason or self._own_post_limit_reason(),
+                    )
                 logger.info(
-                    "%s blocked duplicate comment delivery: message_id=%s "
-                    "link_id=%s comment_id=%s",
+                    "%s blocked comment delivery before platform send: "
+                    "message_id=%s link_id=%s comment_id=%s status=%s reason=%r",
                     PLUGIN_ID,
                     mention.message_id,
                     mention.link_id,
                     mention.comment_id,
+                    status,
+                    reason,
                 )
                 return False
             await self._archive_received_status(mention, "sending")
@@ -2102,8 +2322,8 @@ class XhhRobotPlugin(Star):
 
         async def on_empty() -> None:
             reason = "AstrBot 事件没有产生可发送的文本或图片"
-            await self.store.mark_skipped(mention.message_id, reason)
-            await self._archive_received_status(mention, "skipped", reason)
+            if await self.store.mark_skipped(mention.message_id, reason):
+                await self._archive_received_status(mention, "skipped", reason)
 
         event = XhhMessageEvent(
             message_obj=message_obj,
@@ -2845,16 +3065,28 @@ class XhhRobotPlugin(Star):
             return "retry"
 
         try:
-            if not await self.store.mark_sending(mention.message_id):
+            if not await self.store.mark_sending(
+                mention.message_id,
+                max_own_post_replies_per_post=self._own_post_reply_limit(),
+            ):
+                status, reason = await self.store.item_outcome(mention.message_id)
+                if status == "skipped":
+                    await self._archive_received_status(
+                        mention,
+                        "skipped",
+                        reason or self._own_post_limit_reason(),
+                    )
                 logger.info(
-                    "%s blocked duplicate compatibility delivery: message_id=%s "
-                    "link_id=%s comment_id=%s",
+                    "%s blocked compatibility delivery before platform send: "
+                    "message_id=%s link_id=%s comment_id=%s status=%s reason=%r",
                     PLUGIN_ID,
                     mention.message_id,
                     mention.link_id,
                     mention.comment_id,
+                    status,
+                    reason,
                 )
-                return "deferred"
+                return "skipped" if status == "skipped" else "deferred"
             await self._archive_received_status(mention, "sending")
         except asyncio.CancelledError:
             reason = "任务在发出回帖请求前被停止。"
@@ -3632,6 +3864,8 @@ class XhhRobotPlugin(Star):
         if browse_enabled:
             browse_mode = "已开启（仅预览）" if browse_dry_run else "已开启（自动发布）"
         dm_block_reason = self._dm_sending_block_reason()
+        own_post_reply_limit = self._own_post_reply_limit()
+        tracked_own_posts = len(snapshot.get("own_post_reply_counts") or {})
         lines = [
             f"运行：{'运行中' if self._worker_running else '未运行'}{'（已手动停止）' if paused else ''}",
             f"登录：{auth_state}；来源：{self._auth_source}"
@@ -3690,7 +3924,10 @@ class XhhRobotPlugin(Star):
                 "自动回复"
                 if self._bool_cfg("filters.reply_to_own_post_comments", True)
                 else "已关闭"
-            ),
+            )
+            + "；单帖总上限："
+            + (str(own_post_reply_limit) if own_post_reply_limit else "不限")
+            + f"；已记录 {tracked_own_posts} 个帖子",
             (
                 "LLM 工具："
                 + ("已启用" if self._bool_cfg("tools.enabled", True) else "已关闭")
@@ -3904,6 +4141,19 @@ class XhhRobotPlugin(Star):
     def _filter_can_reply_to_anyone(self) -> bool:
         return self._bool_cfg("filters.allow_all_users", False) or bool(
             self._id_set_cfg("filters.allowed_user_ids")
+        )
+
+    def _own_post_reply_limit(self) -> int:
+        return self._int_cfg(
+            "filters.max_replies_per_own_post",
+            50,
+            0,
+            10_000,
+        )
+
+    def _own_post_limit_reason(self) -> str:
+        return (
+            f"该帖子已达到自动回复总上限（{self._own_post_reply_limit()} 条）"
         )
 
     def _max_local_image_bytes(self) -> int:

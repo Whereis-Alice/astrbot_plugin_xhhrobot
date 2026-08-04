@@ -107,6 +107,15 @@ class CommentArchive:
         async with self._lock:
             return await asyncio.to_thread(self._overview_sync)
 
+    async def own_post_reply_counts(self) -> dict[int, int]:
+        """Count sent or uncertain auto replies to comments on the bot's posts."""
+
+        if not self.enabled:
+            return {}
+        await self.initialize()
+        async with self._lock:
+            return await asyncio.to_thread(self._own_post_reply_counts_sync)
+
     async def statistics(
         self,
         *,
@@ -494,6 +503,37 @@ class CommentArchive:
                 "received_comments": int(row["received_comments"]),
                 "received_observations": int(row["received_observations"]),
                 "bot_comments": int(row["bot_comments"]),
+            }
+        finally:
+            connection.close()
+
+    def _own_post_reply_counts_sync(self) -> dict[int, int]:
+        connection = self._connect()
+        try:
+            rows = connection.execute(
+                """
+                SELECT bc.link_id, COUNT(*) AS reply_count
+                FROM bot_comments bc
+                WHERE bc.kind = 'auto_reply'
+                  AND bc.status IN ('sent', 'uncertain')
+                  AND bc.link_id > 0
+                  AND bc.target_comment_id > 0
+                  AND EXISTS (
+                      SELECT 1
+                      FROM received_comments rc
+                      JOIN received_observations ro
+                        ON ro.received_id = rc.id
+                      WHERE rc.link_id = bc.link_id
+                        AND rc.comment_id = bc.target_comment_id
+                        AND ro.source = 'own_post_comment'
+                  )
+                GROUP BY bc.link_id
+                """
+            ).fetchall()
+            return {
+                int(row["link_id"]): int(row["reply_count"])
+                for row in rows
+                if int(row["link_id"] or 0) > 0
             }
         finally:
             connection.close()

@@ -8,7 +8,7 @@ from typing import Any
 
 from .models import Mention
 
-STATE_VERSION = 4
+STATE_VERSION = 5
 
 
 class StateStore:
@@ -72,13 +72,17 @@ class StateStore:
         queued: Iterable[Mention],
         ignored: Iterable[tuple[Mention, str]],
         source: str = "mention",
-    ) -> tuple[int, int]:
+        max_own_post_replies_per_post: int = 0,
+    ) -> tuple[int, int, list[Mention]]:
         queued_count = 0
         ignored_count = 0
+        limit_skipped: list[Mention] = []
+        own_post_limit = max(0, int(max_own_post_replies_per_post))
         now = time.time()
         async with self._lock:
             queue = self._state["queue"]
             dead = self._state["dead"]
+            own_post_usage = self._own_post_reply_usage_locked()
             recent_ids = {
                 str(item.get("message_id") or "") for item in self._state["recent"]
             }
@@ -89,6 +93,38 @@ class StateStore:
                 duplicate = self._find_active_target_locked(mention)
                 if duplicate is not None:
                     duplicate_key, duplicate_item = duplicate
+                    if (
+                        duplicate_key in queue
+                        and mention.source == "own_post_comment"
+                        and not self._counts_toward_own_post_limit(duplicate_item)
+                    ):
+                        link_key = str(max(0, int(mention.link_id)))
+                        duplicate_status = str(
+                            duplicate_item.get("status") or "pending"
+                        )
+                        if (
+                            own_post_limit > 0
+                            and link_key != "0"
+                            and own_post_usage.get(link_key, 0) >= own_post_limit
+                            and duplicate_status in {"pending", "dispatched"}
+                        ):
+                            queue.pop(duplicate_key, None)
+                            skipped_mention = Mention.from_dict(duplicate_item)
+                            self._append_recent_locked(
+                                skipped_mention,
+                                "skipped",
+                                self._own_post_limit_reason(own_post_limit),
+                                "",
+                                now,
+                            )
+                            self._state["stats"]["skipped"] += 1
+                            limit_skipped.append(mention)
+                            continue
+                        duplicate_item["counts_toward_own_post_limit"] = True
+                        if link_key != "0":
+                            own_post_usage[link_key] = (
+                                own_post_usage.get(link_key, 0) + 1
+                            )
                     if (
                         duplicate_key in queue
                         and mention.source == "mention"
@@ -105,6 +141,22 @@ class StateStore:
                         )
                         queue[duplicate_key] = duplicate_item
                     continue
+                if mention.source == "own_post_comment" and mention.link_id > 0:
+                    link_key = str(mention.link_id)
+                    if (
+                        own_post_limit > 0
+                        and own_post_usage.get(link_key, 0) >= own_post_limit
+                    ):
+                        self._append_recent_locked(
+                            mention,
+                            "skipped",
+                            self._own_post_limit_reason(own_post_limit),
+                            "",
+                            now,
+                        )
+                        self._state["stats"]["skipped"] += 1
+                        limit_skipped.append(mention)
+                        continue
                 if len(queue) >= self._max_queue:
                     self._append_dead_locked(
                         mention, "queue_overflow", "待处理队列已满。", now
@@ -118,8 +170,14 @@ class StateStore:
                     "last_error": "",
                     "created_at": now,
                     "updated_at": now,
+                    "counts_toward_own_post_limit": (
+                        mention.source == "own_post_comment"
+                    ),
                 }
                 queued_count += 1
+                if mention.source == "own_post_comment" and mention.link_id > 0:
+                    link_key = str(mention.link_id)
+                    own_post_usage[link_key] = own_post_usage.get(link_key, 0) + 1
             for mention, reason in ignored:
                 key = str(mention.message_id)
                 if key in queue or key in dead or key in recent_ids:
@@ -134,11 +192,129 @@ class StateStore:
                 int(self._state.get(cursor_key) or 0),
                 int(newest_message_id or 0),
             )
-            self._state["stats"]["seen"] += queued_count + ignored_count
+            self._state["stats"]["seen"] += (
+                queued_count + ignored_count + len(limit_skipped)
+            )
             self._state["stats"]["queued"] += queued_count
             self._state["stats"]["ignored"] += ignored_count
             await self._save_locked()
-        return queued_count, ignored_count
+        return queued_count, ignored_count, limit_skipped
+
+    async def seed_own_post_reply_counts(
+        self,
+        counts: Mapping[int | str, int],
+    ) -> None:
+        """Merge durable per-post reply counts recovered from SQLite."""
+
+        async with self._lock:
+            changed = False
+            stored = self._state["own_post_reply_counts"]
+            for raw_link_id, raw_count in counts.items():
+                try:
+                    link_id = int(raw_link_id)
+                    count = max(0, int(raw_count))
+                except (TypeError, ValueError):
+                    continue
+                if link_id <= 0 or count <= int(stored.get(str(link_id)) or 0):
+                    continue
+                stored[str(link_id)] = count
+                changed = True
+            if changed:
+                await self._save_locked()
+
+    async def enforce_own_post_reply_limit(self, limit: int) -> list[Mention]:
+        """Remove queued own-post replies that no longer fit the configured cap."""
+
+        maximum = max(0, int(limit))
+        if maximum <= 0:
+            return []
+        async with self._lock:
+            usage = {
+                str(key): max(0, int(value or 0))
+                for key, value in self._state["own_post_reply_counts"].items()
+            }
+            entries = [
+                (str(key), item)
+                for key, item in self._state["queue"].items()
+                if self._counts_toward_own_post_limit(item)
+                and int(item.get("link_id") or 0) > 0
+            ]
+            priority = {"sending": 0, "dispatched": 1, "pending": 2}
+            entries.sort(
+                key=lambda pair: (
+                    priority.get(str(pair[1].get("status") or "pending"), 3),
+                    float(pair[1].get("created_at") or 0),
+                    int(pair[1].get("message_id") or 0),
+                )
+            )
+            skipped: list[Mention] = []
+            now = time.time()
+            for key, item in entries:
+                link_key = str(int(item.get("link_id") or 0))
+                status = str(item.get("status") or "pending")
+                if status == "sending":
+                    usage[link_key] = usage.get(link_key, 0) + 1
+                    continue
+                if status not in {"pending", "dispatched"}:
+                    continue
+                if usage.get(link_key, 0) < maximum:
+                    usage[link_key] = usage.get(link_key, 0) + 1
+                    continue
+                self._state["queue"].pop(key, None)
+                mention = Mention.from_dict(item)
+                self._append_recent_locked(
+                    mention,
+                    "skipped",
+                    self._own_post_limit_reason(maximum),
+                    "",
+                    now,
+                )
+                self._state["stats"]["skipped"] += 1
+                skipped.append(mention)
+            if skipped:
+                await self._save_locked()
+            return skipped
+
+    async def cancel_queue(
+        self,
+        *,
+        link_id: int = 0,
+        reason: str = "管理员取消待处理队列",
+    ) -> tuple[list[Mention], dict[str, int]]:
+        """Cancel pending/dispatched comments while preserving active sends."""
+
+        target_link_id = max(0, int(link_id))
+        async with self._lock:
+            cancelled: list[Mention] = []
+            counts = {
+                "cancelled_total": 0,
+                "cancelled_pending": 0,
+                "cancelled_dispatched": 0,
+                "sending_preserved": 0,
+                "queue_remaining": 0,
+            }
+            now = time.time()
+            for key, item in list(self._state["queue"].items()):
+                item_link_id = int(item.get("link_id") or 0)
+                if target_link_id and item_link_id != target_link_id:
+                    continue
+                status = str(item.get("status") or "pending")
+                if status == "sending":
+                    counts["sending_preserved"] += 1
+                    continue
+                if status not in {"pending", "dispatched"}:
+                    continue
+                self._state["queue"].pop(key, None)
+                mention = Mention.from_dict(item)
+                self._append_recent_locked(mention, "skipped", reason, "", now)
+                self._state["stats"]["skipped"] += 1
+                counts[f"cancelled_{status}"] += 1
+                counts["cancelled_total"] += 1
+                cancelled.append(mention)
+            counts["queue_remaining"] = len(self._state["queue"])
+            if cancelled:
+                await self._save_locked()
+            return cancelled, counts
 
     async def due_items(self, *, limit: int, now: float | None = None) -> list[Mention]:
         current = time.time() if now is None else now
@@ -157,7 +333,12 @@ class StateStore:
             )
             return [Mention.from_dict(item) for item in items[: max(0, limit)]]
 
-    async def mark_sending(self, message_id: int) -> bool:
+    async def mark_sending(
+        self,
+        message_id: int,
+        *,
+        max_own_post_replies_per_post: int = 0,
+    ) -> bool:
         """Atomically claim the one allowed outbound reply for a comment.
 
         A notification can arrive through both the mention stream and the
@@ -178,6 +359,37 @@ class StateStore:
                 self._skip_duplicate_locked(key, item)
                 await self._save_locked()
                 return False
+
+            own_post_limit = max(0, int(max_own_post_replies_per_post))
+            if (
+                own_post_limit > 0
+                and self._counts_toward_own_post_limit(item)
+                and int(item.get("link_id") or 0) > 0
+            ):
+                link_key = str(int(item.get("link_id") or 0))
+                claimed = int(
+                    self._state["own_post_reply_counts"].get(link_key) or 0
+                )
+                claimed += sum(
+                    1
+                    for other_key, other in self._state["queue"].items()
+                    if other_key != key
+                    and str(other.get("status") or "") == "sending"
+                    and self._counts_toward_own_post_limit(other)
+                    and int(other.get("link_id") or 0) == int(link_key)
+                )
+                if claimed >= own_post_limit:
+                    self._state["queue"].pop(key, None)
+                    self._append_recent_locked(
+                        Mention.from_dict(item),
+                        "skipped",
+                        self._own_post_limit_reason(own_post_limit),
+                        "",
+                        time.time(),
+                    )
+                    self._state["stats"]["skipped"] += 1
+                    await self._save_locked()
+                    return False
 
             item["status"] = "sending"
             item["updated_at"] = time.time()
@@ -202,17 +414,27 @@ class StateStore:
             return True
 
     async def item_status(self, message_id: int) -> str:
+        status, _ = await self.item_outcome(message_id)
+        return status
+
+    async def item_outcome(self, message_id: int) -> tuple[str, str]:
         async with self._lock:
             item = self._state["queue"].get(str(message_id))
             if item is not None:
-                return str(item.get("status") or "")
+                return str(item.get("status") or ""), str(
+                    item.get("last_error") or ""
+                )
             dead = self._state["dead"].get(str(message_id))
             if dead is not None:
-                return str(dead.get("reason") or "dead")
+                return str(dead.get("reason") or "dead"), str(
+                    dead.get("last_error") or ""
+                )
             for recent in reversed(self._state["recent"]):
                 if int(recent.get("message_id") or 0) == int(message_id):
-                    return str(recent.get("status") or "")
-            return ""
+                    return str(recent.get("status") or ""), str(
+                        recent.get("reason") or ""
+                    )
+            return "", ""
 
     async def mark_retry(
         self,
@@ -271,6 +493,7 @@ class StateStore:
             item = self._state["queue"].pop(key, None)
             if item is None:
                 return
+            self._increment_own_post_reply_count_locked(item)
             mention = Mention.from_dict(item)
             self._append_dead_locked(
                 mention,
@@ -288,23 +511,25 @@ class StateStore:
             item = self._state["queue"].pop(key, None)
             if item is None:
                 return
+            self._increment_own_post_reply_count_locked(item)
             self._append_recent_locked(
                 Mention.from_dict(item), "replied", "", reply_text, time.time()
             )
             self._state["stats"]["replied"] += 1
             await self._save_locked()
 
-    async def mark_skipped(self, message_id: int, reason: str) -> None:
+    async def mark_skipped(self, message_id: int, reason: str) -> bool:
         async with self._lock:
             key = str(message_id)
             item = self._state["queue"].pop(key, None)
             if item is None:
-                return
+                return False
             self._append_recent_locked(
                 Mention.from_dict(item), "skipped", reason, "", time.time()
             )
             self._state["stats"]["skipped"] += 1
             await self._save_locked()
+            return True
 
     async def retry_dead(self, *, include_uncertain: bool = True) -> int:
         async with self._lock:
@@ -324,6 +549,9 @@ class StateStore:
                     "last_error": "",
                     "created_at": now,
                     "updated_at": now,
+                    "counts_toward_own_post_limit": (
+                        mention.source == "own_post_comment"
+                    ),
                 }
                 self._state["dead"].pop(key, None)
                 moved += 1
@@ -448,6 +676,7 @@ class StateStore:
             if item.get("status") != "sending":
                 continue
             self._state["queue"].pop(key, None)
+            self._increment_own_post_reply_count_locked(item)
             self._append_dead_locked(
                 Mention.from_dict(item),
                 "uncertain_delivery",
@@ -582,6 +811,50 @@ class StateStore:
         )
         self._state["stats"]["skipped"] += 1
 
+    def _own_post_reply_usage_locked(self) -> dict[str, int]:
+        usage = {
+            str(key): max(0, int(value or 0))
+            for key, value in self._state["own_post_reply_counts"].items()
+        }
+        for item in self._state["queue"].values():
+            if not self._counts_toward_own_post_limit(item):
+                continue
+            if str(item.get("status") or "pending") not in {
+                "pending",
+                "dispatched",
+                "sending",
+            }:
+                continue
+            link_id = int(item.get("link_id") or 0)
+            if link_id > 0:
+                link_key = str(link_id)
+                usage[link_key] = usage.get(link_key, 0) + 1
+        return usage
+
+    def _increment_own_post_reply_count_locked(
+        self,
+        item: Mapping[str, Any],
+    ) -> None:
+        if not self._counts_toward_own_post_limit(item):
+            return
+        link_id = int(item.get("link_id") or 0)
+        if link_id <= 0:
+            return
+        key = str(link_id)
+        counts = self._state["own_post_reply_counts"]
+        counts[key] = int(counts.get(key) or 0) + 1
+
+    @staticmethod
+    def _counts_toward_own_post_limit(item: Mapping[str, Any]) -> bool:
+        marker = item.get("counts_toward_own_post_limit")
+        if marker is not None:
+            return bool(marker)
+        return str(item.get("source") or "") == "own_post_comment"
+
+    @staticmethod
+    def _own_post_limit_reason(limit: int) -> str:
+        return f"该帖子已达到自动回复总上限（{max(0, int(limit))} 条）"
+
     @staticmethod
     def _item_target(item: Mapping[str, Any]) -> tuple[int, int]:
         try:
@@ -629,6 +902,16 @@ class StateStore:
             state["recent"] = [
                 dict(item) for item in recent if isinstance(item, Mapping)
             ]
+        reply_counts = raw.get("own_post_reply_counts")
+        if isinstance(reply_counts, Mapping):
+            for raw_link_id, raw_count in reply_counts.items():
+                try:
+                    link_id = int(raw_link_id)
+                    count = max(0, int(raw_count))
+                except (TypeError, ValueError):
+                    continue
+                if link_id > 0 and count > 0:
+                    state["own_post_reply_counts"][str(link_id)] = count
         stats = raw.get("stats")
         if isinstance(stats, Mapping):
             for key in state["stats"]:
@@ -676,6 +959,7 @@ class StateStore:
             "queue": {},
             "dead": {},
             "recent": [],
+            "own_post_reply_counts": {},
             "auto_browse": {
                 "next_run_at": 0.0,
                 "last_run_at": 0.0,
