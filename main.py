@@ -9,7 +9,7 @@ import tempfile
 import time
 import uuid
 from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -2191,7 +2191,14 @@ class XhhRobotPlugin(Star):
         try:
             include_post_context = self._bool_cfg("ai.include_post_context", True)
             fetched_post = (
-                await self.client.fetch_post_context(mention.link_id)
+                await self.client.fetch_post_context(
+                    mention.link_id,
+                    target_comment_id=mention.comment_id,
+                    root_comment_id=mention.root_comment_id,
+                    max_comment_pages=self._int_cfg(
+                        "polling.max_pages_per_poll", 10, 1, 20
+                    ),
+                )
                 if include_post_context or mention.source == "own_post_comment"
                 else PostContext()
             )
@@ -2207,6 +2214,7 @@ class XhhRobotPlugin(Star):
                     await self.store.mark_skipped(mention.message_id, reason)
                     await self._archive_received_status(mention, "skipped", reason)
                     return "skipped"
+            mention = self._enrich_mention_comment_images(mention, fetched_post)
             post = fetched_post if include_post_context else PostContext()
         except XhhError as exc:
             return await self._handle_pre_send_error(mention, exc)
@@ -2592,6 +2600,36 @@ class XhhRobotPlugin(Star):
 
     def _event_bridge_enabled(self) -> bool:
         return self._bool_cfg("event_bridge.enabled", True)
+
+    @staticmethod
+    def _enrich_mention_comment_images(
+        mention: Mention,
+        post: PostContext,
+    ) -> Mention:
+        """Use comment-detail images and discard post thumbnails leaked by old queues."""
+
+        post_images = set(unique_strings(post.image_urls))
+        comment_images = post.comment_images_for(mention.comment_id)
+        existing_comment_images = tuple(
+            url for url in unique_strings(mention.image_urls) if url not in post_images
+        )
+        merged_images = tuple(
+            dict.fromkeys((*existing_comment_images, *unique_strings(comment_images)))
+        )
+        if merged_images == mention.image_urls:
+            return mention
+        logger.debug(
+            "%s normalized comment image context: message_id=%s link_id=%s "
+            "comment_id=%s images=%d detail_images=%d removed_post_images=%d",
+            PLUGIN_ID,
+            mention.message_id,
+            mention.link_id,
+            mention.comment_id,
+            len(merged_images),
+            len(comment_images),
+            max(0, len(mention.image_urls) - len(existing_comment_images)),
+        )
+        return replace(mention, image_urls=merged_images)
 
     def _comment_context_image_groups(
         self,
@@ -3021,7 +3059,14 @@ class XhhRobotPlugin(Star):
         try:
             include_post_context = self._bool_cfg("ai.include_post_context", True)
             fetched_post = (
-                await self.client.fetch_post_context(mention.link_id)
+                await self.client.fetch_post_context(
+                    mention.link_id,
+                    target_comment_id=mention.comment_id,
+                    root_comment_id=mention.root_comment_id,
+                    max_comment_pages=self._int_cfg(
+                        "polling.max_pages_per_poll", 10, 1, 20
+                    ),
+                )
                 if include_post_context or mention.source == "own_post_comment"
                 else PostContext()
             )
@@ -3043,6 +3088,7 @@ class XhhRobotPlugin(Star):
                     )
                     await self._archive_received_status(mention, "skipped", reason)
                     return "skipped"
+            mention = self._enrich_mention_comment_images(mention, fetched_post)
             post = fetched_post if include_post_context else PostContext()
             history = await self.store.conversation_history(
                 link_id=mention.link_id,

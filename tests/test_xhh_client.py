@@ -336,6 +336,187 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(post.topics, ("游戏",))
         self.assertEqual(post.tags, ("测试",))
 
+    async def test_fetch_post_context_indexes_comment_images_by_id(self) -> None:
+        content = json.dumps(
+            [{"type": "img", "url": "https://cdn.example/post.jpg"}],
+            ensure_ascii=False,
+        )
+        client, _ = self.make_client(
+            [
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "link": {
+                                "title": "带图帖子",
+                                "user": {"userid": "42"},
+                                "text": content,
+                            },
+                            "comments": [
+                                {
+                                    "comment_id": 101,
+                                    "text": "根评论",
+                                    "imgs": [
+                                        {"url": "https://cdn.example/root.jpg"}
+                                    ],
+                                    "replies": [
+                                        {
+                                            "id": 102,
+                                            "text": "回复",
+                                            "comment_images": [
+                                                "https://cdn.example/reply.jpg"
+                                            ],
+                                        }
+                                    ],
+                                }
+                            ],
+                        },
+                    }
+                )
+            ]
+        )
+
+        post = await client.fetch_post_context(99)
+
+        self.assertEqual(post.image_urls, ("https://cdn.example/post.jpg",))
+        self.assertEqual(
+            post.comment_images_for(101),
+            ("https://cdn.example/root.jpg",),
+        )
+        self.assertEqual(
+            post.comment_images_for(102),
+            ("https://cdn.example/reply.jpg",),
+        )
+
+    async def test_fetch_post_context_reads_web_comment_groups_without_post_images(self) -> None:
+        content = json.dumps(
+            [{"type": "img", "url": "https://cdn.example/post-cover.jpg"}],
+            ensure_ascii=False,
+        )
+        client, session = self.make_client(
+            [
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "link": {
+                                "title": "网页端评论结构",
+                                "user": {"userid": "42"},
+                                "text": content,
+                            },
+                            "total_page": 1,
+                            "has_more_floors": 0,
+                            "comments": [
+                                {
+                                    "comment": [
+                                        {
+                                            "commentid": 201,
+                                            "text": "用户评论",
+                                            "imgs": [
+                                                {
+                                                    "url": "https://cdn.example/user-comment.jpg"
+                                                }
+                                            ],
+                                        },
+                                        {
+                                            "commentid": 202,
+                                            "text": "楼中楼",
+                                            "imgs": [
+                                                {
+                                                    "url": "https://cdn.example/user-reply.jpg"
+                                                }
+                                            ],
+                                        },
+                                    ]
+                                }
+                            ],
+                        },
+                    }
+                )
+            ]
+        )
+
+        post = await client.fetch_post_context(99)
+
+        self.assertEqual(post.image_urls, ("https://cdn.example/post-cover.jpg",))
+        self.assertEqual(
+            post.comment_images_for(201),
+            ("https://cdn.example/user-comment.jpg",),
+        )
+        self.assertEqual(
+            post.comment_images_for(202),
+            ("https://cdn.example/user-reply.jpg",),
+        )
+        params = session.requests[0][2]["params"]
+        self.assertEqual(params["is_first"], "1")
+        self.assertEqual(params["page"], "1")
+        self.assertEqual(params["index"], "1")
+        self.assertEqual(params["limit"], "20")
+        self.assertEqual(params["owner_only"], "0")
+        self.assertEqual(params["sort_filter"], "time")
+
+    async def test_fetch_post_context_finds_image_in_sub_comments(self) -> None:
+        client, session = self.make_client(
+            [
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "link": {
+                                "title": "楼中楼帖子",
+                                "user": {"userid": "42"},
+                                "text": "正文",
+                            },
+                            "total_page": 1,
+                            "has_more_floors": 0,
+                            "comments": [
+                                {
+                                    "comment": [
+                                        {"commentid": 301, "text": "根评论"}
+                                    ]
+                                }
+                            ],
+                        },
+                    }
+                ),
+                FakeResponse(
+                    {
+                        "status": "ok",
+                        "result": {
+                            "comments": [
+                                {
+                                    "commentid": 302,
+                                    "text": "带图回复",
+                                    "imgs": [
+                                        {"url": "https://cdn.example/sub-comment.jpg"}
+                                    ],
+                                }
+                            ],
+                            "has_more": 0,
+                            "lastval": 302,
+                        },
+                    }
+                ),
+            ]
+        )
+
+        post = await client.fetch_post_context(
+            99,
+            target_comment_id=302,
+            root_comment_id=301,
+            max_comment_pages=3,
+        )
+
+        self.assertEqual(
+            post.comment_images_for(302),
+            ("https://cdn.example/sub-comment.jpg",),
+        )
+        self.assertEqual(
+            session.requests[1][2]["params"]["root_comment_id"],
+            "301",
+        )
+        self.assertEqual(session.requests[1][2]["params"]["lastval"], "301")
+
     async def test_fetch_notifications_merges_and_deduplicates_sources(self) -> None:
         client, session = self.make_client(
             [

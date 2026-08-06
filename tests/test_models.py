@@ -115,6 +115,30 @@ class MentionParsingTests(unittest.TestCase):
             ("https://cdn.example/replied.jpg",),
         )
 
+    def test_post_thumbnail_fields_are_not_treated_as_comment_images(self) -> None:
+        mention = Mention.from_mapping(
+            {
+                "message_id": 3,
+                "comment_a_id": 4,
+                "linkid": 5,
+                "userid_a": 6,
+                "img": "https://cdn.example/post-cover.jpg",
+                "imgs": [{"url": "https://cdn.example/post-cover.jpg"}],
+                "images": ["https://cdn.example/post-cover-2.jpg"],
+                "link": {
+                    "images": [{"url": "https://cdn.example/post-cover-3.jpg"}]
+                },
+                "comment_imgs": [
+                    {"url": "https://cdn.example/comment-attachment.jpg"}
+                ],
+            }
+        )
+
+        self.assertEqual(
+            mention.image_urls,
+            ("https://cdn.example/comment-attachment.jpg",),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

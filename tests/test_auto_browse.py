@@ -46,7 +46,12 @@ class BrowseClient:
         self.feed_calls += 1
         return list(self.posts)
 
-    async def fetch_post_context(self, link_id: int) -> PostContext:
+    async def fetch_post_context(
+        self,
+        link_id: int,
+        **kwargs: object,
+    ) -> PostContext:
+        del kwargs
         return PostContext(
             title="值得讨论的帖子",
             author_id="123",

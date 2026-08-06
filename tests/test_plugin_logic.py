@@ -83,7 +83,12 @@ class RecordingReplyClient:
         self.post = post
         self.sent: list[dict[str, object]] = []
 
-    async def fetch_post_context(self, link_id: int) -> PostContext:
+    async def fetch_post_context(
+        self,
+        link_id: int,
+        **kwargs: object,
+    ) -> PostContext:
+        del kwargs
         return self.post
 
     async def send_reply(self, **kwargs: object) -> None:
@@ -589,6 +594,100 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
             [
                 "https://cdn.example/comment.jpg",
                 "https://cdn.example/quoted.jpg",
+            ],
+        )
+
+    async def test_standard_event_removes_stale_post_image_from_comment_queue(self) -> None:
+        backend = MemoryBackend()
+        store = StateStore(load_value=backend.load, save_value=backend.save)
+        await store.initialize()
+        mention = Mention(
+            message_id=32,
+            comment_id=132,
+            root_comment_id=132,
+            link_id=532,
+            user_id=1,
+            comment_text="评论带图",
+            source="own_post_comment",
+            # This is the value persisted by the old parser: the post cover.
+            image_urls=("https://cdn.example/post-cover.jpg",),
+        )
+        await store.ingest(
+            newest_message_id=32,
+            queued=[mention],
+            ignored=[],
+            source="own_post_comment",
+        )
+
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "ai": {
+                "include_post_context": True,
+                "include_post_images": True,
+                "max_post_images": 4,
+                "max_context_images": 8,
+            },
+            "event_bridge": {"enabled": True, "max_in_flight": 2},
+            "filters": {"allow_all_users": True},
+            "media": {"max_outgoing_images": 4},
+        }
+        plugin.store = store
+        plugin.auth = AuthInfo(cookie="cookie=value", heybox_id="999")
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        plugin.data_dir = Path(temp_dir.name)
+        plugin.client = SimpleNamespace(
+            fetch_post_context=AsyncMock(
+                return_value=PostContext(
+                    title="帖子",
+                    author_id="999",
+                    image_urls=("https://cdn.example/post-cover.jpg",),
+                    comment_image_urls_by_id=(
+                        (132, ("https://cdn.example/comment-attachment.jpg",)),
+                    ),
+                )
+            )
+        )
+        plugin._event_tasks = {}
+        plugin._stop_event = asyncio.Event()
+        plugin._archive_received_status = AsyncMock()
+        captured: dict[str, object] = {}
+
+        def queue_event(event_key: str, event: object, on_timeout: object) -> bool:
+            del on_timeout
+            captured[event_key] = event
+            return True
+
+        plugin._queue_standard_event = queue_event  # type: ignore[method-assign]
+
+        outcome = await plugin._dispatch_mention_event(mention)
+
+        self.assertEqual(outcome, "dispatched")
+        event = captured["comment:532:132"]
+        message_obj = event.message_obj  # type: ignore[union-attr]
+        image_urls = [
+            str(item.url or item.file or item.path or "")
+            for item in message_obj.message
+            if isinstance(item, Image)
+        ]
+        self.assertEqual(
+            image_urls,
+            [
+                "https://cdn.example/comment-attachment.jpg",
+                "https://cdn.example/post-cover.jpg",
+            ],
+        )
+        self.assertEqual(
+            message_obj.raw_message["image_groups"],
+            [
+                {
+                    "label": "本评论图片",
+                    "image_urls": ["https://cdn.example/comment-attachment.jpg"],
+                },
+                {
+                    "label": "帖子图片",
+                    "image_urls": ["https://cdn.example/post-cover.jpg"],
+                },
             ],
         )
 

@@ -136,6 +136,171 @@ def _first_deep(value: Any, keys: tuple[str, ...]) -> Any:
     return None
 
 
+_COMMENT_IMAGE_KEYS = (
+    "comment_img",
+    "comment_imgs",
+    "comment_image",
+    "comment_images",
+    "comment_img_url",
+    "comment_img_urls",
+    "comment_image_url",
+    "comment_image_urls",
+    "comment_a_img",
+    "comment_a_imgs",
+    "comment_a_image",
+    "comment_a_images",
+    "comment_a_img_url",
+    "comment_a_img_urls",
+    "comment_a_image_url",
+    "comment_a_image_urls",
+    "comment_b_img",
+    "comment_b_imgs",
+    "comment_b_image",
+    "comment_b_images",
+    "comment_b_img_url",
+    "comment_b_img_urls",
+    "comment_b_image_url",
+    "comment_b_image_urls",
+    "reply_img",
+    "reply_imgs",
+    "reply_image",
+    "reply_images",
+    "reply_img_url",
+    "reply_img_urls",
+    "reply_image_url",
+    "reply_image_urls",
+    "img",
+    "imgs",
+    "image",
+    "images",
+    "img_url",
+    "img_urls",
+    "image_url",
+    "image_urls",
+    "image_list",
+    "img_list",
+    "picture",
+    "pictures",
+    "attachments",
+    "attachment",
+    "media",
+    "media_list",
+)
+_COMMENT_TEXT_KEYS = (
+    "comment_a_text",
+    "comment_text",
+    "comment_content",
+    "reply_content",
+    "replyContent",
+    "text",
+    "content",
+    "html",
+)
+_COMMENT_NESTED_KEYS = (
+    "comment_a",
+    "comment_b",
+    "comment",
+    "reply",
+    "body",
+    "data",
+    "payload",
+)
+def extract_comment_image_urls(value: Any) -> tuple[str, ...]:
+    """Extract images from a comment-shaped value without walking post data.
+
+    The message-center response uses generic ``img``/``imgs``/``images``
+    fields for the related post.  This helper only follows fields that belong
+    to a comment, so a nested author/link object cannot leak its thumbnail into
+    the comment image list.
+    """
+
+    urls: list[str] = []
+
+    def visit(item: Any) -> None:
+        if item is None:
+            return
+        if isinstance(item, Mapping):
+            for key in (*_COMMENT_IMAGE_KEYS, *_COMMENT_TEXT_KEYS):
+                if key in item:
+                    value = item.get(key)
+                    urls.extend(extract_image_urls(value))
+            for key in _COMMENT_NESTED_KEYS:
+                if key in item:
+                    visit(item.get(key))
+            return
+        if isinstance(item, (list, tuple, set)):
+            for child in item:
+                visit(child)
+            return
+        urls.extend(extract_image_urls(item))
+
+    visit(value)
+    return tuple(dict.fromkeys(urls))
+
+
+def _extract_current_comment_image_urls(value: Mapping[str, Any]) -> tuple[str, ...]:
+    """Read only fields whose meaning is the current notification comment."""
+
+    scoped: dict[str, Any] = {}
+    for key in (
+        "comment_img",
+        "comment_imgs",
+        "comment_image",
+        "comment_images",
+        "comment_img_url",
+        "comment_img_urls",
+        "comment_image_url",
+        "comment_image_urls",
+        "comment_a_img",
+        "comment_a_imgs",
+        "comment_a_image",
+        "comment_a_images",
+        "comment_a_img_url",
+        "comment_a_img_urls",
+        "comment_a_image_url",
+        "comment_a_image_urls",
+        "comment_a",
+        "comment_a_text",
+        "comment_text",
+        "comment_content",
+        "reply_content",
+        "replyContent",
+    ):
+        if key in value:
+            scoped[key] = value.get(key)
+    return extract_comment_image_urls(scoped)
+
+
+def _extract_replied_comment_image_urls(value: Mapping[str, Any]) -> tuple[str, ...]:
+    scoped: dict[str, Any] = {}
+    for key in (
+        "comment_b_img",
+        "comment_b_imgs",
+        "comment_b_image",
+        "comment_b_images",
+        "comment_b_img_url",
+        "comment_b_img_urls",
+        "comment_b_image_url",
+        "comment_b_image_urls",
+        "reply_img",
+        "reply_imgs",
+        "reply_image",
+        "reply_images",
+        "reply_img_url",
+        "reply_img_urls",
+        "reply_image_url",
+        "reply_image_urls",
+        "comment_b",
+        "reply",
+        "comment_b_text",
+        "reply_to_text",
+        "target_comment_text",
+    ):
+        if key in value:
+            scoped[key] = value.get(key)
+    return extract_comment_image_urls(scoped)
+
+
 @dataclass(frozen=True, slots=True)
 class Mention:
     message_id: int
@@ -222,43 +387,8 @@ class Mention:
             ),
             link_title=str(link.get("title") or value.get("link_title") or "").strip(),
             replied_text=_html_to_plain_text(value.get("comment_b_text")),
-            image_urls=tuple(
-                extract_image_urls(
-                    [
-                        value.get("img"),
-                        value.get("imgs"),
-                        value.get("images"),
-                        value.get("image_list"),
-                        value.get("img_list"),
-                        value.get("comment_imgs"),
-                        value.get("comment_a_imgs"),
-                        value.get("comment_a_images"),
-                        value.get("comment_a_image"),
-                        value.get("comment_image"),
-                        value.get("comment_images"),
-                        value.get("comment_a"),
-                        value.get("comment"),
-                        value.get("comment_a_text"),
-                        value.get("comment_text"),
-                        value.get("content"),
-                    ]
-                )
-            ),
-            replied_image_urls=tuple(
-                extract_image_urls(
-                    [
-                        value.get("comment_b_img"),
-                        value.get("comment_b_imgs"),
-                        value.get("comment_b_images"),
-                        value.get("reply_imgs"),
-                        value.get("reply_images"),
-                        value.get("reply_image"),
-                        value.get("comment_b"),
-                        value.get("reply"),
-                        value.get("comment_b_text"),
-                    ]
-                )
-            ),
+            image_urls=_extract_current_comment_image_urls(value),
+            replied_image_urls=_extract_replied_comment_image_urls(value),
         )
 
     @classmethod
@@ -508,6 +638,17 @@ class PostContext:
     content_blocks: tuple[dict[str, str], ...] = ()
     topics: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
+    comment_image_urls_by_id: tuple[tuple[int, tuple[str, ...]], ...] = ()
+
+    def comment_images_for(self, comment_id: int) -> tuple[str, ...]:
+        try:
+            target_id = int(comment_id)
+        except (TypeError, ValueError):
+            return ()
+        for stored_id, image_urls in self.comment_image_urls_by_id:
+            if stored_id == target_id:
+                return image_urls
+        return ()
 
     @property
     def body_text(self) -> str:

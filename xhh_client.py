@@ -48,6 +48,7 @@ from .models import (
     QrChallenge,
     QrPollResult,
     ReplyReceipt,
+    extract_comment_image_urls,
 )
 from .rich_content import (
     RichContentError,
@@ -197,6 +198,126 @@ LOGIN_COOKIE_NAMES = frozenset(
 # The COS upload workflow is adapted from
 # advent259141/astrbot_plugin_xiaoheihe_adapter under Apache-2.0.
 # See THIRD_PARTY_NOTICES.md for the modification notice.
+
+
+_COMMENT_CONTAINER_KEYS = frozenset(
+    {
+        "comments",
+        "comment",
+        "comment_list",
+        "comments_list",
+        "comment_data",
+        "replies",
+        "reply_list",
+        "children",
+        "sub_comments",
+        "subComments",
+        "root",
+        "items",
+        "list",
+    }
+)
+_COMMENT_ID_KEYS = (
+    "comment_id",
+    "commentid",
+    "commentId",
+    "comment_a_id",
+    "cid",
+)
+_COMMENT_TREE_PAGE_LIMIT = 20
+_MAX_COMMENT_LOOKUP_PAGES = 20
+
+
+def _safe_int(value: Any) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _truthy_api_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    return str(value or "").strip().casefold() in {"1", "true", "yes", "y"}
+
+
+def _merge_comment_image_index(
+    target: dict[int, list[str]],
+    source: tuple[tuple[int, tuple[str, ...]], ...],
+) -> None:
+    for comment_id, urls in source:
+        bucket = target.setdefault(comment_id, [])
+        for url in urls:
+            if url not in bucket:
+                bucket.append(url)
+
+
+def _comment_tree_has_more(
+    payload: Mapping[str, Any],
+    *,
+    page: int,
+    total_pages: int,
+) -> bool:
+    result = payload.get("result")
+    result = result if isinstance(result, Mapping) else {}
+    if total_pages > page:
+        return True
+    has_more = result.get("has_more_floors")
+    if has_more is None:
+        has_more = result.get("hasMoreFloors")
+    if has_more is not None:
+        return _truthy_api_value(has_more)
+    comments = result.get("comments") or result.get("comment")
+    return isinstance(comments, list) and len(comments) >= _COMMENT_TREE_PAGE_LIMIT
+
+
+def _extract_comment_images_by_id(payload: Any) -> tuple[tuple[int, tuple[str, ...]], ...]:
+    """Index images from the comment tree returned with a post detail response."""
+
+    found: dict[int, list[str]] = {}
+    visited: set[int] = set()
+
+    def visit(value: Any, *, in_comment_context: bool = False) -> None:
+        if isinstance(value, Mapping):
+            object_id = id(value)
+            if object_id in visited:
+                return
+            visited.add(object_id)
+
+            explicit_id = next(
+                (
+                    value.get(key)
+                    for key in _COMMENT_ID_KEYS
+                    if value.get(key) not in (None, "")
+                ),
+                None,
+            )
+            is_comment = in_comment_context or explicit_id not in (None, "")
+            comment_id = _safe_int(explicit_id)
+            if comment_id <= 0 and is_comment:
+                comment_id = _safe_int(value.get("id"))
+            if comment_id > 0 and is_comment:
+                urls = extract_comment_image_urls(value)
+                bucket = found.setdefault(comment_id, [])
+                for url in urls:
+                    if url not in bucket:
+                        bucket.append(url)
+
+            for key, child in value.items():
+                normalized_key = str(key or "").strip()
+                if normalized_key in _COMMENT_CONTAINER_KEYS:
+                    visit(child, in_comment_context=True)
+                elif normalized_key in {"result", "data", "payload"} or (
+                    normalized_key == "link" and not in_comment_context
+                ):
+                    visit(child, in_comment_context=in_comment_context)
+            return
+        if isinstance(value, (list, tuple, set)):
+            for child in value:
+                visit(child, in_comment_context=in_comment_context)
+
+    visit(payload)
+    return tuple((comment_id, tuple(urls)) for comment_id, urls in sorted(found.items()))
 
 
 class XhhError(RuntimeError):
@@ -607,14 +728,25 @@ class XhhClient:
             raw_count=len(raw_messages),
         )
 
-    async def fetch_post_context(self, link_id: int) -> PostContext:
-        response = await self._request_json(
-            "GET",
-            "/bbs/app/link/tree",
-            params={"h_src": "", "link_id": str(link_id)},
-            auth_required=True,
+    async def fetch_post_context(
+        self,
+        link_id: int,
+        *,
+        target_comment_id: int = 0,
+        root_comment_id: int = 0,
+        max_comment_pages: int = 1,
+    ) -> PostContext:
+        # The short request used by older versions can omit the comment tree.
+        # Use the same page parameters as the web client so comment attachments
+        # are available when a notification needs visual context.
+        response_payload = await self.fetch_post(
+            link_id,
+            page=1,
+            limit=_COMMENT_TREE_PAGE_LIMIT,
+            sort_filter="time",
+            owner_only=False,
         )
-        result = self._result_mapping(response.payload)
+        result = self._result_mapping(response_payload)
         link = result.get("link")
         if not isinstance(link, Mapping):
             raise XhhError(
@@ -638,6 +770,34 @@ class XhhClient:
             for url in content_blocks_image_sources(content_blocks)
         ]
 
+        comment_image_index: dict[int, list[str]] = {}
+        _merge_comment_image_index(
+            comment_image_index,
+            _extract_comment_images_by_id(response_payload),
+        )
+        target_id = _safe_int(target_comment_id)
+        if target_id > 0 and target_id not in comment_image_index:
+            try:
+                extra_index = await self._lookup_comment_images(
+                    link_id=link_id,
+                    target_comment_id=target_id,
+                    root_comment_id=_safe_int(root_comment_id),
+                    first_payload=response_payload,
+                    max_pages=max_comment_pages,
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - visual enrichment is best effort
+                logger.warning(
+                    "xhhrobot comment image lookup failed: link_id=%s "
+                    "comment_id=%s error=%r",
+                    link_id,
+                    target_id,
+                    exc,
+                )
+                extra_index = ()
+            _merge_comment_image_index(comment_image_index, extra_index)
+
         user = link.get("user") or link.get("author") or link.get("userinfo")
         user = user if isinstance(user, Mapping) else {}
         return PostContext(
@@ -659,6 +819,109 @@ class XhhClient:
             content_blocks=tuple(content_blocks),
             topics=tuple(self._extract_names(link.get("topics"))),
             tags=tuple(self._extract_names(link.get("hashtags"))),
+            comment_image_urls_by_id=tuple(
+                (comment_id, tuple(urls))
+                for comment_id, urls in sorted(comment_image_index.items())
+            ),
+        )
+
+    async def _lookup_comment_images(
+        self,
+        *,
+        link_id: int,
+        target_comment_id: int,
+        root_comment_id: int,
+        first_payload: Mapping[str, Any],
+        max_pages: int,
+    ) -> tuple[tuple[int, tuple[str, ...]], ...]:
+        """Find a target attachment without ever treating post images as comments."""
+
+        found: dict[int, list[str]] = {}
+        _merge_comment_image_index(found, _extract_comment_images_by_id(first_payload))
+        if target_comment_id in found:
+            return tuple(
+                (comment_id, tuple(urls))
+                for comment_id, urls in sorted(found.items())
+            )
+
+        page_limit = max(1, min(_safe_int(max_pages) or 1, _MAX_COMMENT_LOOKUP_PAGES))
+        if root_comment_id > 0 and root_comment_id != target_comment_id:
+            sub_index = await self._lookup_sub_comment_images(
+                root_comment_id=root_comment_id,
+                target_comment_id=target_comment_id,
+                max_pages=page_limit,
+            )
+            _merge_comment_image_index(found, sub_index)
+            if target_comment_id in found:
+                return tuple(
+                    (comment_id, tuple(urls))
+                    for comment_id, urls in sorted(found.items())
+                )
+
+        first_result = self._result_mapping(first_payload)
+        total_pages = _safe_int(
+            first_result.get("total_page") or first_result.get("totalPage")
+        )
+        for page in range(2, page_limit + 1):
+            if total_pages > 0 and page > total_pages:
+                break
+            payload = await self.fetch_post(
+                link_id,
+                page=page,
+                limit=_COMMENT_TREE_PAGE_LIMIT,
+                sort_filter="time",
+                owner_only=False,
+            )
+            _merge_comment_image_index(
+                found,
+                _extract_comment_images_by_id(payload),
+            )
+            if target_comment_id in found:
+                break
+            if not _comment_tree_has_more(payload, page=page, total_pages=total_pages):
+                break
+
+        return tuple(
+            (comment_id, tuple(urls))
+            for comment_id, urls in sorted(found.items())
+        )
+
+    async def _lookup_sub_comment_images(
+        self,
+        *,
+        root_comment_id: int,
+        target_comment_id: int,
+        max_pages: int,
+    ) -> tuple[tuple[int, tuple[str, ...]], ...]:
+        found: dict[int, list[str]] = {}
+        last_value = root_comment_id
+        for _ in range(max(1, min(max_pages, _MAX_COMMENT_LOOKUP_PAGES))):
+            payload = await self.fetch_sub_comments(
+                root_comment_id,
+                last_value=last_value,
+            )
+            current = _extract_comment_images_by_id(payload)
+            _merge_comment_image_index(found, current)
+            if target_comment_id in found:
+                break
+
+            result = self._result_mapping(payload)
+            has_more = result.get("has_more")
+            if has_more is None:
+                has_more = result.get("hasMore")
+            if not _truthy_api_value(has_more):
+                break
+
+            next_value = _safe_int(result.get("lastval") or result.get("last_val"))
+            if next_value <= 0 or next_value == last_value:
+                next_value = max(found, default=0)
+            if next_value <= 0 or next_value == last_value:
+                break
+            last_value = next_value
+
+        return tuple(
+            (comment_id, tuple(urls))
+            for comment_id, urls in sorted(found.items())
         )
 
     async def fetch_messages(
