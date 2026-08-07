@@ -290,6 +290,71 @@ class EventBridgeTests(unittest.IsolatedAsyncioTestCase):
             cooldown_seconds=3,
         )
 
+    async def test_invisible_placeholder_waits_for_later_direct_reply(self) -> None:
+        message_obj = build_direct_message(
+            self_user_id="42",
+            session_id="dm!99",
+            message_id="9",
+            sender_id="99",
+            sender_name="Alice",
+            message_text="私信正文",
+            image_urls=(),
+            timestamp=125,
+            raw_message={},
+        )
+        client = AsyncMock()
+        callbacks = {
+            "start": AsyncMock(),
+            "sent": AsyncMock(),
+            "error": AsyncMock(),
+            "empty": AsyncMock(),
+        }
+        event = XhhMessageEvent(
+            message_obj=message_obj,
+            target=EventTarget(
+                kind="direct_message",
+                source="direct_message",
+                event_key="dm:99:9",
+                raw_user_id="99",
+            ),
+            client=client,
+            max_reply_chars=100,
+            max_outgoing_images=1,
+            max_local_image_bytes=1024,
+            allowed_local_roots=(self.root,),
+            direct_message_cooldown_seconds=3,
+            clean_text=lambda value: value.strip(),
+            on_send_start=callbacks["start"],
+            on_sent=callbacks["sent"],
+            on_send_error=callbacks["error"],
+            on_empty=callbacks["empty"],
+        )
+
+        with patch.object(AstrMessageEvent, "send", new=AsyncMock()) as super_send:
+            await event.send(MessageChain([At(qq="xhh:99"), Plain("\u200b")]))
+
+            self.assertFalse(event.delivery_future.done())
+            self.assertFalse(event.outbound_started)
+            client.send_direct_message_chain.assert_not_awaited()
+            callbacks["start"].assert_not_awaited()
+            callbacks["sent"].assert_not_awaited()
+            callbacks["empty"].assert_not_awaited()
+            super_send.assert_not_awaited()
+
+            await event.send(MessageChain([Plain("联网查询后的实际回复")]))
+
+        client.send_direct_message_chain.assert_awaited_once_with(
+            user_id="99",
+            text="联网查询后的实际回复",
+            image_sources=[],
+            allowed_local_roots=(self.root,),
+            max_local_image_bytes=1024,
+            cooldown_seconds=3,
+        )
+        callbacks["sent"].assert_awaited_once()
+        self.assertEqual(event.delivery_future.result().status, "sent")
+        super_send.assert_awaited_once()
+
     async def test_direct_message_restriction_is_not_rethrown_to_astrbot(self) -> None:
         message_obj = build_direct_message(
             self_user_id="42",

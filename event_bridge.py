@@ -47,6 +47,17 @@ _ASTRBOT_PLUGIN_ERROR_RE = re.compile(
     r"[\s\S]*\Z"
 )
 _INTERNAL_XHH_IDENTIFIER_RE = re.compile(r"(?<![A-Za-z0-9_:-])@?xhh:[A-Za-z0-9_-]+")
+_INVISIBLE_PLACEHOLDER_CHARS = frozenset("\u200b\u200c\u200d\u2060\ufeff")
+
+
+def _is_invisible_delivery_placeholder(value: str) -> bool:
+    """Return whether AstrBot emitted an intermediate non-delivery marker."""
+
+    return bool(value) and any(
+        char in _INVISIBLE_PLACEHOLDER_CHARS for char in value
+    ) and all(
+        char.isspace() or char in _INVISIBLE_PLACEHOLDER_CHARS for char in value
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,7 +163,6 @@ class XhhMessageEvent(AstrMessageEvent):
                 return
             if self._delivery_expired:
                 return
-            self._delivery_started = True
 
             raw_text = strip_internal_xhh_identifiers(
                 self._message_chain_to_text(message)
@@ -172,6 +182,20 @@ class XhhMessageEvent(AstrMessageEvent):
             if self.max_outgoing_images >= 0:
                 image_sources = image_sources[: self.max_outgoing_images]
 
+            if (
+                not image_sources
+                and not suppressed_internal_error
+                and _is_invisible_delivery_placeholder(raw_text)
+            ):
+                logger.debug(
+                    "xhhrobot ignored invisible intermediate response: "
+                    "event_key=%s target=%s",
+                    self.target.event_key,
+                    self.target.kind,
+                )
+                return
+
+            self._delivery_started = True
             if not text and not image_sources:
                 await self._on_empty()
                 self._finish_delivery(DeliveryResult(status="empty"))
