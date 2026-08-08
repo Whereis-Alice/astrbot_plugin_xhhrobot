@@ -89,6 +89,7 @@ DIRECT_MESSAGE_USER_AGENT = (
 _XHH_EMOJI_TOKEN_RE = re.compile(r"\[(?P<package>cube|heygirl)_(?P<name>[^\]\r\n]+)\]")
 _XHH_EMOJI_ALIASES = {
     "cube_吐血": "cube_吐",
+    "cube_狗头": "cube_doge",
 }
 # The web client ships these standard packs even when the metadata endpoint
 # returns no groups. Keep them as a conservative fallback for outgoing text.

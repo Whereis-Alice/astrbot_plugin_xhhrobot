@@ -752,9 +752,9 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         client, _ = self.make_client([])
         client._emoji_names = set()
 
-        result = await client.prepare_outgoing_text("回复[cube_吐血]")
+        result = await client.prepare_outgoing_text("回复[cube_吐血][cube_狗头]")
 
-        self.assertEqual(result, "回复[cube_吐]")
+        self.assertEqual(result, "回复[cube_吐][cube_doge]")
 
     async def test_qr_login_does_not_send_old_auth_and_builds_new_auth(self) -> None:
         client, session = self.make_client(
