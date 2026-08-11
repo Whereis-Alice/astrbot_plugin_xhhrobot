@@ -17,9 +17,10 @@ from astrbot_plugin_xhhrobot.media import (
     load_image_payload,
     local_path_from_source,
     normalize_http_image_url,
+    strip_xhh_image_transform_query,
 )
 from astrbot_plugin_xhhrobot.models import AuthInfo
-from astrbot_plugin_xhhrobot.xhh_client import XhhClient
+from astrbot_plugin_xhhrobot.xhh_client import XhhClient, XhhError
 
 PNG_1X1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
@@ -79,6 +80,27 @@ class MediaTests(unittest.IsolatedAsyncioTestCase):
     def test_private_network_image_url_is_rejected(self) -> None:
         with self.assertRaisesRegex(ValueError, "私有"):
             normalize_http_image_url("http://127.0.0.1/image.png")
+
+    def test_xhh_thumbnail_queries_are_removed_without_dropping_signatures(self) -> None:
+        self.assertEqual(
+            strip_xhh_image_transform_query(
+                "https://imgheybox1.max-c.com/web/a.jpg?"
+                "imageMogr2/auto-orient/ignore-error/1/thumbnail/850x1450%3E"
+            ),
+            "https://imgheybox1.max-c.com/web/a.jpg",
+        )
+        self.assertEqual(
+            strip_xhh_image_transform_query(
+                "https://imgheybox.max-c.com/web/a.jpg?sign=abc&imageView2/2/w/300"
+            ),
+            "https://imgheybox.max-c.com/web/a.jpg?sign=abc",
+        )
+        self.assertEqual(
+            strip_xhh_image_transform_query(
+                "https://images.example/a.jpg?imageMogr2/thumbnail/300x300"
+            ),
+            "https://images.example/a.jpg?imageMogr2/thumbnail/300x300",
+        )
 
     def test_image_url_lists_and_nested_img_fields_are_supported(self) -> None:
         self.assertEqual(
@@ -158,13 +180,19 @@ class MediaTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result.startswith("data:image/png;base64,"))
         client.fetch_image_payload.assert_awaited_once()
 
-    async def test_prepare_sources_copies_network_and_uploads_local_images(
+    async def test_prepare_sources_uploads_original_network_bytes_and_local_images(
         self,
     ) -> None:
         client = self.client()
-        client.copy_image_by_url = AsyncMock(return_value="https://cdn.example/a.png")
+        client.fetch_image_payload = AsyncMock(
+            return_value=ImagePayload("remote.png", "image/png", PNG_1X1, 1, 1)
+        )
+        client.copy_image_by_url = AsyncMock()
         client.upload_image_payload_to_cos = AsyncMock(
-            return_value="https://cdn.example/local.png"
+            side_effect=[
+                "https://cdn.example/remote.png",
+                "https://cdn.example/local.png",
+            ]
         )
 
         result = await client.prepare_image_sources(
@@ -174,11 +202,28 @@ class MediaTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             result,
-            ["https://cdn.example/a.png", "https://cdn.example/local.png"],
+            ["https://cdn.example/remote.png", "https://cdn.example/local.png"],
         )
-        uploaded = client.upload_image_payload_to_cos.await_args.args[0]
-        self.assertIsInstance(uploaded, ImagePayload)
-        self.assertEqual(uploaded.data, PNG_1X1)
+        client.fetch_image_payload.assert_awaited_once_with(
+            "https://example.com/a.png", max_bytes=20 * 1024 * 1024
+        )
+        client.copy_image_by_url.assert_not_awaited()
+        uploaded = [call.args[0] for call in client.upload_image_payload_to_cos.await_args_list]
+        self.assertEqual([item.data for item in uploaded], [PNG_1X1, PNG_1X1])
+
+    async def test_prepare_sources_falls_back_to_url_copy_after_remote_upload_error(
+        self,
+    ) -> None:
+        client = self.client()
+        client.fetch_image_payload = AsyncMock(
+            side_effect=XhhError("图片下载失败（HTTP 403）。", retryable=False)
+        )
+        client.copy_image_by_url = AsyncMock(return_value="https://cdn.example/copied.png")
+
+        result = await client.prepare_image_sources(["https://example.com/a.png"])
+
+        self.assertEqual(result, ["https://cdn.example/copied.png"])
+        client.copy_image_by_url.assert_awaited_once_with("https://example.com/a.png")
 
     async def test_cos_upload_runs_info_token_put_and_callback_sequence(self) -> None:
         client = self.client()

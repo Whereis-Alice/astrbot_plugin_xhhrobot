@@ -115,6 +115,19 @@ class EventBridgeTests(unittest.IsolatedAsyncioTestCase):
             ],
         )
 
+    def test_outbound_image_prefers_local_original_over_preview_url(self) -> None:
+        image = Image(
+            file="https://example.com/preview.jpg",
+            url="https://example.com/preview.jpg",
+            path=str(self.image_path),
+        )
+
+        sources = XhhMessageEvent._message_chain_to_image_sources(
+            MessageChain([image])
+        )
+
+        self.assertEqual(sources, [str(self.image_path)])
+
     async def test_outbound_comment_preserves_text_and_full_image_chain(self) -> None:
         message_obj = build_comment_message(
             self_user_id="42",
@@ -288,6 +301,23 @@ class EventBridgeTests(unittest.IsolatedAsyncioTestCase):
             allowed_local_roots=(self.root,),
             max_local_image_bytes=1024,
             cooldown_seconds=3,
+        )
+
+    async def test_outbound_image_can_use_url_copy_when_original_upload_is_disabled(
+        self,
+    ) -> None:
+        event, client, _ = self._make_comment_event()
+        event.preserve_remote_image_bytes = False
+
+        with patch.object(AstrMessageEvent, "send", new=AsyncMock()):
+            await event.send(
+                MessageChain(
+                    [Plain("收到"), Image.fromURL("https://example.com/a.png")]
+                )
+            )
+
+        self.assertFalse(
+            client.send_reply.await_args.kwargs["preserve_remote_image_bytes"]
         )
 
     async def test_invisible_placeholder_waits_for_later_direct_reply(self) -> None:

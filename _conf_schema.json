@@ -767,7 +767,7 @@
   "media": {
     "type": "object",
     "description": "图片与本地上传",
-    "hint": "控制 AstrBot 回复消息链和 LLM 写工具发送图片时的数量、大小与本地目录权限。网络图片会由小黑盒转存，本地/Base64 图片会上传到小黑盒 COS。",
+    "hint": "控制 AstrBot 回复消息链和 LLM 写工具发送图片时的数量、大小与本地目录权限。网络图片默认先下载原始字节并上传到小黑盒 COS；下载或上传失败时才回退小黑盒 URL 转存。本地/Base64 图片始终上传到小黑盒 COS。",
     "obvious_hint": true,
     "items": {
       "max_outgoing_images": {
@@ -785,6 +785,12 @@
         "min": 1,
         "max": 100,
         "hint": "上传前会校验文件大小、图片魔数和尺寸；支持 PNG、JPG、GIF、WebP 与 BMP。"
+      },
+      "preserve_remote_image_bytes": {
+        "type": "bool",
+        "description": "HTTP 图片优先原字节上传",
+        "default": true,
+        "hint": "开启时，发帖、评论、私信和自动回复中的 HTTP 图片会优先下载原始字节后上传，避免小黑盒 URL 转存把缩略图再次作为原图。小黑盒图片 URL 中的 imageMogr2、imageView2、水印等缩略图处理参数会自动移除。下载或上传失败时会回退旧的 URL 转存方式并写入后台警告；若上游只提供缩略图，插件无法还原原图。"
       },
       "allow_local_tool_uploads": {
         "type": "bool",

@@ -1271,6 +1271,9 @@ class XhhToolRuntime:
                 content_blocks=content_blocks,
                 allowed_local_roots=self._allowed_local_roots(),
                 max_local_image_bytes=self._max_local_image_bytes(),
+                preserve_remote_image_bytes=self._bool_cfg(
+                    "media.preserve_remote_image_bytes", True
+                ),
             )
         if action == "create_comment":
             image_urls = self._image_sources(
@@ -1299,6 +1302,9 @@ class XhhToolRuntime:
                 image_urls=image_urls,
                 allowed_local_roots=self._allowed_local_roots(),
                 max_local_image_bytes=self._max_local_image_bytes(),
+                preserve_remote_image_bytes=self._bool_cfg(
+                    "media.preserve_remote_image_bytes", True
+                ),
             )
             recorder = getattr(self.plugin, "_record_bot_comment", None)
             if callable(recorder):
@@ -1369,6 +1375,9 @@ class XhhToolRuntime:
                     image_sources=image_sources,
                     allowed_local_roots=self._allowed_local_roots(),
                     max_local_image_bytes=self._max_local_image_bytes(),
+                    preserve_remote_image_bytes=self._bool_cfg(
+                        "media.preserve_remote_image_bytes", True
+                    ),
                     cooldown_seconds=self._int_cfg(
                         "direct_messages.send_cooldown_sec", 5, 0, 300
                     ),
@@ -1379,6 +1388,9 @@ class XhhToolRuntime:
                 image_sources=image_sources,
                 allowed_local_roots=self._allowed_local_roots(),
                 max_local_image_bytes=self._max_local_image_bytes(),
+                preserve_remote_image_bytes=self._bool_cfg(
+                    "media.preserve_remote_image_bytes", True
+                ),
                 cooldown_seconds=self._int_cfg(
                     "direct_messages.send_cooldown_sec", 5, 0, 300
                 ),

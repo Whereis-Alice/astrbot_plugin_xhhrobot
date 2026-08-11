@@ -6,6 +6,7 @@ import html
 import json
 import re
 import time
+import unicodedata
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from http.cookies import CookieError, SimpleCookie
@@ -22,6 +23,7 @@ from aiohttp_socks import (
 )
 from astrbot.api import logger
 
+from .emoji_catalog import XHH_EMOJI_ALIAS_GROUPS, XHH_EMOJI_FALLBACK_NAMES
 from .media import (
     ImagePayload,
     cos_authorization,
@@ -34,7 +36,7 @@ from .media import (
     is_http_url,
     is_xhh_image_url,
     load_image_payload,
-    normalize_http_image_url,
+    strip_xhh_image_transform_query,
     unique_strings,
 )
 from .models import (
@@ -54,8 +56,8 @@ from .rich_content import (
     RichContentError,
     content_blocks_image_sources,
     content_blocks_plain_text,
-    normalize_rich_content_blocks,
     normalize_plain_text,
+    normalize_rich_content_blocks,
     parse_inbound_content_blocks,
     platform_html_for_block,
 )
@@ -86,104 +88,65 @@ DIRECT_MESSAGE_USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/125.0.0.0 Safari/537.36"
 )
-_XHH_EMOJI_TOKEN_RE = re.compile(r"\[(?P<package>cube|heygirl)_(?P<name>[^\]\r\n]+)\]")
-_XHH_EMOJI_ALIASES = {
-    "cube_吐血": "cube_吐",
-    "cube_狗头": "cube_doge",
-}
-# The web client ships these standard packs even when the metadata endpoint
-# returns no groups. Keep them as a conservative fallback for outgoing text.
-_XHH_EMOJI_FALLBACK_NAMES = frozenset(
-    {
-        "cube_哭泣",
-        "cube_酷",
-        "cube_doge",
-        "cube_喜欢",
-        "cube_黑人问号",
-        "cube_惊讶",
-        "cube_开心",
-        "cube_捂脸哭",
-        "cube_晕",
-        "cube_感动",
-        "cube_委屈",
-        "cube_并不简单",
-        "cube_乖",
-        "cube_笑cry",
-        "cube_怒",
-        "cube_滑稽",
-        "cube_沧桑",
-        "cube_凄凉",
-        "cube_赞",
-        "cube_学习",
-        "cube_叹气",
-        "cube_加油",
-        "cube_摊手",
-        "cube_喷水",
-        "cube_打脸",
-        "cube_H币",
-        "cube_生气",
-        "cube_困",
-        "cube_闭嘴",
-        "cube_吐",
-        "cube_咕咕",
-        "cube_微笑",
-        "cube_哇",
-        "cube_汗",
-        "cube_吓",
-        "cube_睡觉",
-        "cube_2023",
-        "cube_圣诞树",
-        "cube_庆祝",
-        "cube_庆祝-圣诞",
-        "cube_你懂我",
-        "cube_我懂你",
-        "cube_阳",
-        "cube_比心",
-        "cube_wota",
-        "cube_鹅",
-        "cube_握草",
-        "cube_这是什么鸟",
-        "cube_上学-乐",
-        "cube_上学-丧",
-        "cube_打咩",
-        "cube_超人",
-        "cube_僵尸",
-        "cube_窝囊",
-        "cube_小鸡",
-        "cube_摸摸头",
-        "cube_电牛",
-        "cube_摘墨镜",
-        "cube_悟空",
-        "cube_2024",
-        "cube_良民",
-        "cube_嬉水女王",
-        "cube_2025",
-        "heygirl_诶嘿",
-        "heygirl_哭",
-        "heygirl_白嫖怪",
-        "heygirl_疑问",
-        "heygirl_痴",
-        "heygirl_喜欢",
-        "heygirl_捏脸",
-        "heygirl_害羞",
-        "heygirl_苦酒入喉",
-        "heygirl_秃",
-        "heygirl_rua!",
-        "heygirl_吃瓜",
-        "heygirl_茄化",
-        "heygirl_无语",
-        "heygirl_这…",
-        "heygirl_敲开心",
-        "heygirl_开可乐",
-        "heygirl_哈哈",
-        "heygirl_滑稽",
-        "heygirl_偷看",
-        "heygirl_喝奶茶",
-        "heygirl_惊",
-        "heygirl_记下来",
-        "heygirl_挨刀",
-    }
+_XHH_EMOJI_TOKEN_RE = re.compile(
+    r"\[(?P<package>[A-Za-z][A-Za-z0-9-]*)_(?P<name>[^\]\r\n]+)\]"
 )
+
+
+def _normalize_emoji_token(value: str) -> str:
+    return unicodedata.normalize("NFKC", str(value or "")).strip().casefold()
+
+
+def _emoji_name_lookup(names: Iterable[str]) -> dict[str, str]:
+    """Map normalized identifiers to their exact platform spelling."""
+
+    result: dict[str, str] = {}
+    for name in sorted({str(item or "").strip() for item in names if str(item or "").strip()}):
+        normalized = _normalize_emoji_token(name)
+        if normalized:
+            result.setdefault(normalized, name)
+    return result
+
+
+def _build_emoji_alias_candidates() -> dict[str, tuple[str, ...]]:
+    result: dict[str, tuple[str, ...]] = {}
+    for group in XHH_EMOJI_ALIAS_GROUPS:
+        candidates = tuple(
+            dict.fromkeys(
+                _normalize_emoji_token(name)
+                for name in group
+                if _normalize_emoji_token(name)
+            )
+        )
+        for candidate in candidates:
+            existing = result.get(candidate, ())
+            result[candidate] = tuple(dict.fromkeys((*existing, *candidates)))
+    return result
+
+
+_XHH_EMOJI_ALIAS_CANDIDATES = _build_emoji_alias_candidates()
+_XHH_EMOJI_FALLBACK_LOOKUP = _emoji_name_lookup(XHH_EMOJI_FALLBACK_NAMES)
+
+
+def _resolve_supported_emoji_token(
+    token: str,
+    live_names: Iterable[str],
+) -> str | None:
+    """Resolve Chinese, English, and legacy spellings to a sendable token."""
+
+    normalized = _normalize_emoji_token(token)
+    live_lookup = _emoji_name_lookup(live_names)
+    if normalized in live_lookup:
+        return live_lookup[normalized]
+
+    candidates = _XHH_EMOJI_ALIAS_CANDIDATES.get(normalized, (normalized,))
+    for candidate in candidates:
+        if candidate in live_lookup:
+            return live_lookup[candidate]
+    for candidate in candidates:
+        if candidate in _XHH_EMOJI_FALLBACK_LOOKUP:
+            return _XHH_EMOJI_FALLBACK_LOOKUP[candidate]
+    return None
 LOGIN_COOKIE_NAMES = frozenset(
     {
         "user_pkey",
@@ -1348,12 +1311,10 @@ class XhhClient:
                 # Emoji metadata is optional; a temporary metadata failure must
                 # never prevent an otherwise valid text reply.
                 pass
-        names = set(self._emoji_names or ()) | _XHH_EMOJI_FALLBACK_NAMES
-
         def replace(match: re.Match[str]) -> str:
             token = f"{match.group('package')}_{match.group('name')}"
-            canonical = _XHH_EMOJI_ALIASES.get(token, token)
-            if canonical in names:
+            canonical = _resolve_supported_emoji_token(token, self._emoji_names or ())
+            if canonical:
                 return f"[{canonical}]"
             logger.warning(
                 "xhhrobot replaced unsupported Xiaoheihe emoji token: %s",
@@ -1508,7 +1469,7 @@ class XhhClient:
 
     async def copy_image_by_url(self, image_url: str) -> str:
         try:
-            image_url = normalize_http_image_url(image_url)
+            image_url = strip_xhh_image_transform_query(image_url)
         except ValueError as exc:
             raise XhhError(str(exc), retryable=False) from exc
         if is_xhh_image_url(image_url):
@@ -1525,17 +1486,55 @@ class XhhClient:
             raise XhhError("小黑盒图片转存响应中缺少 URL。", retryable=False)
         return self._normalise_media_url(copied)
 
+    async def _prepare_remote_image_source(
+        self,
+        source: str,
+        *,
+        preserve_remote_image_bytes: bool,
+        max_local_image_bytes: int,
+    ) -> tuple[str, ImagePayload | None]:
+        """Upload a remote image's original bytes, with URL-copy fallback."""
+
+        try:
+            normalized_source = strip_xhh_image_transform_query(source)
+        except ValueError as exc:
+            raise XhhError(str(exc), retryable=False) from exc
+
+        if preserve_remote_image_bytes:
+            try:
+                payload = await self.fetch_image_payload(
+                    normalized_source,
+                    max_bytes=max(1, int(max_local_image_bytes)),
+                )
+                return await self.upload_image_payload_to_cos(payload), payload
+            except XhhError as exc:
+                # A public source can temporarily reject the server download.
+                # Preserve delivery by using Xiaoheihe's existing URL-copy path.
+                logger.warning(
+                    "xhhrobot original-byte remote image upload failed; "
+                    "falling back to URL copy: host=%s error=%s",
+                    urlparse(normalized_source).hostname or "unknown",
+                    str(exc),
+                )
+        return await self.copy_image_by_url(normalized_source), None
+
     async def prepare_image_sources(
         self,
         image_sources: Iterable[Any],
         *,
         allowed_local_roots: Sequence[Path] = (),
         max_local_image_bytes: int = 20 * 1024 * 1024,
+        preserve_remote_image_bytes: bool = True,
     ) -> list[str]:
         prepared: list[str] = []
         for source in unique_strings(image_sources):
             if is_http_url(source):
-                prepared.append(await self.copy_image_by_url(source))
+                url, _ = await self._prepare_remote_image_source(
+                    source,
+                    preserve_remote_image_bytes=preserve_remote_image_bytes,
+                    max_local_image_bytes=max_local_image_bytes,
+                )
+                prepared.append(url)
                 continue
             try:
                 payload = await asyncio.to_thread(
@@ -1555,6 +1554,7 @@ class XhhClient:
         *,
         allowed_local_roots: Sequence[Path] = (),
         max_local_image_bytes: int = 20 * 1024 * 1024,
+        preserve_remote_image_bytes: bool = True,
     ) -> list[dict[str, Any]]:
         """Prepare web-editor image blocks, including layout dimensions."""
 
@@ -1563,7 +1563,14 @@ class XhhClient:
             width = 0
             height = 0
             if is_http_url(source):
-                url = await self.copy_image_by_url(source)
+                url, payload = await self._prepare_remote_image_source(
+                    source,
+                    preserve_remote_image_bytes=preserve_remote_image_bytes,
+                    max_local_image_bytes=max_local_image_bytes,
+                )
+                if payload is not None:
+                    width = payload.width
+                    height = payload.height
             else:
                 try:
                     payload = await asyncio.to_thread(
@@ -1631,7 +1638,7 @@ class XhhClient:
             except ValueError as exc:
                 raise XhhError(str(exc), retryable=False) from exc
         try:
-            url = normalize_http_image_url(text)
+            url = strip_xhh_image_transform_query(text)
         except ValueError as exc:
             raise XhhError(str(exc), retryable=False) from exc
 
@@ -1890,6 +1897,7 @@ class XhhClient:
         content_blocks: Sequence[Mapping[str, Any]] | None = None,
         allowed_local_roots: Sequence[Path] = (),
         max_local_image_bytes: int = 20 * 1024 * 1024,
+        preserve_remote_image_bytes: bool = True,
     ) -> dict[str, Any]:
         try:
             blocks = normalize_rich_content_blocks(
@@ -1916,6 +1924,7 @@ class XhhClient:
                     [block["url"]],
                     allowed_local_roots=allowed_local_roots,
                     max_local_image_bytes=max_local_image_bytes,
+                    preserve_remote_image_bytes=preserve_remote_image_bytes,
                 )
                 content.extend({"type": "img", **image} for image in copied)
                 continue
@@ -1930,6 +1939,7 @@ class XhhClient:
             image_urls or [],
             allowed_local_roots=allowed_local_roots,
             max_local_image_bytes=max_local_image_bytes,
+            preserve_remote_image_bytes=preserve_remote_image_bytes,
         )
         content.extend({"type": "img", **image} for image in copied_images)
         if not content:
@@ -1986,11 +1996,13 @@ class XhhClient:
         image_urls: list[str] | None = None,
         allowed_local_roots: Sequence[Path] = (),
         max_local_image_bytes: int = 20 * 1024 * 1024,
+        preserve_remote_image_bytes: bool = True,
     ) -> dict[str, Any]:
         copied_images = await self.prepare_image_sources(
             image_urls or [],
             allowed_local_roots=allowed_local_roots,
             max_local_image_bytes=max_local_image_bytes,
+            preserve_remote_image_bytes=preserve_remote_image_bytes,
         )
         text = await self.prepare_outgoing_text(text)
         data = {
@@ -2079,6 +2091,7 @@ class XhhClient:
         allowed_local_roots: Sequence[Path] = (),
         max_local_image_bytes: int = 20 * 1024 * 1024,
         cooldown_seconds: int = 0,
+        preserve_remote_image_bytes: bool = True,
     ) -> dict[str, Any]:
         self._ensure_direct_message_sending_allowed()
         sources = [*(image_sources or [])]
@@ -2088,6 +2101,7 @@ class XhhClient:
             sources[:1],
             allowed_local_roots=allowed_local_roots,
             max_local_image_bytes=max_local_image_bytes,
+            preserve_remote_image_bytes=preserve_remote_image_bytes,
         )
         copied_image = prepared[0] if prepared else ""
         return await self._send_direct_message_prepared(
@@ -2164,12 +2178,14 @@ class XhhClient:
         allowed_local_roots: Sequence[Path] = (),
         max_local_image_bytes: int = 20 * 1024 * 1024,
         cooldown_seconds: int = 5,
+        preserve_remote_image_bytes: bool = True,
     ) -> list[dict[str, Any]]:
         self._ensure_direct_message_sending_allowed()
         prepared = await self.prepare_image_sources(
             image_sources,
             allowed_local_roots=allowed_local_roots,
             max_local_image_bytes=max_local_image_bytes,
+            preserve_remote_image_bytes=preserve_remote_image_bytes,
         )
         deliveries: list[dict[str, Any]] = []
         parts = prepared or [""]
@@ -2221,11 +2237,13 @@ class XhhClient:
         image_sources: Sequence[str] = (),
         allowed_local_roots: Sequence[Path] = (),
         max_local_image_bytes: int = 20 * 1024 * 1024,
+        preserve_remote_image_bytes: bool = True,
     ) -> ReplyReceipt:
         prepared_images = await self.prepare_image_sources(
             image_sources,
             allowed_local_roots=allowed_local_roots,
             max_local_image_bytes=max_local_image_bytes,
+            preserve_remote_image_bytes=preserve_remote_image_bytes,
         )
         text = await self.prepare_outgoing_text(text)
         data = {

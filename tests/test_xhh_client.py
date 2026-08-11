@@ -756,6 +756,26 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result, "回复[cube_吐][cube_doge]")
 
+    async def test_outgoing_emoji_aliases_support_english_and_live_metadata(self) -> None:
+        client, _ = self.make_client([])
+        client._emoji_names = {
+            "heygirl_耶嘿",
+            "heygirl_喝奶茶",
+            "bigemoji_吃瓜",
+            "grandemoji_万能盒娘",
+        }
+
+        result = await client.prepare_outgoing_text(
+            "[HeyGirl_ehehe][heygirl_milk_tea][bigemoji_melon]"
+            "[grandemoji_all_powerful_heybox_girl][cube_剑星涂鸦][cube_doghead]"
+        )
+
+        self.assertEqual(
+            result,
+            "[heygirl_耶嘿][heygirl_喝奶茶][bigemoji_吃瓜]"
+            "[grandemoji_万能盒娘][cube_剑星渡鸦][cube_doge]",
+        )
+
     async def test_qr_login_does_not_send_old_auth_and_builds_new_auth(self) -> None:
         client, session = self.make_client(
             [
@@ -956,6 +976,7 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             topic_ids=["7214", "18745"],
             hashtags=["AstrBot", "测试"],
             image_urls=["https://images.example/source.jpg"],
+            preserve_remote_image_bytes=False,
         )
 
         self.assertEqual(payload["result"]["link_id"], 321)
@@ -1081,6 +1102,55 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             },
         )
 
+    async def test_publish_post_uploads_original_remote_image_with_dimensions(self) -> None:
+        client, session = self.make_client(
+            [FakeResponse({"status": "ok", "result": {"link_id": 325}})]
+        )
+        image = ImagePayload("remote.png", "image/png", b"original", 640, 480)
+        client.fetch_image_payload = AsyncMock(return_value=image)
+        client.upload_image_payload_to_cos = AsyncMock(
+            return_value="https://cdn.xiaoheihe.cn/original.png"
+        )
+
+        await client.publish_post(
+            title="remote image",
+            body="image body",
+            image_urls=[
+                (
+                    "https://imgheybox.max-c.com/web/original.png?"
+                    "imageMogr2/thumbnail/850x1450%3E"
+                )
+            ],
+        )
+
+        client.fetch_image_payload.assert_awaited_once_with(
+            "https://imgheybox.max-c.com/web/original.png",
+            max_bytes=20 * 1024 * 1024,
+        )
+        client.upload_image_payload_to_cos.assert_awaited_once_with(image)
+        form = parse_qs(session.requests[0][2]["data"], keep_blank_values=True)
+        content = json.loads(form["text"][0])
+        self.assertEqual(
+            content[1],
+            {
+                "type": "img",
+                "url": "https://cdn.xiaoheihe.cn/original.png",
+                "width": 640,
+                "height": 480,
+            },
+        )
+
+    async def test_copy_xhh_image_url_removes_thumbnail_transform(self) -> None:
+        client, session = self.make_client([])
+
+        copied = await client.copy_image_by_url(
+            "https://imgheybox.max-c.com/web/original.jpg?"
+            "imageMogr2/thumbnail/850x1450%3E"
+        )
+
+        self.assertEqual(copied, "https://imgheybox.max-c.com/web/original.jpg")
+        self.assertEqual(session.requests, [])
+
     async def test_publish_post_uses_default_topic_link_tag(self) -> None:
         client, session = self.make_client(
             [FakeResponse({"status": "ok", "result": {"link_id": 323}})]
@@ -1116,6 +1186,7 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
                 {"type": "html", "text": "<p><strong>重点</strong></p>"},
                 {"type": "image", "url": "https://images.example/rich.jpg"},
             ],
+            preserve_remote_image_bytes=False,
         )
 
         form = parse_qs(session.requests[1][2]["data"], keep_blank_values=True)
@@ -1176,6 +1247,7 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             user_id="99",
             text="你好",
             image_url="https://images.example/dm.png",
+            preserve_remote_image_bytes=False,
         )
 
         method, url, kwargs = session.requests[1]

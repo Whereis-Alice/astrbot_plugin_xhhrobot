@@ -307,6 +307,24 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result["ok"])
         self.assertEqual(len(plugin.client.published), 1)
+        self.assertTrue(plugin.client.published[0]["preserve_remote_image_bytes"])
+
+    async def test_write_tools_pass_remote_image_strategy_from_configuration(self) -> None:
+        config = self.config(require_explicit_confirmation=False)
+        config["media"] = {"preserve_remote_image_bytes": False}
+        plugin = FakePlugin(config)
+        runtime = XhhToolRuntime(plugin)
+
+        result = json.loads(
+            await runtime.execute(
+                "publish_post",
+                FakeEvent(admin=True, message="直接发布这篇帖子"),
+                {"title": "标题", "body": "正文"},
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertFalse(plugin.client.published[0]["preserve_remote_image_bytes"])
 
     async def test_enabling_confirmation_after_tools_are_built_blocks_write(
         self,

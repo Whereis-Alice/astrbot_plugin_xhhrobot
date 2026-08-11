@@ -101,6 +101,7 @@ class XhhMessageEvent(AstrMessageEvent):
         on_sent: DeliveryCallback,
         on_send_error: ErrorCallback,
         on_empty: Callable[[], Awaitable[None]],
+        preserve_remote_image_bytes: bool = True,
     ) -> None:
         super().__init__(
             message_str=message_obj.message_str,
@@ -122,6 +123,7 @@ class XhhMessageEvent(AstrMessageEvent):
         self._on_sent = on_sent
         self._on_send_error = on_send_error
         self._on_empty = on_empty
+        self.preserve_remote_image_bytes = bool(preserve_remote_image_bytes)
         self._send_lock = asyncio.Lock()
         self._delivery_started = False
         self._outbound_started = False
@@ -221,6 +223,11 @@ class XhhMessageEvent(AstrMessageEvent):
 
             self._outbound_started = True
             try:
+                image_prepare_options = (
+                    {"preserve_remote_image_bytes": False}
+                    if not self.preserve_remote_image_bytes
+                    else {}
+                )
                 if self.target.kind == "direct_message":
                     await self.client.send_direct_message_chain(
                         user_id=self.target.raw_user_id,
@@ -229,6 +236,7 @@ class XhhMessageEvent(AstrMessageEvent):
                         allowed_local_roots=self.allowed_local_roots,
                         max_local_image_bytes=self.max_local_image_bytes,
                         cooldown_seconds=self.direct_message_cooldown_seconds,
+                        **image_prepare_options,
                     )
                 else:
                     await self.client.send_reply(
@@ -239,6 +247,7 @@ class XhhMessageEvent(AstrMessageEvent):
                         image_sources=image_sources,
                         allowed_local_roots=self.allowed_local_roots,
                         max_local_image_bytes=self.max_local_image_bytes,
+                        **image_prepare_options,
                     )
             except asyncio.CancelledError:
                 error = RuntimeError(
@@ -325,9 +334,9 @@ class XhhMessageEvent(AstrMessageEvent):
             if not isinstance(component, Image):
                 continue
             values = (
-                getattr(component, "url", ""),
-                getattr(component, "file", ""),
                 getattr(component, "path", ""),
+                getattr(component, "file", ""),
+                getattr(component, "url", ""),
             )
             for value in values:
                 source = str(value or "").strip()

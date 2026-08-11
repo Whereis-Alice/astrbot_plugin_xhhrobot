@@ -15,10 +15,16 @@ from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, unquote, urlparse
+from urllib.parse import quote, unquote, urlparse, urlunparse
 
 SUPPORTED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"}
 XHH_IMAGE_HOST_SUFFIXES = ("max-c.com", "myqcloud.com", "xiaoheihe.cn")
+_XHH_IMAGE_TRANSFORM_PREFIXES = (
+    "imagemogr2",
+    "imageview2",
+    "imageinterlace",
+    "watermark",
+)
 _GIF_DECODE_LOCK = threading.Lock()
 _EMBEDDED_HTTP_URL_RE = re.compile(
     r"(?:https?:)?//[^\s,;|\"'<>]+",
@@ -88,6 +94,36 @@ def is_xhh_image_url(value: Any) -> bool:
         host == suffix or host.endswith("." + suffix)
         for suffix in XHH_IMAGE_HOST_SUFFIXES
     )
+
+
+def strip_xhh_image_transform_query(value: Any) -> str:
+    """Remove CDN thumbnail transforms from a Xiaoheihe image URL.
+
+    Xiaoheihe commonly appends Tencent COS processing expressions such as
+    ``?imageMogr2/.../thumbnail/...`` to message images.  They point at a
+    derived image rather than the original object.  Keep unrelated query
+    fields, including signed-download parameters, intact.
+    """
+
+    normalized = normalize_http_image_url(value)
+    parsed = urlparse(normalized)
+    host = (parsed.hostname or "").casefold().rstrip(".")
+    if not any(
+        host == suffix or host.endswith("." + suffix)
+        for suffix in XHH_IMAGE_HOST_SUFFIXES
+    ):
+        return normalized
+
+    kept_query_parts: list[str] = []
+    for part in parsed.query.split("&"):
+        decoded = unquote(part).lstrip("?").casefold()
+        if any(
+            decoded == prefix or decoded.startswith(prefix + "/")
+            for prefix in _XHH_IMAGE_TRANSFORM_PREFIXES
+        ):
+            continue
+        kept_query_parts.append(part)
+    return urlunparse(parsed._replace(query="&".join(kept_query_parts)))
 
 
 def is_gif_source(value: Any) -> bool:
