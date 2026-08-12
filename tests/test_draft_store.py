@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import sqlite3
 import tempfile
 import unittest
-import sqlite3
 from pathlib import Path
 
 from astrbot_plugin_xhhrobot.draft_store import DraftStore

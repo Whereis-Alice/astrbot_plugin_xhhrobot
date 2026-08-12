@@ -360,7 +360,9 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
         }
         plugin.store = store
         plugin.client = client
-        plugin.auth = AuthInfo(cookie="cookie=value", heybox_id="999")
+        plugin.auth = AuthInfo(
+            cookie="cookie=value", heybox_id="999", nickname="爱丽丝"
+        )
         plugin.context = RecordingNotificationContext()
         temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(temp_dir.cleanup)
@@ -386,7 +388,8 @@ class PluginPollingTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(notification.startswith("小黑盒自动回复成功"))
         self.assertIn("类型：自己帖子下的普通评论", notification)
         self.assertIn("对方评论：\n普通评论", notification)
-        self.assertIn("Bot 回复：\n自动回复", notification)
+        self.assertIn("爱丽丝 回复：\n自动回复", notification)
+        self.assertIn("爱丽丝 回复图片：0 张", notification)
         self.assertIn("消息 ID：21", notification)
         self.assertIn("帖子 ID：500", notification)
         self.assertIn("评论 ID：121", notification)

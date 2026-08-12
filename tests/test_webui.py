@@ -9,7 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 import astrbot_plugin_xhhrobot.main as main_module
 from astrbot_plugin_xhhrobot.main import PLUGIN_ID, XhhRobotPlugin
-from astrbot_plugin_xhhrobot.models import Mention
+from astrbot_plugin_xhhrobot.models import AuthInfo, Mention
 
 
 class FakeArchive:
@@ -230,6 +230,143 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('postApi("analytics/insights/cancel", {})', page)
         self.assertIn('getApi("analytics/insights/status")', page)
         self.assertIn("prefers-reduced-motion", page)
+
+    def test_dashboard_prioritizes_messages_and_reduces_terminal_prefixes(self) -> None:
+        page = (
+            Path(__file__).parents[1] / "pages" / "dashboard" / "index.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('class="database-commandbar"', page)
+        self.assertIn('class="database-details"', page)
+        self.assertIn('id="toggleFiltersButton"', page)
+        self.assertIn('.filters[data-expanded="true"]', page)
+        self.assertIn('#databasePanel td:nth-child(4)', page)
+        self.assertLess(page.index('id="filterForm"'), page.index('class="table-wrap"'))
+        self.assertLess(page.index('class="table-wrap"'), page.index('id="commentDistribution"'))
+        self.assertNotIn('content: "./"', page)
+        self.assertNotIn('content: "> "', page)
+        self.assertNotIn('content: ":: "', page)
+        self.assertNotIn('content: "["', page)
+
+    async def test_account_profile_refresh_updates_cached_nickname_and_fields(
+        self,
+    ) -> None:
+        plugin = self.plugin()
+        plugin.auth = AuthInfo(
+            cookie="cookie=value", heybox_id="102013423", nickname="旧名字"
+        )
+        plugin._auth_source = "qr"
+        plugin._account_profile = {}
+        plugin._account_profile_updated_at = 0.0
+        plugin._account_profile_error = ""
+        plugin._account_profile_lock = asyncio.Lock()
+        plugin.client = SimpleNamespace(
+            fetch_user_profile=AsyncMock(
+                return_value={
+                    "status": "ok",
+                    "result": {
+                        "account_detail": {
+                            "userid": "102013423",
+                            "username": "爱丽丝新名字",
+                            "avatar": "https://example.com/avatar.jpg",
+                            "level_info": {"level": 42},
+                            "bbs_info": {
+                                "follow_num": 88,
+                                "fan_num": 520,
+                                "post_link_num": 31,
+                            },
+                            "signature": "正在小黑盒营业",
+                            "ip_location": "上海",
+                        }
+                    },
+                }
+            ),
+            set_auth=lambda auth: None,
+        )
+        plugin.put_kv_data = AsyncMock()
+
+        profile = await plugin._refresh_account_profile(force=True)
+
+        self.assertEqual(profile["nickname"], "爱丽丝新名字")
+        self.assertEqual(profile["level"], "42")
+        self.assertEqual(profile["following_count"], 88)
+        self.assertEqual(profile["follower_count"], 520)
+        self.assertEqual(profile["post_count"], 31)
+        self.assertEqual(plugin.auth.nickname, "爱丽丝新名字")
+        plugin.put_kv_data.assert_awaited_once()
+
+    async def test_account_profile_normalizes_level_and_clears_stale_error(
+        self,
+    ) -> None:
+        plugin = self.plugin()
+        plugin.auth = AuthInfo(cookie="cookie=value", heybox_id="102013423")
+        plugin._account_profile = {"nickname": "旧名字"}
+        plugin._account_profile_updated_at = 0.0
+        plugin._account_profile_error = "上次读取失败"
+        plugin._account_profile_lock = asyncio.Lock()
+        plugin.client = SimpleNamespace(
+            fetch_user_profile=AsyncMock(
+                return_value={
+                    "status": "ok",
+                    "result": {"account_detail": {"level": "Lv.42"}},
+                }
+            ),
+            set_auth=lambda auth: None,
+        )
+
+        profile = await plugin._refresh_account_profile(force=True)
+
+        self.assertEqual(profile["level"], "42")
+        self.assertEqual(plugin._account_profile_error, "")
+
+    async def test_account_profile_empty_success_clears_stale_error(self) -> None:
+        plugin = self.plugin()
+        plugin.auth = AuthInfo(cookie="cookie=value", heybox_id="102013423")
+        plugin._account_profile = {"nickname": "保留名字"}
+        plugin._account_profile_updated_at = 0.0
+        plugin._account_profile_error = "上次读取失败"
+        plugin._account_profile_lock = asyncio.Lock()
+        plugin.client = SimpleNamespace(
+            fetch_user_profile=AsyncMock(return_value={"status": "ok", "result": {}}),
+            set_auth=lambda auth: None,
+        )
+
+        profile = await plugin._refresh_account_profile(force=True)
+
+        self.assertEqual(profile["nickname"], "保留名字")
+        self.assertEqual(plugin._account_profile_error, "")
+
+    async def test_status_command_forces_account_profile_refresh(self) -> None:
+        plugin = self.plugin()
+        plugin._status_text = AsyncMock(return_value="状态")
+        event = SimpleNamespace(plain_result=lambda value: value)
+
+        results = [item async for item in plugin.xhh_status(event)]
+
+        self.assertEqual(results, ["状态"])
+        plugin._status_text.assert_awaited_once_with(refresh_account=True)
+
+    async def test_web_status_can_force_account_refresh(self) -> None:
+        plugin = self.plugin()
+        plugin._web_status_payload = AsyncMock(return_value={"ok": True})
+        fake_request = SimpleNamespace(args={"refresh_account": "1"})
+
+        with (
+            patch.object(main_module, "request", fake_request),
+            patch.object(main_module, "jsonify", side_effect=lambda value: value),
+        ):
+            result = await plugin.web_status()
+
+        self.assertTrue(result["ok"])
+        plugin._web_status_payload.assert_awaited_once_with(refresh_account=True)
+
+    def test_dashboard_hides_failed_account_avatar(self) -> None:
+        page = (
+            Path(__file__).parents[1] / "pages" / "dashboard" / "index.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('class="account-avatar"', page)
+        self.assertIn('onerror="this.remove()"', page)
 
     def test_dashboard_loads_bridge_before_inline_application(self) -> None:
         page = (

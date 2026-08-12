@@ -444,9 +444,11 @@ def tool_specs() -> tuple[ToolSpec, ...]:
             "xhh_comment_insights",
             "comment_insights",
             (
-                "分析本插件 SQLite 已归档的外部用户评论。可统计关键词、标准小黑盒表情、"
-                "语义近义表达、去重并集、占比和代表样例。语义分析使用 AstrBot 模型并在"
-                "后台分批运行；再次调用 status 可查看进度，cancel 可取消。属于账号私密信息。"
+                "按自然语言主题分析当前账号的评论区，例如‘多少人在夸我’、‘有多少人吐槽价格’、"
+                "‘大家是否提到某个角色或话题’。工具读取本插件 SQLite 已归档的外部用户评论，"
+                "统计关键词、标准小黑盒表情、语义近义表达、去重并集、占比和代表样例；可按帖子、"
+                "用户、来源、状态和时间筛选。run 启动分析，status 查看后台进度和结果，cancel 取消。"
+                "语义分析使用 AstrBot 模型分批运行。属于账号私密信息，仅管理员可调用。"
             ),
             _object_schema(
                 {
@@ -458,7 +460,10 @@ def tool_specs() -> tuple[ToolSpec, ...]:
                     },
                     "topic": {
                         "type": "string",
-                        "description": "run 时必填。要识别的语义主题，例如喜欢、爱意或好感。",
+                        "description": (
+                            "run 时必填。用自然语言描述要统计的评论主题或态度，"
+                            "例如‘夸奖或表达喜欢’、‘吐槽价格太贵’、‘提到某个角色’。"
+                        ),
                     },
                     "keywords": {
                         "type": "array",
@@ -994,14 +999,20 @@ class XhhToolRuntime:
         allow_local_images: bool = False,
     ) -> Any:
         if action == "status":
-            status = await self.plugin._status_text()
+            status = await self.plugin._status_text(refresh_account=True)
             auth = getattr(self.plugin, "auth", None)
+            profile = dict(getattr(self.plugin, "_account_profile", {}) or {})
             return {
                 "status": status,
                 "account": {
                     "heybox_id": str(getattr(auth, "heybox_id", "") or ""),
-                    "nickname": str(getattr(auth, "nickname", "") or ""),
+                    "nickname": str(
+                        profile.get("nickname")
+                        or getattr(auth, "nickname", "")
+                        or ""
+                    ),
                     "logged_in": bool(auth and getattr(auth, "cookie", "")),
+                    "profile": profile,
                 },
                 "tools_enabled": self._bool_cfg("tools.enabled", True),
                 "write_tools_enabled": self._bool_cfg(

@@ -11,7 +11,7 @@ import jsonschema
 
 from astrbot_plugin_xhhrobot.draft_store import DraftStore
 from astrbot_plugin_xhhrobot.main import XhhRobotPlugin
-from astrbot_plugin_xhhrobot.tools import WRITE_ACTIONS, XhhToolRuntime
+from astrbot_plugin_xhhrobot.tools import WRITE_ACTIONS, XhhToolRuntime, tool_specs
 
 
 class FakeEvent:
@@ -87,8 +87,10 @@ class FakePlugin:
         self.local_roots: list[Path] = []
         self.insight_started: list[dict[str, Any]] = []
         self.insight_cancelled = False
+        self.status_refresh_account: bool | None = None
 
-    async def _status_text(self) -> str:
+    async def _status_text(self, *, refresh_account: bool = False) -> str:
+        self.status_refresh_account = refresh_account
         return "登录：已配置"
 
     async def _record_bot_comment(self, **kwargs: Any) -> None:
@@ -259,6 +261,7 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(status["data"]["account"]["heybox_id"], "42")
         self.assertTrue(status["data"]["account"]["logged_in"])
+        self.assertTrue(plugin.status_refresh_account)
         self.assertTrue(notifications["ok"])
         self.assertEqual(
             plugin.client.notifications_calls,
@@ -743,6 +746,17 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(plugin.insight_started[0]["keywords"], ["喜欢", "爱"])
         self.assertEqual(status["data"]["report"]["union_matches"], 3)
         self.assertTrue(cancelled["data"]["cancelled"])
+
+    def test_comment_insight_tool_description_supports_natural_language_intents(
+        self,
+    ) -> None:
+        spec = next(item for item in tool_specs() if item.name == "xhh_comment_insights")
+
+        self.assertIn("多少人在夸我", spec.description)
+        self.assertIn("吐槽价格", spec.description)
+        self.assertIn("status", spec.description)
+        self.assertIn("仅管理员", spec.description)
+        self.assertIn("自然语言", spec.parameters["properties"]["topic"]["description"])
 
     async def test_tool_call_reads_event_from_astrbot_context_wrapper(self) -> None:
         plugin = FakePlugin(self.config())

@@ -5,7 +5,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-
 ROOT = Path(__file__).parents[1]
 PAGE = ROOT / "pages" / "dashboard" / "index.html"
 
@@ -24,8 +23,22 @@ STATUS = {
         "state": "authenticated",
         "source": "qr",
         "heybox_id": "102013423",
-        "nickname": "正在思考的毛团",
+        "nickname": "爱丽丝",
         "proxy_configured": False,
+        "profile_updated_at": 1786480200,
+        "profile_error": "",
+        "profile": {
+            "heybox_id": "102013423",
+            "nickname": "爱丽丝",
+            "avatar": "https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLmibn8Sgib8A/132",
+            "level": "42",
+            "signature": "正在小黑盒营业",
+            "ip_location": "上海",
+            "following_count": 88,
+            "follower_count": 520,
+            "post_count": 31,
+            "comment_count": 406,
+        },
     },
     "events": {
         "bridge_enabled": True,

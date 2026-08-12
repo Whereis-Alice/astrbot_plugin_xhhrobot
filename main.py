@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import copy
 import contextlib
+import copy
 import inspect
 import random
 import re
@@ -71,6 +71,7 @@ PLUGIN_ID = "astrbot_plugin_xhhrobot"
 AUTH_STORAGE_KEY = "xhh_auth_v1"
 DEVICE_STORAGE_KEY = "xhh_device_id_v1"
 DEFAULT_SESSION_UMO = "xhhrobot:FriendMessage:community"
+ACCOUNT_PROFILE_CACHE_SECONDS = 300
 SEARCH_TOOL_HINTS = (
     "search",
     "搜索",
@@ -212,6 +213,10 @@ class XhhRobotPlugin(Star):
         self._dm_sending_blocked_until = 0.0
         self._web_login_challenge: QrChallenge | None = None
         self._web_login_started_at = 0.0
+        self._account_profile: dict[str, Any] = {}
+        self._account_profile_updated_at = 0.0
+        self._account_profile_error = ""
+        self._account_profile_lock = asyncio.Lock()
         self._insight_state = self._empty_comment_insight_state()
         self._register_web_apis()
 
@@ -380,7 +385,12 @@ class XhhRobotPlugin(Star):
     async def web_status(self):
         if not self._webui_enabled():
             return jsonify({"ok": False, "error": "插件 WebUI 已在配置中关闭。"}), 403
-        return jsonify(await self._web_status_payload())
+        force_refresh = str(request.args.get("refresh_account") or "").strip().lower()
+        return jsonify(
+            await self._web_status_payload(
+                refresh_account=force_refresh in {"1", "true", "yes", "on"}
+            )
+        )
 
     async def web_runtime_start(self):
         if not self._webui_enabled():
@@ -436,7 +446,10 @@ class XhhRobotPlugin(Star):
             }
         )
 
-    async def _web_status_payload(self) -> dict[str, Any]:
+    async def _web_status_payload(
+        self, *, refresh_account: bool = False
+    ) -> dict[str, Any]:
+        await self._refresh_account_profile(force=refresh_account)
         snapshot = await self.store.snapshot()
         archive = await self._archive_overview()
         try:
@@ -472,8 +485,15 @@ class XhhRobotPlugin(Star):
                 "state": auth_state,
                 "source": self._auth_source,
                 "heybox_id": self.auth.heybox_id if self.auth is not None else "",
-                "nickname": self.auth.nickname if self.auth is not None else "",
+                "nickname": self._account_display_name(fallback=""),
                 "proxy_configured": bool(self._str_cfg("connection.proxy_url", "")),
+                "profile": dict(getattr(self, "_account_profile", {}) or {}),
+                "profile_updated_at": float(
+                    getattr(self, "_account_profile_updated_at", 0.0) or 0.0
+                ),
+                "profile_error": str(
+                    getattr(self, "_account_profile_error", "") or ""
+                ),
             },
             "events": {
                 "bridge_enabled": self._event_bridge_enabled(),
@@ -606,7 +626,7 @@ class XhhRobotPlugin(Star):
             "started_at": self._web_login_started_at,
             "account": {
                 "heybox_id": self.auth.heybox_id if self.auth is not None else "",
-                "nickname": self.auth.nickname if self.auth is not None else "",
+                "nickname": self._account_display_name(fallback=""),
                 "source": self._auth_source,
             },
         }
@@ -629,6 +649,9 @@ class XhhRobotPlugin(Star):
         self._web_login_started_at = 0.0
         await self.delete_kv_data(AUTH_STORAGE_KEY)
         self.auth = None
+        self._account_profile = {}
+        self._account_profile_updated_at = 0.0
+        self._account_profile_error = ""
         self._auth_source = "none"
         self._auth_invalid = False
         self._auth_error_notified = False
@@ -1122,7 +1145,7 @@ class XhhRobotPlugin(Star):
     @filter.command("小黑盒状态", alias={"xhh状态", "xhh_status"})
     async def xhh_status(self, event: AstrMessageEvent):
         """查看小黑盒登录、轮询与回复队列状态。"""
-        yield event.plain_result(await self._status_text())
+        yield event.plain_result(await self._status_text(refresh_account=True))
 
     @filter.permission_type(filter.PermissionType.ADMIN)
     @filter.command("小黑盒登录", alias={"xhh登录", "xhh_login"})
@@ -1465,6 +1488,7 @@ class XhhRobotPlugin(Star):
             )
 
         async with self._cycle_lock:
+            await self._refresh_account_profile()
             result = await self._poll_mentions()
             if self._bool_cfg("filters.reply_to_own_post_comments", True):
                 result.merge(await self._poll_own_post_comments())
@@ -1923,10 +1947,11 @@ class XhhRobotPlugin(Star):
                     comment,
                 )
                 if self._bool_cfg("auto_browse.notify_on_comment", True):
+                    account_name = self._account_display_name()
                     await self._notify(
                         "小黑盒自动评论成功\n\n"
                         f"帖子：{post.title or selected.title or '[无标题]'}\n\n"
-                        f"Bot 评论：\n{comment}\n\n"
+                        f"{account_name} 评论：\n{comment}\n\n"
                         f"帖子 ID：{selected.link_id}\n"
                         f"作者 ID：{selected.author_id}"
                     )
@@ -4111,6 +4136,9 @@ class XhhRobotPlugin(Star):
                 result = await self.client.poll_qr_login(challenge)
                 if result.state == "success" and result.auth is not None:
                     self.auth = result.auth
+                    self._account_profile = {}
+                    self._account_profile_updated_at = 0.0
+                    self._account_profile_error = ""
                     self._auth_source = "qr"
                     self._auth_invalid = False
                     self._auth_error_notified = False
@@ -4155,6 +4183,160 @@ class XhhRobotPlugin(Star):
             parsed.get("user_heybox_id") or ""
         )
         return AuthInfo(cookie=cookie, heybox_id=heybox_id, login_at=0), "config"
+
+    def _account_display_name(self, *, fallback: str = "Bot") -> str:
+        profile = getattr(self, "_account_profile", {}) or {}
+        nickname = str(profile.get("nickname") or "").strip()
+        if not nickname and self.auth is not None:
+            nickname = str(self.auth.nickname or "").strip()
+        return nickname or fallback
+
+    async def _refresh_account_profile(self, *, force: bool = False) -> dict[str, Any]:
+        auth = getattr(self, "auth", None)
+        client = getattr(self, "client", None)
+        if auth is None or client is None or not str(auth.heybox_id or "").strip():
+            return dict(getattr(self, "_account_profile", {}) or {})
+
+        now = time.time()
+        updated_at = float(getattr(self, "_account_profile_updated_at", 0.0) or 0.0)
+        cached = dict(getattr(self, "_account_profile", {}) or {})
+        if not force and updated_at and now - updated_at < ACCOUNT_PROFILE_CACHE_SECONDS:
+            return cached
+
+        fetch_profile = getattr(client, "fetch_user_profile", None)
+        if not callable(fetch_profile):
+            return cached
+
+        lock = getattr(self, "_account_profile_lock", None)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._account_profile_lock = lock
+        async with lock:
+            now = time.time()
+            updated_at = float(
+                getattr(self, "_account_profile_updated_at", 0.0) or 0.0
+            )
+            cached = dict(getattr(self, "_account_profile", {}) or {})
+            if not force and updated_at and now - updated_at < ACCOUNT_PROFILE_CACHE_SECONDS:
+                return cached
+            try:
+                payload = await fetch_profile(str(auth.heybox_id))
+                profile = self._summarize_account_profile(payload, str(auth.heybox_id))
+                self._account_profile_updated_at = now
+                self._account_profile_error = ""
+                has_profile_details = any(
+                    key != "heybox_id" for key in profile
+                )
+                if has_profile_details:
+                    self._account_profile = profile
+                    nickname = str(profile.get("nickname") or "").strip()
+                    if nickname and nickname != auth.nickname:
+                        self.auth = replace(auth, nickname=nickname)
+                        client.set_auth(self.auth)
+                        if self._auth_source == "qr":
+                            await self.put_kv_data(AUTH_STORAGE_KEY, self.auth.to_dict())
+                return dict(getattr(self, "_account_profile", {}) or {})
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                self._account_profile_updated_at = now
+                self._account_profile_error = str(exc)
+                logger.warning("%s account profile refresh failed: %r", PLUGIN_ID, exc)
+                return cached
+
+    @classmethod
+    def _summarize_account_profile(
+        cls, payload: Mapping[str, Any], fallback_user_id: str
+    ) -> dict[str, Any]:
+        result = payload.get("result")
+        result = result if isinstance(result, Mapping) else payload
+        detail = result.get("account_detail")
+        detail = detail if isinstance(detail, Mapping) else result.get("user")
+        detail = detail if isinstance(detail, Mapping) else result
+        profile = result.get("profile")
+        profile = profile if isinstance(profile, Mapping) else {}
+        level_info = detail.get("level_info")
+        level_info = level_info if isinstance(level_info, Mapping) else {}
+        bbs_info = detail.get("bbs_info")
+        bbs_info = bbs_info if isinstance(bbs_info, Mapping) else {}
+
+        def text_value(*values: Any) -> str:
+            for value in values:
+                text = str(value or "").strip()
+                if text:
+                    return text
+            return ""
+
+        def count_value(*values: Any) -> int | None:
+            for value in values:
+                if value in (None, "") or isinstance(value, bool):
+                    continue
+                try:
+                    return max(0, int(float(value)))
+                except (TypeError, ValueError):
+                    continue
+            return None
+
+        def level_value(*values: Any) -> str:
+            value = text_value(*values)
+            return re.sub(r"^lv\.?\s*", "", value, flags=re.IGNORECASE).strip()
+
+        summary: dict[str, Any] = {
+            "heybox_id": text_value(
+                detail.get("userid"),
+                detail.get("heybox_id"),
+                profile.get("heybox_id"),
+                fallback_user_id,
+            ),
+            "nickname": text_value(
+                detail.get("username"),
+                detail.get("nickname"),
+                detail.get("name"),
+                profile.get("nickname"),
+            ),
+            "avatar": text_value(
+                detail.get("avatar"),
+                detail.get("avartar"),
+                profile.get("avatar"),
+            ),
+            "level": level_value(
+                level_info.get("level"), detail.get("level"), profile.get("level")
+            ),
+            "signature": text_value(
+                detail.get("signature"), detail.get("description"), profile.get("signature")
+            ),
+            "ip_location": text_value(
+                detail.get("ip_location"), profile.get("ip_location")
+            ),
+            "following_count": count_value(
+                bbs_info.get("follow_num"),
+                bbs_info.get("following_num"),
+                detail.get("follow_num"),
+                detail.get("following_count"),
+            ),
+            "follower_count": count_value(
+                bbs_info.get("fan_num"),
+                bbs_info.get("fans_num"),
+                detail.get("fan_num"),
+                detail.get("follower_count"),
+            ),
+            "post_count": count_value(
+                bbs_info.get("post_link_num"),
+                bbs_info.get("post_num"),
+                detail.get("post_link_num"),
+                detail.get("post_count"),
+            ),
+            "comment_count": count_value(
+                bbs_info.get("comment_num"),
+                detail.get("comment_num"),
+                detail.get("comment_count"),
+            ),
+        }
+        return {
+            key: value
+            for key, value in summary.items()
+            if value not in (None, "")
+        }
 
     async def _resolve_device_id(self) -> str:
         configured = self._str_cfg("account.device_id", "")
@@ -4249,7 +4431,8 @@ class XhhRobotPlugin(Star):
                 "bot_comments": 0,
             }
 
-    async def _status_text(self) -> str:
+    async def _status_text(self, *, refresh_account: bool = False) -> str:
+        await self._refresh_account_profile(force=refresh_account)
         snapshot = await self.store.snapshot()
         archive = await self._archive_overview()
         try:
@@ -4262,11 +4445,7 @@ class XhhRobotPlugin(Star):
             1 for item in dead.values() if item.get("reason") == "uncertain_delivery"
         )
         heybox_id = self.auth.heybox_id if self.auth is not None else ""
-        account = (
-            self.auth.nickname
-            if self.auth is not None and self.auth.nickname
-            else heybox_id
-        )
+        account = self._account_display_name(fallback=heybox_id)
         if account and len(account) > 8:
             account = account[:4] + "…" + account[-3:]
         auth_state = "已配置"
@@ -4300,6 +4479,7 @@ class XhhRobotPlugin(Star):
         dm_block_reason = self._dm_sending_block_reason()
         own_post_reply_limit = self._own_post_reply_limit()
         tracked_own_posts = len(snapshot.get("own_post_reply_counts") or {})
+        account_profile = dict(getattr(self, "_account_profile", {}) or {})
         lines = [
             f"运行：{'运行中' if self._worker_running else '未运行'}{'（已手动停止）' if paused else ''}",
             f"登录：{auth_state}；来源：{self._auth_source}"
@@ -4317,7 +4497,8 @@ class XhhRobotPlugin(Star):
                 "评论归档："
                 + (
                     f"原始观察 {archive['received_observations']}，"
-                    f"去重评论 {archive['received_comments']}，Bot 评论记录 {archive['bot_comments']}"
+                    f"去重评论 {archive['received_comments']}，"
+                    f"{self._account_display_name()}评论记录 {archive['bot_comments']}"
                     if archive["enabled"]
                     else (
                         "不可用：" + str(getattr(self, "_archive_error", ""))[:160]
@@ -4390,6 +4571,21 @@ class XhhRobotPlugin(Star):
                 f"发送不确定 {browse_stats['uncertain']}"
             ),
         ]
+        profile_parts: list[str] = []
+        if account_profile.get("level"):
+            profile_parts.append(f"等级 Lv.{account_profile['level']}")
+        if account_profile.get("following_count") is not None:
+            profile_parts.append(f"关注 {account_profile['following_count']}")
+        if account_profile.get("follower_count") is not None:
+            profile_parts.append(f"粉丝 {account_profile['follower_count']}")
+        if account_profile.get("post_count") is not None:
+            profile_parts.append(f"帖子 {account_profile['post_count']}")
+        if account_profile.get("comment_count") is not None:
+            profile_parts.append(f"评论 {account_profile['comment_count']}")
+        if account_profile.get("ip_location"):
+            profile_parts.append(f"IP 属地 {account_profile['ip_location']}")
+        if profile_parts:
+            lines.insert(2, "账号资料：" + "；".join(profile_parts))
         next_browse_at = float(browse.get("next_run_at") or 0)
         if browse_enabled and next_browse_at:
             lines.append("下次巡帖：" + self._format_time(next_browse_at))
@@ -4465,8 +4661,8 @@ class XhhRobotPlugin(Star):
         except Exception as exc:
             logger.warning("%s notification failed: %r", PLUGIN_ID, exc)
 
-    @staticmethod
     def _reply_success_notification(
+        self,
         mention: Mention,
         reply_text: str,
         *,
@@ -4475,12 +4671,13 @@ class XhhRobotPlugin(Star):
         source = (
             "自己帖子下的普通评论" if mention.source == "own_post_comment" else "@ 消息"
         )
+        account_name = self._account_display_name()
         return (
             "小黑盒自动回复成功\n\n"
             f"类型：{source}\n\n"
             f"对方评论：\n{mention.comment_text or '[空评论]'}\n\n"
-            f"Bot 回复：\n{reply_text or '[仅图片回复]'}\n"
-            f"Bot 回复图片：{max(0, int(image_count))} 张\n\n"
+            f"{account_name} 回复：\n{reply_text or '[仅图片回复]'}\n"
+            f"{account_name} 回复图片：{max(0, int(image_count))} 张\n\n"
             f"消息 ID：{mention.message_id}\n"
             f"帖子 ID：{mention.link_id}\n"
             f"评论 ID：{mention.comment_id}\n"
@@ -4488,8 +4685,8 @@ class XhhRobotPlugin(Star):
             f"用户 ID：{mention.user_id}"
         )
 
-    @staticmethod
     def _direct_message_success_notification(
+        self,
         message: DirectMessage,
         reply_text: str,
         *,
@@ -4498,13 +4695,14 @@ class XhhRobotPlugin(Star):
         source = (
             "陌生人私信" if message.source == "stranger_direct_message" else "好友私信"
         )
+        account_name = self._account_display_name()
         return (
             "小黑盒私信自动回复成功\n\n"
             f"类型：{source}\n\n"
             f"对方私信：\n{message.text or '[仅图片消息]'}\n"
             f"对方图片：{len(message.image_urls)} 张\n\n"
-            f"Bot 回复：\n{reply_text or '[仅图片回复]'}\n"
-            f"Bot 回复图片：{max(0, int(image_count))} 张\n\n"
+            f"{account_name} 回复：\n{reply_text or '[仅图片回复]'}\n"
+            f"{account_name} 回复图片：{max(0, int(image_count))} 张\n\n"
             f"消息 ID：{message.message_id}\n"
             f"用户 ID：{message.user_id}\n"
             f"用户昵称：{message.user_name or '[未知]'}"

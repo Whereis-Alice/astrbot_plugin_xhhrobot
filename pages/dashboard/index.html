@@ -965,10 +965,6 @@
         text-transform: uppercase;
       }
 
-      .brand-meta::before {
-        content: "// ";
-      }
-
       .header-actions {
         gap: 12px;
       }
@@ -984,11 +980,6 @@
         border: 1px solid transparent;
         border-radius: 2px;
         color: #789086;
-      }
-
-      .tab::before {
-        content: "./";
-        color: #405e53;
       }
 
       .tab:hover {
@@ -1040,11 +1031,6 @@
         color: var(--text);
         font-size: 17px;
         font-weight: 600;
-      }
-
-      .toolbar h2::before {
-        content: "> ";
-        color: var(--green);
       }
 
       .toolbar-note {
@@ -1152,16 +1138,6 @@
         text-transform: uppercase;
       }
 
-      .metric-label::before {
-        content: "[";
-        color: #3b5b4e;
-      }
-
-      .metric-label::after {
-        content: "]";
-        color: #3b5b4e;
-      }
-
       .metric-value {
         color: var(--text);
         font-size: 26px;
@@ -1184,12 +1160,6 @@
       .section h3,
       .distribution h3 {
         color: #a9beb5;
-      }
-
-      .section h3::before,
-      .distribution h3::before {
-        content: ":: ";
-        color: var(--blue);
       }
 
       .kv-row {
@@ -1246,6 +1216,161 @@
         background: #153124;
         color: var(--green);
         box-shadow: none;
+      }
+
+      .account-profile-strip {
+        display: flex;
+        min-width: 0;
+        flex-wrap: wrap;
+        gap: 8px 18px;
+        align-items: center;
+        margin: -2px 0 20px;
+        padding: 10px 0;
+        border-bottom: 1px solid var(--line);
+        color: #91a79e;
+      }
+
+      .account-profile-main {
+        display: inline-flex;
+        min-width: 0;
+        align-items: center;
+        gap: 10px;
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      .account-avatar {
+        width: 30px;
+        height: 30px;
+        flex: 0 0 30px;
+        border: 1px solid #315548;
+        border-radius: 50%;
+        background: #0d1815;
+        object-fit: cover;
+      }
+
+      .account-profile-item {
+        display: inline-flex;
+        gap: 6px;
+        align-items: baseline;
+        color: #6f867d;
+        white-space: nowrap;
+      }
+
+      .account-profile-item strong {
+        color: #bfd0c9;
+        font-weight: 500;
+      }
+
+      .database-commandbar {
+        display: flex;
+        min-width: 0;
+        gap: 14px;
+        align-items: stretch;
+        margin-bottom: 12px;
+      }
+
+      .database-commandbar .dataset-control {
+        flex: 0 0 auto;
+        align-self: center;
+      }
+
+      .database-metrics {
+        display: grid;
+        min-width: 0;
+        flex: 1 1 auto;
+        grid-template-columns: repeat(4, minmax(130px, 1fr));
+        gap: 1px;
+        border: 1px solid #20372f;
+        background: #20372f;
+      }
+
+      .database-metrics .metric {
+        min-height: 58px;
+        padding: 9px 12px;
+        border: 0;
+        background: #08100e;
+      }
+
+      .database-metrics .metric::after {
+        display: none;
+      }
+
+      .database-metrics .metric-label {
+        font-size: 10px;
+      }
+
+      .database-metrics .metric-value {
+        display: inline;
+        margin-top: 0;
+        font-size: 18px;
+      }
+
+      .database-metrics .metric-foot {
+        display: inline;
+        margin-left: 8px;
+        font-size: 10px;
+      }
+
+      #databasePanel .toolbar {
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+      }
+
+      #databasePanel .filters {
+        grid-template-columns: minmax(180px, 1.6fr) repeat(4, minmax(105px, 0.8fr)) auto;
+        gap: 8px;
+        margin: 10px 0 12px;
+        padding: 10px 0;
+      }
+
+      #databasePanel .field label {
+        margin-bottom: 3px;
+        font-size: 10px;
+      }
+
+      #databasePanel .field input,
+      #databasePanel .field select {
+        min-height: 32px;
+        padding-block: 5px;
+      }
+
+      #databasePanel .filter-actions {
+        align-items: end;
+      }
+
+      #databasePanel .filter-actions .button {
+        min-height: 32px;
+        padding-block: 4px;
+      }
+
+      .filter-toggle {
+        display: none;
+      }
+
+      #databasePanel .table-wrap {
+        min-height: 360px;
+        max-height: min(62vh, 760px);
+      }
+
+      .database-details {
+        margin-top: 16px;
+        border-top: 1px solid var(--line);
+      }
+
+      .database-details summary {
+        padding: 12px 0;
+        color: #839b91;
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .database-details[open] summary {
+        color: var(--green);
+      }
+
+      .database-details .distribution {
+        margin: 4px 0 8px;
       }
 
       .filters,
@@ -1535,6 +1660,24 @@
         .insight-metrics {
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
+
+        .database-commandbar {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .database-metrics {
+          width: 100%;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        #databasePanel .filters {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        #databasePanel .field.keyword {
+          grid-column: span 2;
+        }
       }
 
       @media (max-width: 760px) {
@@ -1555,12 +1698,6 @@
 
         .brand h1 {
           font-size: 17px;
-        }
-
-        .brand h1::before {
-          display: block;
-          margin-bottom: 2px;
-          font-size: 11px;
         }
 
         .header-actions {
@@ -1608,6 +1745,150 @@
           min-height: 98px;
         }
 
+        .database-metrics .metric {
+          min-height: 58px;
+        }
+
+        .database-commandbar {
+          gap: 8px;
+        }
+
+        .database-commandbar .dataset-control {
+          width: 100%;
+        }
+
+        .database-metrics {
+          display: flex;
+          width: 100%;
+          overflow-x: auto;
+          scroll-snap-type: x proximity;
+          scrollbar-width: none;
+        }
+
+        .database-metrics::-webkit-scrollbar {
+          display: none;
+        }
+
+        .database-metrics .metric {
+          min-width: 142px;
+          flex: 1 0 142px;
+          scroll-snap-align: start;
+        }
+
+        #databasePanel .filters {
+          grid-template-columns: minmax(0, 1fr) auto;
+          margin-top: 8px;
+          padding-block: 8px;
+        }
+
+        #databasePanel .field.keyword {
+          grid-column: 1;
+        }
+
+        #databasePanel .filter-actions {
+          grid-column: 2;
+          align-self: end;
+        }
+
+        #databasePanel .filter-actions .button:not(.primary),
+        #databasePanel .advanced-filter {
+          display: none;
+        }
+
+        #databasePanel .filter-toggle {
+          display: inline-flex !important;
+        }
+
+        #databasePanel .filters[data-expanded="true"] {
+          grid-template-columns: 1fr 1fr;
+        }
+
+        #databasePanel .filters[data-expanded="true"] .field.keyword,
+        #databasePanel .filters[data-expanded="true"] .filter-actions {
+          grid-column: 1 / -1;
+        }
+
+        #databasePanel .filters[data-expanded="true"] .advanced-filter {
+          display: block;
+        }
+
+        #databasePanel .filters[data-expanded="true"] .filter-actions .button {
+          display: inline-flex;
+        }
+
+        #databasePanel .table-wrap {
+          min-height: 300px;
+          max-height: none;
+          overflow: visible;
+          border: 0;
+          background: transparent;
+        }
+
+        #databasePanel table {
+          min-width: 0;
+          table-layout: auto;
+        }
+
+        #databasePanel thead,
+        #databasePanel colgroup {
+          display: none;
+        }
+
+        #databasePanel tbody,
+        #databasePanel tr,
+        #databasePanel td {
+          display: block;
+          width: 100%;
+        }
+
+        #databasePanel tr {
+          position: relative;
+          margin-bottom: 8px;
+          padding: 10px 88px 10px 11px;
+          border: 1px solid #20372f;
+          background: #07100e;
+        }
+
+        #databasePanel td {
+          padding: 0;
+          border: 0;
+        }
+
+        #databasePanel td:nth-child(1) {
+          margin-bottom: 6px;
+        }
+
+        #databasePanel td:nth-child(2),
+        #databasePanel td:nth-child(3) {
+          margin-top: 3px;
+        }
+
+        #databasePanel td:nth-child(4) {
+          margin: 9px -72px 0 0;
+          padding-top: 8px;
+          border-top: 1px solid #16251f;
+        }
+
+        #databasePanel td:nth-child(5) {
+          position: absolute;
+          top: 10px;
+          right: 10px;
+          width: auto;
+        }
+
+        #databasePanel td:nth-child(2) .cell-main,
+        #databasePanel td:nth-child(3) .cell-main,
+        #databasePanel td:nth-child(2) .cell-sub,
+        #databasePanel td:nth-child(3) .cell-sub {
+          color: #6f867d;
+          font-size: 10px;
+          -webkit-line-clamp: 1;
+        }
+
+        #databasePanel td:nth-child(4) .cell-main {
+          -webkit-line-clamp: 4;
+        }
+
         .insight-form {
           grid-template-columns: 1fr;
         }
@@ -1651,6 +1932,29 @@
           max-width: 100%;
           white-space: normal;
           overflow-wrap: anywhere;
+        }
+
+        .account-profile-strip {
+          gap: 7px 14px;
+        }
+
+        .account-profile-main {
+          width: 100%;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .brand h1::before {
+          content: "xhhbot$ ";
+        }
+
+        #databasePanel .filters[data-expanded="true"] {
+          grid-template-columns: 1fr;
+        }
+
+        #databasePanel .filters[data-expanded="true"] .field.keyword,
+        #databasePanel .filters[data-expanded="true"] .filter-actions {
+          grid-column: 1;
         }
       }
 
@@ -1737,6 +2041,8 @@
           </div>
         </div>
 
+        <div class="account-profile-strip" id="accountProfileStrip" hidden></div>
+
         <div class="section-grid">
           <section class="section">
             <h3>账号与连接</h3>
@@ -1791,26 +2097,16 @@
           </div>
         </div>
 
-        <div class="metrics" id="databaseMetrics"></div>
-
-        <div class="distribution">
-          <section class="section">
-            <h3>评论处理状态</h3>
-            <div id="commentDistribution"></div>
-          </section>
-          <section class="section">
-            <h3>私信处理状态</h3>
-            <div id="dmDistribution"></div>
-          </section>
-        </div>
-
-        <div class="dataset-control" aria-label="数据库">
-          <button type="button" data-dataset="comments" aria-pressed="true">
-            评论
-          </button>
-          <button type="button" data-dataset="direct_messages" aria-pressed="false">
-            私信
-          </button>
+        <div class="database-commandbar">
+          <div class="dataset-control" aria-label="数据库">
+            <button type="button" data-dataset="comments" aria-pressed="true">
+              评论
+            </button>
+            <button type="button" data-dataset="direct_messages" aria-pressed="false">
+              私信
+            </button>
+          </div>
+          <div class="metrics database-metrics" id="databaseMetrics"></div>
         </div>
 
         <form class="filters" id="filterForm">
@@ -1818,33 +2114,36 @@
             <label for="keywordInput">关键词</label>
             <input id="keywordInput" name="keyword" type="search" maxlength="500" />
           </div>
-          <div class="field" id="directionField">
+          <div class="field advanced-filter" id="directionField">
             <label for="directionSelect">方向</label>
             <select id="directionSelect" name="direction">
               <option value="all">全部</option>
               <option value="received">收到</option>
-              <option value="bot">Bot 发出</option>
+              <option value="bot" id="directionBotOption">当前账号发出</option>
             </select>
           </div>
-          <div class="field">
+          <div class="field advanced-filter">
             <label for="sourceSelect">来源</label>
             <select id="sourceSelect" name="source"></select>
           </div>
-          <div class="field">
+          <div class="field advanced-filter">
             <label for="statusSelect">状态</label>
             <select id="statusSelect" name="status"></select>
           </div>
-          <div class="field" id="idField">
+          <div class="field advanced-filter" id="idField">
             <label for="idInput" id="idLabel">用户 ID</label>
             <input id="idInput" name="user_id" inputmode="numeric" />
           </div>
-          <div class="field" id="linkIdField">
+          <div class="field advanced-filter" id="linkIdField">
             <label for="linkIdInput">帖子 ID</label>
             <input id="linkIdInput" name="link_id" inputmode="numeric" />
           </div>
           <div class="filter-actions">
             <button class="button primary" type="submit">查询</button>
             <button class="button" type="button" id="resetFiltersButton">重置</button>
+            <button class="button filter-toggle" type="button" id="toggleFiltersButton" aria-expanded="false">
+              筛选
+            </button>
           </div>
         </form>
 
@@ -1881,6 +2180,20 @@
             </button>
           </div>
         </div>
+
+        <details class="database-details">
+          <summary>处理状态与归档明细</summary>
+          <div class="distribution">
+            <section class="section">
+              <h3>评论处理状态</h3>
+              <div id="commentDistribution"></div>
+            </section>
+            <section class="section">
+              <h3>私信处理状态</h3>
+              <div id="dmDistribution"></div>
+            </section>
+          </div>
+        </details>
       </section>
 
       <section class="panel" id="insightsPanel" data-panel="insights" hidden>
@@ -2085,6 +2398,16 @@
 
       function fmtNumber(value) {
         return new Intl.NumberFormat("zh-CN").format(Number(value || 0));
+      }
+
+      function accountDisplayName() {
+        return state.status?.account?.nickname || "当前账号";
+      }
+
+      function safeImageUrl(value) {
+        const text = String(value || "").trim();
+        if (text.startsWith("//")) return `https:${text}`;
+        return /^https?:\/\//i.test(text) ? text : "";
       }
 
       function splitInputList(value) {
@@ -2348,6 +2671,7 @@
         const comments = status.comments || {};
         const dms = status.direct_messages || {};
         const features = status.features || {};
+        const profile = account.profile || {};
 
         const accountLabel =
           account.state === "authenticated"
@@ -2361,7 +2685,7 @@
           [
             "评论归档",
             fmtNumber(comments.received_comments),
-            `Bot 评论 ${fmtNumber(comments.bot_comments)}`,
+            `${accountDisplayName()}评论 ${fmtNumber(comments.bot_comments)}`,
           ],
           [
             "私信归档",
@@ -2384,13 +2708,37 @@
         byId("stopRuntimeButton").hidden = !runtime.worker_running;
         byId("clearQueueButton").disabled = Number(events.queue_total || 0) <= 0;
 
-        byId("accountStatus").innerHTML = kvRows([
+        const accountRows = [
           ["登录状态", badge(accountLabel, account.state === "authenticated" ? "good" : account.state === "invalid" ? "bad" : "warn")],
           ["小黑盒 ID", escapeHtml(account.heybox_id || "无")],
           ["凭据来源", escapeHtml(account.source || "none")],
           ["家庭代理", badge(account.proxy_configured ? "已配置" : "未配置", account.proxy_configured ? "good" : "warn")],
+          ["资料刷新", escapeHtml(account.profile_updated_at ? fmtTime(account.profile_updated_at) : "未刷新")],
           ["最近成功", escapeHtml(fmtTime(runtime.last_success_at))],
-        ]);
+        ];
+        if (profile.level) accountRows.splice(2, 0, ["账号等级", escapeHtml(`Lv.${String(profile.level).replace(/^Lv\.?/i, "")}`)]);
+        if (profile.following_count !== undefined || profile.follower_count !== undefined) {
+          accountRows.splice(3, 0, ["关注 / 粉丝", `${profile.following_count !== undefined ? fmtNumber(profile.following_count) : "无"} / ${profile.follower_count !== undefined ? fmtNumber(profile.follower_count) : "无"}`]);
+        }
+        if (profile.signature) accountRows.splice(accountRows.length - 1, 0, ["个性签名", escapeHtml(profile.signature)]);
+        if (account.profile_error) accountRows.splice(accountRows.length - 1, 0, ["资料刷新状态", badge(Object.keys(profile).length ? "保留上次资料" : "读取失败", "warn")]);
+        byId("accountStatus").innerHTML = kvRows(accountRows);
+
+        const profileItems = [];
+        const avatar = safeImageUrl(profile.avatar);
+        const main = `<span class="account-profile-main">${avatar ? `<img class="account-avatar" src="${escapeHtml(avatar)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}<span>${escapeHtml(accountLabel)}</span></span>`;
+        profileItems.push(main);
+        if (profile.level) profileItems.push(`<span class="account-profile-item">等级 <strong>Lv.${escapeHtml(String(profile.level).replace(/^Lv\.?/i, ""))}</strong></span>`);
+        if (profile.following_count !== undefined) profileItems.push(`<span class="account-profile-item">关注 <strong>${fmtNumber(profile.following_count)}</strong></span>`);
+        if (profile.follower_count !== undefined) profileItems.push(`<span class="account-profile-item">粉丝 <strong>${fmtNumber(profile.follower_count)}</strong></span>`);
+        if (profile.post_count !== undefined) profileItems.push(`<span class="account-profile-item">帖子 <strong>${fmtNumber(profile.post_count)}</strong></span>`);
+        if (profile.comment_count !== undefined) profileItems.push(`<span class="account-profile-item">评论 <strong>${fmtNumber(profile.comment_count)}</strong></span>`);
+        if (profile.ip_location) profileItems.push(`<span class="account-profile-item">IP 属地 <strong>${escapeHtml(profile.ip_location)}</strong></span>`);
+        const profileStrip = byId("accountProfileStrip");
+        profileStrip.hidden = account.state !== "authenticated";
+        profileStrip.innerHTML = account.state === "authenticated" ? profileItems.join("") : "";
+        updateFilterOptions();
+        if (state.analytics) renderMetricCards(state.analytics);
 
         byId("eventStatus").innerHTML = kvRows([
           ["标准事件", badge(events.bridge_enabled ? "启用" : "兼容模式", events.bridge_enabled ? "good" : "warn")],
@@ -2428,7 +2776,7 @@
         const dms = analytics?.direct_messages || {};
         byId("databaseMetrics").innerHTML = [
           ["去重评论", received.unique_comments, `原始观察 ${fmtNumber(received.raw_observations)}`],
-          ["Bot 评论", bot.comment_records, `确认发送 ${fmtNumber(bot.confirmed_sent)}`],
+          [`${accountDisplayName()}评论`, bot.comment_records, `确认发送 ${fmtNumber(bot.confirmed_sent)}`],
           ["私信记录", dms.total, `用户 ${fmtNumber(dms.unique_users)}`],
           ["私信已发送", dms.status_counts?.sent, `含图片 ${fmtNumber(dms.with_images)}`],
         ]
@@ -2481,8 +2829,10 @@
           ? '<option value="">全部</option><option value="mention">@ 消息</option><option value="own_post_comment">自己帖子评论</option>'
           : '<option value="">全部</option><option value="direct_message">好友私信</option><option value="stranger_direct_message">陌生人私信</option>';
         byId("statusSelect").innerHTML = isComments
-          ? '<option value="">全部</option><option value="queued">已入队</option><option value="dispatched">已提交</option><option value="sending">发送中</option><option value="replied">已回复</option><option value="ignored">已忽略</option><option value="skipped">已跳过</option><option value="retry">待重试</option><option value="uncertain">结果不确定</option><option value="sent">Bot 已发送</option>'
+          ? `<option value="">全部</option><option value="queued">已入队</option><option value="dispatched">已提交</option><option value="sending">发送中</option><option value="replied">已回复</option><option value="ignored">已忽略</option><option value="skipped">已跳过</option><option value="retry">待重试</option><option value="uncertain">结果不确定</option><option value="sent">${escapeHtml(accountDisplayName())}已发送</option>`
           : '<option value="">全部</option><option value="baseline">首次基线</option><option value="pending">待处理</option><option value="dispatched">已提交</option><option value="sending">发送中</option><option value="sent">已发送</option><option value="skipped">已跳过</option><option value="failed">失败</option><option value="uncertain">结果不确定</option>';
+        const directionBotOption = byId("directionBotOption");
+        if (directionBotOption) directionBotOption.textContent = `${accountDisplayName()}发出`;
       }
 
       function messageTime(record) {
@@ -2505,7 +2855,7 @@
             auto_browse: "自动巡帖",
             llm_tool: "工具评论",
           };
-          return kinds[record.kind] || "Bot 评论";
+          return kinds[record.kind] || `${accountDisplayName()}评论`;
         }
         return (record.sources || []).includes("own_post_comment")
           ? "自己帖子评论"
@@ -2539,7 +2889,7 @@
       function sourceLabel(source) {
         return {
           received: "收到",
-          bot: "Bot 发出",
+          bot: `${accountDisplayName()}发出`,
           mention: "@ 消息",
           own_post_comment: "自己帖子评论",
           direct_message: "好友私信",
@@ -2568,7 +2918,7 @@
         const value = String(status || "未知");
         if (value.startsWith("bot:")) {
           const nested = value.slice(4);
-          return `Bot: ${labels[nested] || nested}`;
+          return `${accountDisplayName()}：${labels[nested] || nested}`;
         }
         return labels[value] || value;
       }
@@ -2636,9 +2986,12 @@
         }
       }
 
-      async function loadStatus() {
+      async function loadStatus({ refreshAccount = false } = {}) {
         try {
-          const status = await getApi("status");
+          const status = await getApi(
+            "status",
+            refreshAccount ? { refresh_account: 1 } : {},
+          );
           renderRuntime(status);
           byId("lastRefresh").textContent = `刷新于 ${new Date().toLocaleTimeString("zh-CN", { hour12: false })}`;
         } catch (error) {
@@ -3114,7 +3467,7 @@
         ];
         const blocks = [
           ["对方消息 / 评论", record.content],
-          ["Bot 回复", record.reply_text],
+          [`${accountDisplayName()}回复`, record.reply_text],
           ["状态详情", record.status_reason],
         ].filter(([, value]) => value);
         byId("detailBody").innerHTML =
@@ -3174,7 +3527,7 @@
         byId("refreshButton").addEventListener("click", async () => {
           const button = byId("refreshButton");
           button.disabled = true;
-          await Promise.all([loadStatus(), loadAnalytics()]);
+          await Promise.all([loadStatus({ refreshAccount: true }), loadAnalytics()]);
           if (state.activeTab === "database") await loadMessages();
           if (state.activeTab === "insights") await loadInsightStatus();
           button.disabled = false;
@@ -3204,6 +3557,13 @@
           updateFilterOptions();
           state.offset = 0;
           loadMessages();
+        });
+        byId("toggleFiltersButton").addEventListener("click", () => {
+          const form = byId("filterForm");
+          const expanded = form.dataset.expanded === "true";
+          form.dataset.expanded = String(!expanded);
+          byId("toggleFiltersButton").setAttribute("aria-expanded", String(!expanded));
+          byId("toggleFiltersButton").textContent = expanded ? "筛选" : "收起";
         });
         byId("previousPageButton").addEventListener("click", () => {
           state.offset = Math.max(0, state.offset - state.limit);
