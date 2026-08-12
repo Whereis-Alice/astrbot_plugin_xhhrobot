@@ -858,7 +858,7 @@
         "type": "bool",
         "description": "启用评论语义洞察",
         "default": true,
-        "hint": "允许管理员在 WebUI 或通过 xhh_comment_insights 主动运行评论语义分析。关闭后仍可做关键词和小黑盒表情的本地统计，不会调用模型。打开 WebUI 本身不会消耗模型额度。",
+        "hint": "允许管理员在 WebUI 或通过 xhh_comment_insights 运行自动话题/情绪洞察和定向语义统计。关闭后自动探索不可用，但仍可做关键词和小黑盒表情的本地定向统计。打开 WebUI 本身不会消耗模型额度。",
         "obvious_hint": true
       },
       "semantic_provider_id": {
@@ -866,7 +866,7 @@
         "description": "评论洞察模型",
         "_special": "select_provider",
         "default": "",
-        "hint": "选择用于评论语义分类的 AstrBot 文本模型。留空时沿用“小黑盒回复模型”；分析只做二分类，不会调用联网或其他工具。"
+        "hint": "选择用于自动话题/情绪洞察和定向语义分类的 AstrBot 文本模型。留空时沿用“小黑盒回复模型”；分析不会调用联网或其他工具。"
       },
       "semantic_batch_size": {
         "type": "int",
@@ -874,14 +874,14 @@
         "default": 20,
         "min": 1,
         "max": 50,
-        "hint": "每次模型请求包含多少条待分类评论。较小更稳，较大请求更少；已经分析的结果会写入 SQLite 缓存。"
+        "hint": "每次模型请求包含多少条待分析评论。较小更稳，较大请求更少；自动探索和定向分类结果都会写入 SQLite 缓存。"
       },
       "semantic_max_comments_per_run": {
         "type": "int",
         "description": "单次语义分析评论上限",
         "default": 500,
         "min": 0,
-        "hint": "每次任务最多交给模型判断多少条尚未被关键词或表情命中的评论；0 表示不限制。确定性统计始终覆盖筛选范围内的全部归档评论。",
+        "hint": "自动探索时最多选取多少条评论并跨整个时间范围均匀抽样；定向统计时最多分析多少条未被关键词或表情命中的语义候选。0 表示不限制。",
         "obvious_hint": true
       },
       "insight_example_limit": {

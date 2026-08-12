@@ -444,11 +444,12 @@ def tool_specs() -> tuple[ToolSpec, ...]:
             "xhh_comment_insights",
             "comment_insights",
             (
-                "按自然语言主题分析当前账号的评论区，例如‘多少人在夸我’、‘有多少人吐槽价格’、"
-                "‘大家是否提到某个角色或话题’。工具读取本插件 SQLite 已归档的外部用户评论，"
-                "统计关键词、标准小黑盒表情、语义近义表达、去重并集、占比和代表样例；可按帖子、"
-                "用户、来源、状态和时间筛选。run 启动分析，status 查看后台进度和结果，cancel 取消。"
-                "语义分析使用 AstrBot 模型分批运行。属于账号私密信息，仅管理员可调用。"
+                "分析当前账号的评论区。用户只说‘分析这个帖子/最近评论/看看大家都在说什么’时，"
+                "topic 和 keywords 留空，工具会自动发现主要话题、情绪、夸奖、吐槽、问题、建议、"
+                "玩梗和争议，并返回代表评论；不要反问用户提供关键词。用户询问‘多少人在夸我’、"
+                "‘有多少人吐槽价格’或特定角色时，再填写 topic 做定向统计。工具读取本插件 SQLite "
+                "已归档的外部用户评论，可按帖子、用户、来源、状态和时间筛选。run 启动分析，status "
+                "查看后台进度和结果，cancel 取消。模型分析在后台分批运行。属于账号私密信息，仅管理员可调用。"
             ),
             _object_schema(
                 {
@@ -461,8 +462,9 @@ def tool_specs() -> tuple[ToolSpec, ...]:
                     "topic": {
                         "type": "string",
                         "description": (
-                            "run 时必填。用自然语言描述要统计的评论主题或态度，"
-                            "例如‘夸奖或表达喜欢’、‘吐槽价格太贵’、‘提到某个角色’。"
+                            "可选。填写时按该自然语言主题做定向统计，例如‘夸奖或表达喜欢’、"
+                            "‘吐槽价格太贵’；留空且不填关键词/表情时自动探索评论中的主要话题、"
+                            "情绪、问题、建议和争议。"
                         ),
                     },
                     "keywords": {
@@ -1039,7 +1041,7 @@ class XhhToolRuntime:
                     "cancelled": cancelled,
                 }
             payload = {
-                "topic": self._text(kwargs.get("topic"), "topic", 500, required=True),
+                "topic": self._text(kwargs.get("topic"), "topic", 500),
                 "keywords": self._string_list(kwargs.get("keywords")),
                 "emoji_tokens": self._string_list(kwargs.get("emoji_tokens")),
                 "infer_emojis": self._as_bool(kwargs.get("infer_emojis"), True),

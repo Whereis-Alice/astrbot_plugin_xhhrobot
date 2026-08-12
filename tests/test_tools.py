@@ -747,6 +747,24 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(status["data"]["report"]["union_matches"], 3)
         self.assertTrue(cancelled["data"]["cancelled"])
 
+    async def test_comment_insight_tool_allows_automatic_analysis_without_topic(
+        self,
+    ) -> None:
+        plugin = FakePlugin(self.config())
+        runtime = XhhToolRuntime(plugin)
+
+        result = json.loads(
+            await runtime.execute(
+                "comment_insights",
+                FakeEvent(admin=True),
+                {"mode": "run", "link_id": "123"},
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(plugin.insight_started[0]["topic"], "")
+        self.assertEqual(plugin.insight_started[0]["link_id"], 123)
+
     def test_comment_insight_tool_description_supports_natural_language_intents(
         self,
     ) -> None:
@@ -754,9 +772,10 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("多少人在夸我", spec.description)
         self.assertIn("吐槽价格", spec.description)
+        self.assertIn("不要反问用户提供关键词", spec.description)
         self.assertIn("status", spec.description)
         self.assertIn("仅管理员", spec.description)
-        self.assertIn("自然语言", spec.parameters["properties"]["topic"]["description"])
+        self.assertIn("自动探索", spec.parameters["properties"]["topic"]["description"])
 
     async def test_tool_call_reads_event_from_astrbot_context_wrapper(self) -> None:
         plugin = FakePlugin(self.config())

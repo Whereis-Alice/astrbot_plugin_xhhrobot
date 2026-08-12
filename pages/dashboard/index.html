@@ -1678,6 +1678,53 @@
         overflow-wrap: anywhere;
       }
 
+      .insight-overview {
+        display: grid;
+        gap: 14px;
+        margin: 8px 0 24px;
+      }
+
+      .insight-summary-copy {
+        padding: 13px 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        color: #cedbd6;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .insight-overview-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px 28px;
+      }
+
+      .insight-overview-group h4 {
+        margin: 0 0 8px;
+        color: #8da39a;
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .insight-overview-list {
+        display: grid;
+        gap: 7px;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      .insight-overview-list li {
+        padding-bottom: 7px;
+        border-bottom: 1px solid #14231e;
+        color: #bdcec7;
+        overflow-wrap: anywhere;
+      }
+
+      .insight-overview-list small {
+        color: #657c72;
+      }
+
       .example-list {
         display: grid;
         gap: 8px;
@@ -1720,6 +1767,10 @@
         text-align: center;
       }
 
+      .terminal-empty[hidden] {
+        display: none;
+      }
+
       .terminal-empty::before {
         content: "_";
         margin-right: 8px;
@@ -1756,6 +1807,10 @@
 
         .insight-metrics {
           grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .insight-overview-grid {
+          grid-template-columns: 1fr;
         }
 
         .database-commandbar {
@@ -2336,14 +2391,13 @@
 
         <form class="insight-form" id="insightForm">
           <div class="field insight-topic">
-            <label for="insightTopic">分析主题</label>
+            <label for="insightTopic">分析主题（可选）</label>
             <input
               id="insightTopic"
               name="topic"
               type="text"
               maxlength="500"
-              placeholder="例如：喜欢、爱意、心动或明确好感"
-              required
+              placeholder="留空自动发现话题；填写后做定向统计"
             />
           </div>
           <div class="field insight-keywords">
@@ -2353,7 +2407,7 @@
               name="keywords"
               type="text"
               maxlength="2000"
-              placeholder="喜欢，爱你，好感"
+              placeholder="定向统计时可填，自动分析请留空"
             />
           </div>
           <div class="field insight-emojis">
@@ -2363,7 +2417,7 @@
               name="emoji_tokens"
               type="text"
               maxlength="3000"
-              placeholder="[cube_喜欢]，[heygirl_喜欢]"
+              placeholder="定向统计时可填，自动分析请留空"
             />
           </div>
           <div class="field">
@@ -2423,6 +2477,10 @@
         <div class="insight-result" id="insightResult" hidden>
           <div class="metrics insight-metrics" id="insightMetrics"></div>
           <div class="insight-meta" id="insightMeta"></div>
+          <section class="section" id="insightOverviewSection" hidden>
+            <h3>自动洞察</h3>
+            <div class="insight-overview" id="insightOverview"></div>
+          </section>
           <section class="section">
             <h3>代表评论</h3>
             <div class="example-list" id="insightExamples"></div>
@@ -3254,6 +3312,38 @@
         return `<div class="metric"><div class="metric-label">${escapeHtml(label)}</div><div class="metric-value">${escapeHtml(value)}</div><div class="metric-foot">${escapeHtml(foot)}</div></div>`;
       }
 
+      function exploratoryList(title, items, renderItem) {
+        const values = (items || []).filter(Boolean);
+        if (!values.length) return "";
+        return `<div class="insight-overview-group"><h4>${escapeHtml(title)}</h4><ul class="insight-overview-list">${values.map((item) => `<li>${renderItem(item)}</li>`).join("")}</ul></div>`;
+      }
+
+      function renderExploratoryOverview(report) {
+        const section = byId("insightOverviewSection");
+        const container = byId("insightOverview");
+        if (report.analysis_mode !== "exploratory") {
+          section.hidden = true;
+          container.innerHTML = "";
+          return;
+        }
+        const themes = report.themes?.length ? report.themes : report.top_topics || [];
+        const blocks = [
+          exploratoryList("主要话题", themes, (item) => {
+            const description = item.description ? `<br><small>${escapeHtml(item.description)}</small>` : "";
+            return `<strong>${escapeHtml(item.label || "其他")}</strong> ${fmtNumber(item.count)} 条 / ${Number(item.percentage || 0).toFixed(2)}%${description}`;
+          }),
+          exploratoryList("常见问题", report.top_questions, (item) => `${escapeHtml(item.label)} <small>${fmtNumber(item.count)} 条</small>`),
+          exploratoryList("建议", report.top_suggestions, (item) => `${escapeHtml(item.label)} <small>${fmtNumber(item.count)} 条</small>`),
+          exploratoryList("争议与分歧", report.controversies, (item) => escapeHtml(item)),
+          exploratoryList("值得注意", report.notable_findings, (item) => escapeHtml(item)),
+        ].filter(Boolean);
+        const summary = report.summary
+          ? `<div class="insight-summary-copy">${escapeHtml(report.summary)}</div>`
+          : `<div class="toolbar-note">${report.synthesis_complete ? "暂无整体摘要" : "分类完成后会生成整体摘要"}</div>`;
+        section.hidden = false;
+        container.innerHTML = `${summary}<div class="insight-overview-grid">${blocks.join("")}</div>`;
+      }
+
       function renderInsight(payload) {
         state.insight = payload;
         const report = payload.report || null;
@@ -3286,58 +3376,88 @@
         if (!report) {
           byId("insightEmpty").hidden = false;
           byId("insightResult").hidden = true;
+          byId("insightOverviewSection").hidden = true;
+          byId("insightOverview").innerHTML = "";
           byId("insightEmpty").textContent = payload.error || "暂无分析结果";
           return;
         }
 
         byId("insightEmpty").hidden = true;
         byId("insightResult").hidden = false;
-        byId("insightMetrics").innerHTML = [
-          ["归档样本", fmtNumber(report.total_comments), `${fmtNumber(report.unique_users)} 个用户 / ${fmtNumber(report.unique_posts)} 个帖子`],
-          ["文字命中", fmtNumber(report.keyword_matches), `关键词 ${fmtNumber(report.criteria?.keywords?.length)} 个`],
-          ["表情命中", fmtNumber(report.emoji_matches), `与文字重叠 ${fmtNumber(report.keyword_emoji_overlap)}`],
-          ["语义补充", fmtNumber(report.semantic_matches), `覆盖 ${fmtNumber(report.semantic_coverage_percent)}%`],
-          ["去重并集", fmtNumber(report.union_matches), `确定性 ${fmtNumber(report.deterministic_union)}`],
-          ["样本占比", `${Number(report.union_percentage || 0).toFixed(2)}%`, report.semantic_complete ? "语义范围已完成" : "当前为已确认下限"],
-        ]
+        const exploratory = report.analysis_mode === "exploratory";
+        const sentiment = report.sentiment_counts || {};
+        const intents = report.intent_counts || {};
+        byId("insightMetrics").innerHTML = (exploratory
+          ? [
+              ["归档样本", fmtNumber(report.total_comments), `${fmtNumber(report.unique_users)} 个用户 / ${fmtNumber(report.unique_posts)} 个帖子`],
+              ["已分析", fmtNumber(report.analyzed_comments), `覆盖归档 ${Number(report.coverage_percent || 0).toFixed(2)}%`],
+              ["正面", fmtNumber(sentiment.positive), `${Number(report.sentiment_percentages?.positive || 0).toFixed(2)}%`],
+              ["负面", fmtNumber(sentiment.negative), `${Number(report.sentiment_percentages?.negative || 0).toFixed(2)}%`],
+              ["提问", fmtNumber(intents.question), `建议 ${fmtNumber(intents.suggestion)}`],
+              ["夸奖 / 吐槽", `${fmtNumber(intents.praise)} / ${fmtNumber(intents.criticism)}`, `玩梗 ${fmtNumber(intents.joke)}`],
+            ]
+          : [
+              ["归档样本", fmtNumber(report.total_comments), `${fmtNumber(report.unique_users)} 个用户 / ${fmtNumber(report.unique_posts)} 个帖子`],
+              ["文字命中", fmtNumber(report.keyword_matches), `关键词 ${fmtNumber(report.criteria?.keywords?.length)} 个`],
+              ["表情命中", fmtNumber(report.emoji_matches), `与文字重叠 ${fmtNumber(report.keyword_emoji_overlap)}`],
+              ["语义补充", fmtNumber(report.semantic_matches), `覆盖 ${fmtNumber(report.semantic_coverage_percent)}%`],
+              ["去重并集", fmtNumber(report.union_matches), `确定性 ${fmtNumber(report.deterministic_union)}`],
+              ["样本占比", `${Number(report.union_percentage || 0).toFixed(2)}%`, report.semantic_complete ? "语义范围已完成" : "当前为已确认下限"],
+            ])
           .map(([label, value, foot]) => insightMetric(label, value, foot))
           .join("");
 
         const filters = payload.filters || {};
-        byId("insightMeta").innerHTML = [
-          ["主题", report.criteria?.topic || "无"],
-          ["关键词", (report.criteria?.keywords || []).join(" / ") || "无"],
-          ["表情", (report.criteria?.emoji_tokens || []).map((item) => `[${item}]`).join(" / ") || "无"],
-          ["模型", report.provider_id || "未使用"],
-          ["帖子", filters.link_id || "全部"],
-          ["来源", sourceLabel(filters.source) || "全部"],
-          ["语义候选", `${fmtNumber(report.semantic_selected)} / ${fmtNumber(report.semantic_candidates)}`],
-          ["未纳入本轮", fmtNumber(report.semantic_not_selected)],
-        ]
+        byId("insightMeta").innerHTML = (exploratory
+          ? [
+              ["模式", "自动探索"],
+              ["模型", report.provider_id || "未使用"],
+              ["帖子", filters.link_id || "全部"],
+              ["来源", sourceLabel(filters.source) || "全部"],
+              ["入选样本", `${fmtNumber(report.selected_comments)} / ${fmtNumber(report.total_comments)}`],
+              ["未纳入本轮", fmtNumber(report.not_selected)],
+              ["缓存命中", fmtNumber(report.cache_hits)],
+              ["模型请求", fmtNumber(report.model_calls)],
+            ]
+          : [
+              ["主题", report.criteria?.topic || "无"],
+              ["关键词", (report.criteria?.keywords || []).join(" / ") || "无"],
+              ["表情", (report.criteria?.emoji_tokens || []).map((item) => `[${item}]`).join(" / ") || "无"],
+              ["模型", report.provider_id || "未使用"],
+              ["帖子", filters.link_id || "全部"],
+              ["来源", sourceLabel(filters.source) || "全部"],
+              ["语义候选", `${fmtNumber(report.semantic_selected)} / ${fmtNumber(report.semantic_candidates)}`],
+              ["未纳入本轮", fmtNumber(report.semantic_not_selected)],
+            ])
           .map(
             ([label, value]) =>
               `<div class="insight-meta-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`,
           )
           .join("");
+        renderExploratoryOverview(report);
 
         const examples = report.examples || [];
         byId("insightExamples").innerHTML = examples.length
           ? examples
               .map((example) => {
-                const kinds = (example.matched_by || []).map((kind) => {
-                  const labels = { keyword: "文字", emoji: "表情", semantic: "语义" };
-                  const tones = { keyword: "good", emoji: "info", semantic: "warn" };
+                const rawKinds = exploratory ? [example.sentiment, example.intent] : example.matched_by || [];
+                const kinds = rawKinds.filter(Boolean).map((kind) => {
+                  const labels = { keyword: "文字", emoji: "表情", semantic: "语义", positive: "正面", neutral: "中立", negative: "负面", mixed: "混合", praise: "夸奖", criticism: "吐槽", question: "提问", suggestion: "建议", joke: "玩梗", agreement: "赞同", disagreement: "反对", experience: "经历", information: "信息", other: "其他" };
+                  const tones = { keyword: "good", emoji: "info", semantic: "warn", positive: "good", negative: "bad", mixed: "warn", praise: "good", criticism: "bad", question: "info", suggestion: "info", joke: "warn" };
                   return badge(labels[kind] || kind, tones[kind] || "");
                 });
-                const reason = example.reason ? ` / ${example.reason}` : "";
-                return `<article class="example-row"><div class="example-kind">${kinds.join("")}</div><div class="example-content">${escapeHtml(example.content || "[空评论]")}</div><div class="example-meta">帖子 ${escapeHtml(example.link_id || "无")} / 评论 ${escapeHtml(example.comment_id || "无")}<br>用户 ${escapeHtml(example.user_id || "无")}${escapeHtml(reason)}</div></article>`;
+                const detail = exploratory ? example.summary : example.reason;
+                const reason = detail ? ` / ${detail}` : "";
+                const topics = exploratory && example.topics?.length ? ` / ${example.topics.join("、")}` : "";
+                return `<article class="example-row"><div class="example-kind">${kinds.join("")}</div><div class="example-content">${escapeHtml(example.content || "[空评论]")}</div><div class="example-meta">帖子 ${escapeHtml(example.link_id || "无")} / 评论 ${escapeHtml(example.comment_id || "无")}<br>用户 ${escapeHtml(example.user_id || "无")}${escapeHtml(reason)}${escapeHtml(topics)}</div></article>`;
               })
               .join("")
           : `<div class="toolbar-note">${report.examples_hidden ? "评论正文已在 WebUI 配置中隐藏" : "当前没有代表样例"}</div>`;
         const noteParts = [report.counting_note];
         if (payload.error) noteParts.unshift(payload.error);
-        if (report.semantic_not_selected > 0) {
-          noteParts.unshift(`有 ${fmtNumber(report.semantic_not_selected)} 条语义候选未纳入本轮模型分析，请调大“单次语义分析评论上限”或设为 0。`);
+        const notSelected = exploratory ? report.not_selected : report.semantic_not_selected;
+        if (notSelected > 0) {
+          noteParts.unshift(`有 ${fmtNumber(notSelected)} 条评论未纳入本轮模型分析，请调大“单次语义分析评论上限”或设为 0。`);
         }
         byId("insightNote").className = payload.error ? "alert bad" : "alert";
         byId("insightNote").textContent = noteParts.filter(Boolean).join(" ");
