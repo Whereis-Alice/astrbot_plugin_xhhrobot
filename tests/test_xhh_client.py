@@ -26,23 +26,36 @@ class FakeResponse:
         status: int = 200,
         *,
         body: bytes | None = None,
+        chunk_size: int | None = None,
     ) -> None:
         self._raw = json.dumps(payload, ensure_ascii=False)
         self.status = status
         self.cookies: dict[str, Any] = {}
         self.headers: dict[str, str] = {}
-        self.content = FakeContent(body or self._raw.encode("utf-8"))
+        self.content = FakeContent(
+            body or self._raw.encode("utf-8"),
+            chunk_size=chunk_size,
+        )
 
     async def text(self, errors: str = "replace") -> str:
         return self._raw
 
 
 class FakeContent:
-    def __init__(self, body: bytes) -> None:
+    def __init__(self, body: bytes, *, chunk_size: int | None = None) -> None:
         self.body = body
+        self.chunk_size = chunk_size
+        self.offset = 0
 
     async def read(self, limit: int = -1) -> bytes:
-        return self.body if limit < 0 else self.body[:limit]
+        if self.offset >= len(self.body):
+            return b""
+        size = len(self.body) - self.offset if limit < 0 else limit
+        if self.chunk_size is not None:
+            size = min(size, self.chunk_size)
+        start = self.offset
+        self.offset = min(len(self.body), self.offset + max(0, size))
+        return self.body[start : self.offset]
 
 
 class FakeRequestContext:
@@ -1279,6 +1292,33 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             xhh_headers["Cookie"], "user_heybox_id=42; token=value"
         )
         self.assertNotIn("Cookie", external_headers)
+
+    async def test_image_download_reads_all_response_chunks(self) -> None:
+        png = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        client, _ = self.make_client(
+            [FakeResponse({}, body=png, chunk_size=7)]
+        )
+
+        payload = await client.fetch_image_payload(
+            "https://imgheybox.max-c.com/avatar.png",
+            max_bytes=1024,
+        )
+
+        self.assertEqual(payload.data, png)
+        self.assertEqual((payload.width, payload.height), (1, 1))
+
+    async def test_image_download_rejects_oversize_chunked_response(self) -> None:
+        client, _ = self.make_client(
+            [FakeResponse({}, body=b"x" * 33, chunk_size=5)]
+        )
+
+        with self.assertRaisesRegex(XhhError, "下载上限"):
+            await client.fetch_image_payload(
+                "https://imgheybox.max-c.com/avatar.png",
+                max_bytes=32,
+            )
 
     async def test_direct_message_uses_heybox_profile_and_copied_image(self) -> None:
         client, session = self.make_client(

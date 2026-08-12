@@ -1670,12 +1670,22 @@ class XhhClient:
                         f"图片下载失败（HTTP {response.status}）。",
                         retryable=response.status == 429 or response.status >= 500,
                     )
-                data = await response.content.read(limit + 1)
-                if len(data) > limit:
-                    raise XhhError(
-                        f"图片超过视觉输入下载上限（{limit // (1024 * 1024)} MiB）。",
-                        retryable=False,
+                chunks: list[bytes] = []
+                total = 0
+                while True:
+                    chunk = await response.content.read(
+                        min(64 * 1024, limit - total + 1)
                     )
+                    if not chunk:
+                        break
+                    chunks.append(chunk)
+                    total += len(chunk)
+                    if total > limit:
+                        raise XhhError(
+                            f"图片超过视觉输入下载上限（{limit // (1024 * 1024)} MiB）。",
+                            retryable=False,
+                        )
+                data = b"".join(chunks)
         except XhhError:
             raise
         except (
