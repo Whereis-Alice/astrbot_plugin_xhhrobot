@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -30,7 +31,6 @@ STATUS = {
         "profile": {
             "heybox_id": "102013423",
             "nickname": "爱丽丝",
-            "avatar": "https://thirdwx.qlogo.cn/mmopen/vi_32/Q0j4TwGTfTLmibn8Sgib8A/132",
             "level": "42",
             "signature": "正在小黑盒营业",
             "ip_location": "上海",
@@ -79,6 +79,12 @@ STATUS = {
         "comment_insights": True,
     },
 }
+
+AVATAR_DATA_URL = "data:image/png;base64," + base64.b64encode(
+    base64.b64decode(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+    )
+).decode("ascii")
 
 
 ANALYTICS = {
@@ -183,6 +189,7 @@ BRIDGE = """
     ready: async () => ({ isDark: true, locale: 'zh-CN' }),
     apiGet: async (endpoint) => {
       if (endpoint === 'status') return payloads.status;
+      if (endpoint === 'account/avatar') return {ok:true,data_url:payloads.avatarDataUrl,updated_at:1786480200};
       if (endpoint === 'analytics/summary') return payloads.analytics;
       if (endpoint === 'analytics/messages') return payloads.messages;
       if (endpoint === 'analytics/insights/status') return payloads.insight;
@@ -207,7 +214,7 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path in {"/", "/index.html"}:
             html = PAGE.read_text(encoding="utf-8")
             payloads = json.dumps(
-                {"status": STATUS, "analytics": ANALYTICS, "insight": INSIGHT, "messages": MESSAGES},
+                {"status": STATUS, "analytics": ANALYTICS, "insight": INSIGHT, "messages": MESSAGES, "avatarDataUrl": AVATAR_DATA_URL},
                 ensure_ascii=False,
             )
             html = html.replace("<script src=\"/api/plugin/page/bridge-sdk.js\"></script>", f"<script>window.__previewPayloads={payloads};</script><script src=\"/api/plugin/page/bridge-sdk.js\"></script>")

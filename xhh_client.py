@@ -1645,11 +1645,19 @@ class XhhClient:
         await self.start()
         assert self._session is not None
         limit = max(1, int(max_bytes))
+        headers = {
+            "Accept": "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+            "Accept-Language": "zh,zh-CN;q=0.9",
+            "Referer": "https://www.xiaoheihe.cn/",
+            "User-Agent": DIRECT_MESSAGE_USER_AGENT,
+        }
+        if self.auth is not None and self.auth.cookie and is_xhh_image_url(url):
+            headers["Cookie"] = self.auth.cookie
         try:
             async with self._session.request(
                 "GET",
                 url,
-                headers={"User-Agent": DIRECT_MESSAGE_USER_AGENT},
+                headers=headers,
             ) as response:
                 if response.status < 200 or response.status >= 300:
                     raise XhhError(

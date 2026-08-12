@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import tempfile
 import unittest
@@ -19,14 +20,29 @@ from astrbot_plugin_xhhrobot.xhh_client import XhhClient, XhhError
 
 
 class FakeResponse:
-    def __init__(self, payload: dict[str, Any], status: int = 200) -> None:
+    def __init__(
+        self,
+        payload: dict[str, Any],
+        status: int = 200,
+        *,
+        body: bytes | None = None,
+    ) -> None:
         self._raw = json.dumps(payload, ensure_ascii=False)
         self.status = status
         self.cookies: dict[str, Any] = {}
         self.headers: dict[str, str] = {}
+        self.content = FakeContent(body or self._raw.encode("utf-8"))
 
     async def text(self, errors: str = "replace") -> str:
         return self._raw
+
+
+class FakeContent:
+    def __init__(self, body: bytes) -> None:
+        self.body = body
+
+    async def read(self, limit: int = -1) -> bytes:
+        return self.body if limit < 0 else self.body[:limit]
 
 
 class FakeRequestContext:
@@ -1229,6 +1245,32 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(session.requests[1][2]["params"]["userid"], "88")
         self.assertEqual(session.requests[2][2]["params"]["root_comment_id"], "123")
         self.assertEqual(session.requests[2][2]["params"]["lastval"], "456")
+
+    async def test_image_download_uses_xhh_referer_and_scoped_cookie(self) -> None:
+        png = base64.b64decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+        )
+        client, session = self.make_client(
+            [FakeResponse({}, body=png), FakeResponse({}, body=png)]
+        )
+
+        await client.fetch_image_payload(
+            "https://imgheybox.max-c.com/avatar.png",
+            max_bytes=1024,
+        )
+        await client.fetch_image_payload(
+            "https://images.example.com/avatar.png",
+            max_bytes=1024,
+        )
+
+        xhh_headers = session.requests[0][2]["headers"]
+        external_headers = session.requests[1][2]["headers"]
+        self.assertEqual(xhh_headers["Referer"], "https://www.xiaoheihe.cn/")
+        self.assertIn("image/", xhh_headers["Accept"])
+        self.assertEqual(
+            xhh_headers["Cookie"], "user_heybox_id=42; token=value"
+        )
+        self.assertNotIn("Cookie", external_headers)
 
     async def test_direct_message_uses_heybox_profile_and_copied_image(self) -> None:
         client, session = self.make_client(

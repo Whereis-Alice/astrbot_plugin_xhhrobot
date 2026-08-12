@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, patch
 
 import astrbot_plugin_xhhrobot.main as main_module
 from astrbot_plugin_xhhrobot.main import PLUGIN_ID, XhhRobotPlugin
+from astrbot_plugin_xhhrobot.media import ImagePayload
 from astrbot_plugin_xhhrobot.models import AuthInfo, Mention
 
 
@@ -208,8 +209,9 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
 
         plugin._register_web_apis()
 
-        self.assertEqual(len(routes), 13)
+        self.assertEqual(len(routes), 14)
         self.assertTrue(all(route[0].startswith(f"/{PLUGIN_ID}/") for route in routes))
+        self.assertIn(f"/{PLUGIN_ID}/account/avatar", {route[0] for route in routes})
         suffixes = {route[0].rsplit("/", 1)[-1] for route in routes}
         self.assertIn("start", suffixes)
         self.assertIn("stop", suffixes)
@@ -295,6 +297,150 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(plugin.auth.nickname, "爱丽丝新名字")
         plugin.put_kv_data.assert_awaited_once()
 
+    async def test_account_profile_accepts_avatar_object_and_cookie_fallback(
+        self,
+    ) -> None:
+        object_profile = XhhRobotPlugin._summarize_account_profile(
+            {
+                "result": {
+                    "account_detail": {
+                        "avatar": {
+                            "small": "//imgheybox.max-c.com/small.jpg",
+                            "original": "//imgheybox.max-c.com/original.jpg",
+                        }
+                    }
+                }
+            },
+            "102013423",
+        )
+        self.assertEqual(
+            object_profile["avatar"],
+            "https://imgheybox.max-c.com/original.jpg",
+        )
+
+        plugin = self.plugin()
+        plugin.auth = AuthInfo(
+            cookie=(
+                "user_heybox_id=102013423; "
+                "avatar=https%253A%252F%252Fimgheybox.max-c.com%252Fcookie.jpg"
+            ),
+            heybox_id="102013423",
+        )
+        plugin._auth_source = "qr"
+        plugin._account_profile = {}
+        plugin._account_profile_updated_at = 0.0
+        plugin._account_profile_error = ""
+        plugin._account_profile_lock = asyncio.Lock()
+        plugin._account_avatar_source = ""
+        plugin._account_avatar_data_url = ""
+        plugin._account_avatar_updated_at = 0.0
+        plugin._account_avatar_error = ""
+        plugin.client = SimpleNamespace(
+            fetch_user_profile=AsyncMock(
+                return_value={
+                    "status": "ok",
+                    "result": {"account_detail": {"username": "爱丽丝"}},
+                }
+            ),
+            set_auth=lambda auth: None,
+        )
+        plugin.put_kv_data = AsyncMock()
+
+        cookie_profile = await plugin._refresh_account_profile(force=True)
+
+        self.assertEqual(
+            cookie_profile["avatar"],
+            "https://imgheybox.max-c.com/cookie.jpg",
+        )
+
+    async def test_account_avatar_is_downloaded_once_and_cached(self) -> None:
+        plugin = self.plugin()
+        plugin._account_profile = {
+            "avatar": "https://imgheybox.max-c.com/avatar.png"
+        }
+        plugin._account_avatar_source = ""
+        plugin._account_avatar_data_url = ""
+        plugin._account_avatar_updated_at = 0.0
+        plugin._account_avatar_error = ""
+        plugin._account_avatar_lock = asyncio.Lock()
+        plugin.client = SimpleNamespace(
+            fetch_image_payload=AsyncMock(
+                return_value=ImagePayload(
+                    name="avatar.png",
+                    mimetype="image/png",
+                    data=b"avatar-bytes",
+                    width=30,
+                    height=30,
+                )
+            )
+        )
+
+        first = await plugin._refresh_account_avatar()
+        second = await plugin._refresh_account_avatar()
+
+        self.assertEqual(first, second)
+        self.assertTrue(first.startswith("data:image/png;base64,"))
+        plugin.client.fetch_image_payload.assert_awaited_once_with(
+            "https://imgheybox.max-c.com/avatar.png",
+            max_bytes=main_module.ACCOUNT_AVATAR_MAX_BYTES,
+        )
+
+    async def test_account_avatar_falls_back_to_login_cookie(self) -> None:
+        plugin = self.plugin()
+        plugin.auth = AuthInfo(
+            cookie=(
+                "user_heybox_id=102013423; "
+                "avatar=https%253A%252F%252Fimgheybox.max-c.com%252Fcookie.jpg"
+            ),
+            heybox_id="102013423",
+        )
+        plugin._account_profile = {"nickname": "爱丽丝"}
+        plugin._account_profile_updated_at = time.time()
+        plugin._account_avatar_source = ""
+        plugin._account_avatar_data_url = ""
+        plugin._account_avatar_updated_at = 0.0
+        plugin._account_avatar_error = ""
+        plugin._account_avatar_lock = asyncio.Lock()
+        plugin.client = SimpleNamespace(
+            fetch_image_payload=AsyncMock(
+                return_value=ImagePayload(
+                    name="avatar.jpg",
+                    mimetype="image/jpeg",
+                    data=b"avatar-bytes",
+                    width=30,
+                    height=30,
+                )
+            )
+        )
+
+        data_url = await plugin._refresh_account_avatar()
+
+        self.assertTrue(data_url.startswith("data:image/jpeg;base64,"))
+        plugin.client.fetch_image_payload.assert_awaited_once_with(
+            "https://imgheybox.max-c.com/cookie.jpg",
+            max_bytes=main_module.ACCOUNT_AVATAR_MAX_BYTES,
+        )
+
+    async def test_web_account_avatar_returns_cached_data_url(self) -> None:
+        plugin = self.plugin()
+        plugin.auth = AuthInfo(cookie="cookie=value", heybox_id="102013423")
+        plugin._auth_invalid = False
+        plugin._account_avatar_updated_at = 123.0
+        plugin._refresh_account_avatar = AsyncMock(
+            return_value="data:image/png;base64,YXZhdGFy"
+        )
+        fake_request = SimpleNamespace(args={"refresh": "1"})
+
+        with (
+            patch.object(main_module, "request", fake_request),
+            patch.object(main_module, "jsonify", side_effect=lambda value: value),
+        ):
+            result = await plugin.web_account_avatar()
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["data_url"], "data:image/png;base64,YXZhdGFy")
+        plugin._refresh_account_avatar.assert_awaited_once_with(force=True)
+
     async def test_account_profile_normalizes_level_and_clears_stale_error(
         self,
     ) -> None:
@@ -360,13 +506,21 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["ok"])
         plugin._web_status_payload.assert_awaited_once_with(refresh_account=True)
 
-    def test_dashboard_hides_failed_account_avatar(self) -> None:
+    def test_dashboard_loads_account_avatar_through_plugin_api(self) -> None:
         page = (
             Path(__file__).parents[1] / "pages" / "dashboard" / "index.html"
         ).read_text(encoding="utf-8")
 
-        self.assertIn('class="account-avatar"', page)
-        self.assertIn('onerror="this.remove()"', page)
+        self.assertIn('class="account-avatar-shell"', page)
+        self.assertIn('getApi("account/avatar"', page)
+        self.assertIn("function applyAccountAvatar", page)
+        self.assertIn("account-avatar-fallback", page)
+        self.assertIn(
+            'avatar || `account:${account.heybox_id || account.nickname || "authenticated"}`',
+            page,
+        )
+        self.assertIn('const avatarSlot = account.state === "authenticated"', page)
+        self.assertNotIn('referrerpolicy="no-referrer" onerror="this.remove()"', page)
 
     def test_dashboard_loads_bridge_before_inline_application(self) -> None:
         page = (

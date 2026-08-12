@@ -1239,14 +1239,32 @@
         font-weight: 600;
       }
 
-      .account-avatar {
+      .account-avatar-shell {
         width: 30px;
         height: 30px;
         flex: 0 0 30px;
+        position: relative;
+        display: inline-grid;
+        place-items: center;
+        overflow: hidden;
         border: 1px solid #315548;
         border-radius: 50%;
         background: #0d1815;
+        color: #79f2af;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .account-avatar {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
         object-fit: cover;
+      }
+
+      .account-avatar-fallback {
+        line-height: 1;
       }
 
       .account-profile-item {
@@ -2385,6 +2403,10 @@
         loginPollTimer: null,
         insightPollTimer: null,
         insight: null,
+        avatarSource: "",
+        avatarDataUrl: "",
+        avatarLoadingSource: "",
+        avatarFailedSource: "",
       };
 
       const byId = (id) => document.getElementById(id);
@@ -2408,6 +2430,58 @@
         const text = String(value || "").trim();
         if (text.startsWith("//")) return `https:${text}`;
         return /^https?:\/\//i.test(text) ? text : "";
+      }
+
+      function safeImageDataUrl(value) {
+        const text = String(value || "").trim();
+        return /^data:image\/(?:png|jpe?g|gif|webp|bmp);base64,[a-z0-9+/=\s]+$/i.test(text)
+          ? text.replace(/\s+/g, "")
+          : "";
+      }
+
+      function accountInitial(value) {
+        return Array.from(String(value || "小").trim())[0] || "小";
+      }
+
+      function applyAccountAvatar(dataUrl, avatarKey) {
+        const shell = byId("accountAvatar");
+        if (!shell || shell.dataset.source !== avatarKey || !dataUrl) return;
+        const image = document.createElement("img");
+        image.className = "account-avatar";
+        image.alt = "";
+        image.src = dataUrl;
+        image.addEventListener("error", () => image.remove(), { once: true });
+        shell.querySelector(".account-avatar")?.remove();
+        shell.append(image);
+      }
+
+      async function loadAccountAvatar(avatarKey, { force = false } = {}) {
+        if (!avatarKey) return;
+        if (!force && state.avatarSource === avatarKey && state.avatarDataUrl) {
+          applyAccountAvatar(state.avatarDataUrl, avatarKey);
+          return;
+        }
+        if (!force && state.avatarLoadingSource === avatarKey) return;
+        if (!force && state.avatarFailedSource === avatarKey) return;
+        state.avatarLoadingSource = avatarKey;
+        state.avatarSource = avatarKey;
+        if (force) {
+          state.avatarDataUrl = "";
+          state.avatarFailedSource = "";
+        }
+        try {
+          const payload = await getApi("account/avatar", force ? { refresh: 1 } : {});
+          if (state.avatarSource !== avatarKey) return;
+          const dataUrl = safeImageDataUrl(payload.data_url);
+          if (!dataUrl) throw new Error("头像接口返回了不支持的图片格式");
+          state.avatarDataUrl = dataUrl;
+          state.avatarFailedSource = "";
+          applyAccountAvatar(dataUrl, avatarKey);
+        } catch {
+          if (state.avatarSource === avatarKey) state.avatarFailedSource = avatarKey;
+        } finally {
+          if (state.avatarLoadingSource === avatarKey) state.avatarLoadingSource = "";
+        }
       }
 
       function splitInputList(value) {
@@ -2726,7 +2800,19 @@
 
         const profileItems = [];
         const avatar = safeImageUrl(profile.avatar);
-        const main = `<span class="account-profile-main">${avatar ? `<img class="account-avatar" src="${escapeHtml(avatar)}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ""}<span>${escapeHtml(accountLabel)}</span></span>`;
+        const avatarKey =
+          account.state === "authenticated"
+            ? avatar || `account:${account.heybox_id || account.nickname || "authenticated"}`
+            : "";
+        if (state.avatarSource !== avatarKey) {
+          state.avatarSource = avatarKey;
+          state.avatarDataUrl = "";
+          state.avatarFailedSource = "";
+        }
+        const avatarSlot = account.state === "authenticated"
+          ? `<span class="account-avatar-shell" id="accountAvatar" data-source="${escapeHtml(avatarKey)}" aria-hidden="true"><span class="account-avatar-fallback">${escapeHtml(accountInitial(accountLabel))}</span></span>`
+          : "";
+        const main = `<span class="account-profile-main">${avatarSlot}<span>${escapeHtml(accountLabel)}</span></span>`;
         profileItems.push(main);
         if (profile.level) profileItems.push(`<span class="account-profile-item">等级 <strong>Lv.${escapeHtml(String(profile.level).replace(/^Lv\.?/i, ""))}</strong></span>`);
         if (profile.following_count !== undefined) profileItems.push(`<span class="account-profile-item">关注 <strong>${fmtNumber(profile.following_count)}</strong></span>`);
@@ -2737,6 +2823,10 @@
         const profileStrip = byId("accountProfileStrip");
         profileStrip.hidden = account.state !== "authenticated";
         profileStrip.innerHTML = account.state === "authenticated" ? profileItems.join("") : "";
+        if (avatarKey && account.state === "authenticated") {
+          if (state.avatarDataUrl) applyAccountAvatar(state.avatarDataUrl, avatarKey);
+          void loadAccountAvatar(avatarKey);
+        }
         updateFilterOptions();
         if (state.analytics) renderMetricCards(state.analytics);
 
@@ -3528,6 +3618,13 @@
           const button = byId("refreshButton");
           button.disabled = true;
           await Promise.all([loadStatus({ refreshAccount: true }), loadAnalytics()]);
+          const account = state.status?.account || {};
+          const avatar = safeImageUrl(account.profile?.avatar);
+          const avatarKey =
+            account.state === "authenticated"
+              ? avatar || `account:${account.heybox_id || account.nickname || "authenticated"}`
+              : "";
+          if (avatarKey) await loadAccountAvatar(avatarKey, { force: true });
           if (state.activeTab === "database") await loadMessages();
           if (state.activeTab === "insights") await loadInsightStatus();
           button.disabled = false;
