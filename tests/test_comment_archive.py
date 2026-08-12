@@ -274,6 +274,44 @@ class CommentArchiveTests(unittest.IsolatedAsyncioTestCase):
                 end_time="2026-07-26T00:00:00+08:00",
             )
 
+    async def test_insight_records_and_semantic_cache_are_persistent(self) -> None:
+        mention = self.mention(
+            71,
+            701,
+            text="很喜欢这个帖子[cube_喜欢]",
+            link_id=901,
+            user_id=801,
+            source="own_post_comment",
+        )
+        await self.archive.record_received([(mention, "replied", "")])
+
+        records = await self.archive.insight_records(
+            link_id=901,
+            source="own_post_comment",
+        )
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["comment_key"], "comment:901:701")
+
+        await self.archive.save_semantic_cache(
+            analysis_key="analysis-key",
+            provider_id="provider",
+            records=[
+                {
+                    "comment_key": records[0]["comment_key"],
+                    "content_hash": "hash",
+                    "matched": True,
+                    "confidence": 0.9,
+                    "reason": "明确喜欢",
+                }
+            ],
+        )
+        cache = await self.archive.semantic_cache("analysis-key")
+        overview = await self.archive.overview()
+
+        self.assertTrue(cache["comment:901:701"]["matched"])
+        self.assertEqual(cache["comment:901:701"]["provider_id"], "provider")
+        self.assertEqual(overview["semantic_cache_records"], 1)
+
     def test_extract_comment_id_reads_nested_response(self) -> None:
         self.assertEqual(
             extract_comment_id({"status": "ok", "result": {"comment_id": "987"}}),

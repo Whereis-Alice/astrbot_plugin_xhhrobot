@@ -85,6 +85,8 @@ class FakePlugin:
         )
         self.recorded_bot_comments: list[dict[str, Any]] = []
         self.local_roots: list[Path] = []
+        self.insight_started: list[dict[str, Any]] = []
+        self.insight_cancelled = False
 
     async def _status_text(self) -> str:
         return "登录：已配置"
@@ -98,6 +100,17 @@ class FakePlugin:
     @staticmethod
     def _max_local_image_bytes() -> int:
         return 20 * 1024 * 1024
+
+    async def _start_comment_insight(self, payload: dict[str, Any]) -> dict[str, Any]:
+        self.insight_started.append(payload)
+        return {"state": "running", "report": {"total_comments": 10}}
+
+    def _comment_insight_snapshot(self) -> dict[str, Any]:
+        return {"state": "complete", "report": {"union_matches": 3}}
+
+    async def _cancel_comment_insight(self) -> bool:
+        self.insight_cancelled = True
+        return True
 
 
 class FakeArchive:
@@ -155,7 +168,7 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         tools = XhhToolRuntime(plugin).build_tools()
         by_name = {tool.name: tool for tool in tools}
 
-        self.assertEqual(len(tools), 25)
+        self.assertEqual(len(tools), 26)
         self.assertTrue(by_name["xhh_search"].active)
         self.assertFalse(by_name["xhh_publish_post"].active)
         self.assertNotIn("xhh_get_drafts", by_name)
@@ -171,7 +184,7 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         enabled = XhhToolRuntime(FakePlugin(self.config(enable_draft_tools=True)))
         by_name = {tool.name: tool for tool in enabled.build_tools()}
 
-        self.assertEqual(len(by_name), 28)
+        self.assertEqual(len(by_name), 29)
         self.assertTrue(by_name["xhh_get_drafts"].active)
         self.assertTrue(by_name["xhh_save_draft"].active)
         self.assertTrue(by_name["xhh_delete_draft"].active)
@@ -696,6 +709,41 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(plugin.comment_archive.search_calls[0]["limit"], 9)
 
+    async def test_comment_insight_tool_starts_and_reads_background_job(self) -> None:
+        plugin = FakePlugin(self.config())
+        runtime = XhhToolRuntime(plugin)
+
+        started = json.loads(
+            await runtime.execute(
+                "comment_insights",
+                FakeEvent(admin=True),
+                {
+                    "mode": "run",
+                    "topic": "喜欢、爱意或好感",
+                    "keywords": ["喜欢", "爱"],
+                    "emoji_tokens": ["[cube_喜欢]"],
+                    "semantic": True,
+                    "link_id": "123",
+                },
+            )
+        )
+        status = json.loads(
+            await runtime.execute(
+                "comment_insights", FakeEvent(admin=True), {"mode": "status"}
+            )
+        )
+        cancelled = json.loads(
+            await runtime.execute(
+                "comment_insights", FakeEvent(admin=True), {"mode": "cancel"}
+            )
+        )
+
+        self.assertTrue(started["ok"])
+        self.assertEqual(plugin.insight_started[0]["link_id"], 123)
+        self.assertEqual(plugin.insight_started[0]["keywords"], ["喜欢", "爱"])
+        self.assertEqual(status["data"]["report"]["union_matches"], 3)
+        self.assertTrue(cancelled["data"]["cancelled"])
+
     async def test_tool_call_reads_event_from_astrbot_context_wrapper(self) -> None:
         plugin = FakePlugin(self.config())
         runtime = XhhToolRuntime(plugin)
@@ -717,11 +765,11 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         plugin._registered_tool_names = []
 
         plugin._register_llm_tools()
-        self.assertEqual(len(plugin.context.added), 25)
-        self.assertEqual(len(plugin._registered_tool_names), 25)
+        self.assertEqual(len(plugin.context.added), 26)
+        self.assertEqual(len(plugin._registered_tool_names), 26)
 
         plugin._unregister_llm_tools()
-        self.assertEqual(len(plugin.context.manager.removed), 25)
+        self.assertEqual(len(plugin.context.manager.removed), 26)
         self.assertEqual(plugin._registered_tool_names, [])
 
 

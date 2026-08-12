@@ -57,6 +57,7 @@ PRIVATE_ACTIONS = {
     "remote_drafts",
     "direct_messages",
     "comment_stats",
+    "comment_insights",
     "search_comment_archive",
     "drafts",
 }
@@ -438,6 +439,55 @@ def tool_specs() -> tuple[ToolSpec, ...]:
                 "Bot 自己发出的评论单列。属于账号私密信息。"
             ),
             _object_schema(dict(archive_filters)),
+        ),
+        ToolSpec(
+            "xhh_comment_insights",
+            "comment_insights",
+            (
+                "分析本插件 SQLite 已归档的外部用户评论。可统计关键词、标准小黑盒表情、"
+                "语义近义表达、去重并集、占比和代表样例。语义分析使用 AstrBot 模型并在"
+                "后台分批运行；再次调用 status 可查看进度，cancel 可取消。属于账号私密信息。"
+            ),
+            _object_schema(
+                {
+                    "mode": {
+                        "type": "string",
+                        "enum": ["run", "status", "cancel"],
+                        "description": "开始分析、查看当前任务或取消当前任务。",
+                        "default": "run",
+                    },
+                    "topic": {
+                        "type": "string",
+                        "description": "run 时必填。要识别的语义主题，例如喜欢、爱意或好感。",
+                    },
+                    "keywords": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "可选的字面关键词；留空时从主题中的逗号分隔短语推导。",
+                    },
+                    "emoji_tokens": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "可选的小黑盒表情标记，例如 [cube_喜欢]。",
+                    },
+                    "infer_emojis": {
+                        "type": "boolean",
+                        "description": "没有填写表情时，是否按关键词匹配内置标准表情。",
+                        "default": True,
+                    },
+                    "semantic": {
+                        "type": "boolean",
+                        "description": "是否调用模型补充语义近义表达；关闭时只做确定性统计。",
+                        "default": True,
+                    },
+                    "start_time": archive_filters["start_time"],
+                    "end_time": archive_filters["end_time"],
+                    "link_id": archive_filters["link_id"],
+                    "user_id": archive_filters["user_id"],
+                    "source": archive_filters["source"],
+                    "status": archive_filters["status"],
+                }
+            ),
         ),
         ToolSpec(
             "xhh_search_comment_archive",
@@ -961,6 +1011,43 @@ class XhhToolRuntime:
                     "tools.enable_draft_tools", False
                 ),
             }
+
+        if action == "comment_insights":
+            mode = self._enum(
+                kwargs.get("mode"),
+                "mode",
+                {"run", "status", "cancel"},
+                "run",
+            )
+            if mode == "status":
+                return self.plugin._comment_insight_snapshot()
+            if mode == "cancel":
+                cancelled = await self.plugin._cancel_comment_insight()
+                return {
+                    **self.plugin._comment_insight_snapshot(),
+                    "cancelled": cancelled,
+                }
+            payload = {
+                "topic": self._text(kwargs.get("topic"), "topic", 500, required=True),
+                "keywords": self._string_list(kwargs.get("keywords")),
+                "emoji_tokens": self._string_list(kwargs.get("emoji_tokens")),
+                "infer_emojis": self._as_bool(kwargs.get("infer_emojis"), True),
+                "semantic": self._as_bool(kwargs.get("semantic"), True),
+                "start_time": self._text(kwargs.get("start_time"), "start_time", 80),
+                "end_time": self._text(kwargs.get("end_time"), "end_time", 80),
+                "link_id": self._optional_positive_int(kwargs.get("link_id"), "link_id"),
+                "user_id": self._optional_positive_int(kwargs.get("user_id"), "user_id"),
+                "source": self._optional_enum(
+                    kwargs.get("source"),
+                    "source",
+                    {"mention", "own_post_comment"},
+                ),
+                "status": self._text(kwargs.get("status"), "status", 64),
+            }
+            try:
+                return await self.plugin._start_comment_insight(payload)
+            except (ValueError, RuntimeError) as exc:
+                raise ToolInputError(str(exc)) from exc
 
         if action in {"comment_stats", "search_comment_archive"}:
             archive = getattr(self.plugin, "comment_archive", None)

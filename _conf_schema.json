@@ -853,6 +853,44 @@
         "min": 1,
         "max": 200,
         "hint": "xhh_search_comment_archive 单次最多返回的具体记录数。统计工具不受此项影响。"
+      },
+      "semantic_insights_enabled": {
+        "type": "bool",
+        "description": "启用评论语义洞察",
+        "default": true,
+        "hint": "允许管理员在 WebUI 或通过 xhh_comment_insights 主动运行评论语义分析。关闭后仍可做关键词和小黑盒表情的本地统计，不会调用模型。打开 WebUI 本身不会消耗模型额度。",
+        "obvious_hint": true
+      },
+      "semantic_provider_id": {
+        "type": "string",
+        "description": "评论洞察模型",
+        "_special": "select_provider",
+        "default": "",
+        "hint": "选择用于评论语义分类的 AstrBot 文本模型。留空时沿用“小黑盒回复模型”；分析只做二分类，不会调用联网或其他工具。"
+      },
+      "semantic_batch_size": {
+        "type": "int",
+        "description": "语义分析单批评论数",
+        "default": 20,
+        "min": 1,
+        "max": 50,
+        "hint": "每次模型请求包含多少条待分类评论。较小更稳，较大请求更少；已经分析的结果会写入 SQLite 缓存。"
+      },
+      "semantic_max_comments_per_run": {
+        "type": "int",
+        "description": "单次语义分析评论上限",
+        "default": 500,
+        "min": 0,
+        "hint": "每次任务最多交给模型判断多少条尚未被关键词或表情命中的评论；0 表示不限制。确定性统计始终覆盖筛选范围内的全部归档评论。",
+        "obvious_hint": true
+      },
+      "insight_example_limit": {
+        "type": "int",
+        "description": "洞察代表样例上限",
+        "default": 12,
+        "min": 1,
+        "max": 50,
+        "hint": "评论洞察报告最多展示多少条代表评论。关闭 WebUI 正文显示时，页面不会返回样例原文。"
       }
     }
   },

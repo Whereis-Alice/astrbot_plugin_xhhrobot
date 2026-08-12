@@ -125,6 +125,24 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(plugin.dm_store.search_calls[0]["include_content"])
         self.assertEqual(plugin.dm_store.search_calls[0]["user_id"], "99")
 
+    def test_comment_insight_snapshot_hides_representative_comments(self) -> None:
+        plugin = self.plugin(
+            {"webui": {"enabled": True, "show_message_content": False}}
+        )
+        plugin._insight_state = {
+            **plugin._empty_comment_insight_state(),
+            "state": "complete",
+            "report": {
+                "union_matches": 1,
+                "examples": [{"content": "不应显示的评论正文"}],
+            },
+        }
+
+        payload = plugin._web_comment_insight_snapshot()
+
+        self.assertEqual(payload["report"]["examples"], [])
+        self.assertTrue(payload["report"]["examples_hidden"])
+
     async def test_status_reports_real_own_post_reply_setting(self) -> None:
         plugin = self.plugin(
             {
@@ -190,12 +208,28 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
 
         plugin._register_web_apis()
 
-        self.assertEqual(len(routes), 10)
+        self.assertEqual(len(routes), 13)
         self.assertTrue(all(route[0].startswith(f"/{PLUGIN_ID}/") for route in routes))
         suffixes = {route[0].rsplit("/", 1)[-1] for route in routes}
         self.assertIn("start", suffixes)
         self.assertIn("stop", suffixes)
         self.assertIn("clear", suffixes)
+
+    def test_dashboard_exposes_terminal_network_and_comment_insight_workspace(
+        self,
+    ) -> None:
+        page = (
+            Path(__file__).parents[1] / "pages" / "dashboard" / "index.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('id="networkCanvas"', page)
+        self.assertIn("function initializeNetworkBackground()", page)
+        self.assertIn('data-tab="insights"', page)
+        self.assertIn('id="insightForm"', page)
+        self.assertIn('postApi("analytics/insights/run", insightPayload())', page)
+        self.assertIn('postApi("analytics/insights/cancel", {})', page)
+        self.assertIn('getApi("analytics/insights/status")', page)
+        self.assertIn("prefers-reduced-motion", page)
 
     def test_dashboard_loads_bridge_before_inline_application(self) -> None:
         page = (
@@ -305,7 +339,9 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("function paginationSummary(", page)
         self.assertIn("Math.ceil(safeTotal / safeLimit)", page)
-        self.assertIn("第 ${fmtNumber(currentPage)} / ${fmtNumber(totalPages)} 页", page)
+        self.assertIn(
+            "第 ${fmtNumber(currentPage)} / ${fmtNumber(totalPages)} 页", page
+        )
         self.assertIn('id="paginationText">0 条记录，共 0 页', page)
         self.assertIn(
             'byId("paginationText").textContent = paginationSummary(',

@@ -102,6 +102,7 @@ class CommentArchive:
                 "received_comments": 0,
                 "received_observations": 0,
                 "bot_comments": 0,
+                "semantic_cache_records": 0,
             }
         await self.initialize()
         async with self._lock:
@@ -184,6 +185,61 @@ class CommentArchive:
         await self.initialize()
         async with self._lock:
             return await asyncio.to_thread(self._search_sync, filters)
+
+    async def insight_records(
+        self,
+        *,
+        start_time: str | float | None = None,
+        end_time: str | float | None = None,
+        link_id: int = 0,
+        user_id: int = 0,
+        source: str = "",
+        status: str = "",
+    ) -> list[dict[str, Any]]:
+        self._require_enabled()
+        start_at, end_at = _time_range(start_time, end_time)
+        filters = {
+            "keyword": "",
+            "start_at": start_at,
+            "end_at": end_at,
+            "link_id": _as_int(link_id),
+            "user_id": _as_int(user_id),
+            "root_comment_id": 0,
+            "source": str(source or "").strip(),
+            "status": str(status or "").strip(),
+            "bot_kind": "",
+        }
+        await self.initialize()
+        async with self._lock:
+            return await asyncio.to_thread(self._insight_records_sync, filters)
+
+    async def semantic_cache(self, analysis_key: str) -> dict[str, dict[str, Any]]:
+        self._require_enabled()
+        await self.initialize()
+        async with self._lock:
+            return await asyncio.to_thread(
+                self._semantic_cache_sync,
+                str(analysis_key or "").strip(),
+            )
+
+    async def save_semantic_cache(
+        self,
+        *,
+        analysis_key: str,
+        provider_id: str,
+        records: Sequence[Mapping[str, Any]],
+    ) -> None:
+        self._require_enabled()
+        if not records:
+            return
+        await self.initialize()
+        async with self._lock:
+            await asyncio.to_thread(
+                self._save_semantic_cache_sync,
+                str(analysis_key or "").strip(),
+                str(provider_id or "").strip(),
+                records,
+            )
 
     def _require_enabled(self) -> None:
         if not self.enabled:
@@ -269,9 +325,26 @@ class CommentArchive:
                     ON bot_comments(created_at);
                 CREATE INDEX IF NOT EXISTS idx_bot_kind
                     ON bot_comments(kind);
+
+                CREATE TABLE IF NOT EXISTS semantic_comment_cache (
+                    analysis_key TEXT NOT NULL,
+                    comment_key TEXT NOT NULL,
+                    content_hash TEXT NOT NULL,
+                    matched INTEGER NOT NULL DEFAULT 0,
+                    confidence REAL NOT NULL DEFAULT 0,
+                    reason TEXT NOT NULL DEFAULT '',
+                    provider_id TEXT NOT NULL DEFAULT '',
+                    analyzed_at REAL NOT NULL,
+                    PRIMARY KEY (analysis_key, comment_key)
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_semantic_cache_time
+                    ON semantic_comment_cache(analyzed_at);
+                CREATE INDEX IF NOT EXISTS idx_semantic_cache_comment
+                    ON semantic_comment_cache(comment_key);
                 """
             )
-            connection.execute("PRAGMA user_version = 1")
+            connection.execute("PRAGMA user_version = 2")
             self._cleanup(connection, time.time())
             connection.commit()
         finally:
@@ -486,6 +559,21 @@ class CommentArchive:
             """,
             (self.max_records,),
         )
+        connection.execute(
+            "DELETE FROM semantic_comment_cache WHERE comment_key NOT IN "
+            "(SELECT dedupe_key FROM received_comments)"
+        )
+        connection.execute(
+            """
+            DELETE FROM semantic_comment_cache
+            WHERE rowid IN (
+                SELECT rowid FROM semantic_comment_cache
+                ORDER BY analyzed_at DESC, rowid DESC
+                LIMIT -1 OFFSET ?
+            )
+            """,
+            (self.max_records * 5,),
+        )
 
     def _overview_sync(self) -> dict[str, int | bool]:
         connection = self._connect()
@@ -495,7 +583,8 @@ class CommentArchive:
                 SELECT
                     (SELECT COUNT(*) FROM received_comments) AS received_comments,
                     (SELECT COUNT(*) FROM received_observations) AS received_observations,
-                    (SELECT COUNT(*) FROM bot_comments) AS bot_comments
+                    (SELECT COUNT(*) FROM bot_comments) AS bot_comments,
+                    (SELECT COUNT(*) FROM semantic_comment_cache) AS semantic_cache_records
                 """
             ).fetchone()
             return {
@@ -503,6 +592,7 @@ class CommentArchive:
                 "received_comments": int(row["received_comments"]),
                 "received_observations": int(row["received_observations"]),
                 "bot_comments": int(row["bot_comments"]),
+                "semantic_cache_records": int(row["semantic_cache_records"]),
             }
         finally:
             connection.close()
@@ -712,6 +802,104 @@ class CommentArchive:
                 "records": records,
                 "counting_note": "received 与 bot 分开标记；received 的 seen_count 是当前筛选范围内的平台观察数。",
             }
+        finally:
+            connection.close()
+
+    def _insight_records_sync(
+        self,
+        filters: Mapping[str, Any],
+    ) -> list[dict[str, Any]]:
+        connection = self._connect()
+        try:
+            records = [
+                {
+                    "comment_key": str(row["dedupe_key"]),
+                    "link_id": int(row["link_id"]),
+                    "comment_id": int(row["comment_id"]),
+                    "root_comment_id": int(row["root_comment_id"]),
+                    "user_id": int(row["user_id"]),
+                    "content": str(row["content"]),
+                    "status": str(row["status"]),
+                    "sources": _split_group(row["sources"]),
+                    "seen_count": int(row["observation_count"]),
+                    "first_seen_at": _iso_time(row["filtered_first_seen_at"]),
+                    "last_seen_at": _iso_time(row["filtered_last_seen_at"]),
+                    "_sort_at": float(row["filtered_last_seen_at"] or 0.0),
+                }
+                for row in self._received_rows(connection, filters)
+            ]
+            records.sort(key=lambda item: float(item["_sort_at"]), reverse=True)
+            for record in records:
+                record.pop("_sort_at", None)
+            return records
+        finally:
+            connection.close()
+
+    def _semantic_cache_sync(self, analysis_key: str) -> dict[str, dict[str, Any]]:
+        if not analysis_key:
+            return {}
+        connection = self._connect()
+        try:
+            rows = connection.execute(
+                "SELECT * FROM semantic_comment_cache WHERE analysis_key = ?",
+                (analysis_key,),
+            ).fetchall()
+            return {
+                str(row["comment_key"]): {
+                    "content_hash": str(row["content_hash"]),
+                    "matched": bool(row["matched"]),
+                    "confidence": float(row["confidence"]),
+                    "reason": str(row["reason"]),
+                    "provider_id": str(row["provider_id"]),
+                    "analyzed_at": _iso_time(row["analyzed_at"]),
+                }
+                for row in rows
+            }
+        finally:
+            connection.close()
+
+    def _save_semantic_cache_sync(
+        self,
+        analysis_key: str,
+        provider_id: str,
+        records: Sequence[Mapping[str, Any]],
+    ) -> None:
+        if not analysis_key or not records:
+            return
+        now = time.time()
+        connection = self._connect()
+        try:
+            with connection:
+                connection.executemany(
+                    """
+                    INSERT INTO semantic_comment_cache (
+                        analysis_key, comment_key, content_hash, matched,
+                        confidence, reason, provider_id, analyzed_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(analysis_key, comment_key) DO UPDATE SET
+                        content_hash = excluded.content_hash,
+                        matched = excluded.matched,
+                        confidence = excluded.confidence,
+                        reason = excluded.reason,
+                        provider_id = excluded.provider_id,
+                        analyzed_at = excluded.analyzed_at
+                    """,
+                    [
+                        (
+                            analysis_key,
+                            str(record.get("comment_key") or ""),
+                            str(record.get("content_hash") or ""),
+                            1 if bool(record.get("matched")) else 0,
+                            float(record.get("confidence") or 0.0),
+                            str(record.get("reason") or "")[:500],
+                            provider_id,
+                            now,
+                        )
+                        for record in records
+                        if str(record.get("comment_key") or "")
+                    ],
+                )
+                self._cleanup(connection, now)
         finally:
             connection.close()
 

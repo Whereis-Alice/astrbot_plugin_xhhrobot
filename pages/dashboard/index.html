@@ -823,8 +823,851 @@
         }
       }
     </style>
+    <style id="terminal-redesign">
+      :root {
+        color-scheme: dark;
+        --bg: #050708;
+        --surface: #0a0f11;
+        --surface-alt: #0f171a;
+        --text: #d8e5df;
+        --muted: #82958d;
+        --line: #1a2a27;
+        --strong-line: #2f4740;
+        --green: #76f7a4;
+        --green-soft: #10291a;
+        --blue: #64d8ff;
+        --blue-soft: #0b2530;
+        --amber: #f3c969;
+        --amber-soft: #2c2411;
+        --red: #ff776f;
+        --red-soft: #301514;
+        --shadow: 0 18px 60px rgb(0 0 0 / 28%);
+        --mono:
+          "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono",
+          "Microsoft YaHei", monospace;
+        font-family: var(--mono);
+      }
+
+      html,
+      html[data-theme="dark"] {
+        color-scheme: dark;
+        --bg: #050708;
+        --surface: #0a0f11;
+        --surface-alt: #0f171a;
+        --text: #d8e5df;
+        --muted: #82958d;
+        --line: #1a2a27;
+        --strong-line: #2f4740;
+        --green: #76f7a4;
+        --green-soft: #10291a;
+        --blue: #64d8ff;
+        --blue-soft: #0b2530;
+        --amber: #f3c969;
+        --amber-soft: #2c2411;
+        --red: #ff776f;
+        --red-soft: #301514;
+        --shadow: 0 18px 60px rgb(0 0 0 / 28%);
+      }
+
+      body {
+        position: relative;
+        isolation: isolate;
+        min-height: 100vh;
+        background: var(--bg);
+        font-family: var(--mono);
+        line-height: 1.55;
+      }
+
+      body::before {
+        position: fixed;
+        inset: 0;
+        z-index: 1;
+        content: "";
+        background: rgb(3 7 8 / 62%);
+        pointer-events: none;
+      }
+
+      body::after {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        content: "";
+        opacity: 0.08;
+        background-size: 100% 4px;
+        background-image: linear-gradient(
+          to bottom,
+          transparent 0,
+          transparent 3px,
+          rgb(118 247 164 / 18%) 4px
+        );
+        pointer-events: none;
+      }
+
+      .network-canvas {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        width: 100%;
+        height: 100%;
+        background: #050708;
+      }
+
+      .app-header {
+        border-bottom-color: #20352f;
+        background: rgb(5 8 9 / 91%);
+        box-shadow: 0 8px 32px rgb(0 0 0 / 24%);
+        backdrop-filter: blur(18px);
+      }
+
+      .main {
+        z-index: 2;
+      }
+
+      .header-inner,
+      .main {
+        width: min(1440px, 100%);
+      }
+
+      .header-top {
+        min-height: 78px;
+      }
+
+      .brand {
+        position: relative;
+        padding-left: 18px;
+      }
+
+      .brand::before {
+        position: absolute;
+        top: 4px;
+        bottom: 4px;
+        left: 0;
+        width: 3px;
+        content: "";
+        background: var(--green);
+        box-shadow: 0 0 18px rgb(118 247 164 / 70%);
+      }
+
+      .brand h1 {
+        color: var(--text);
+        font-size: 21px;
+        font-weight: 650;
+      }
+
+      .brand h1::before {
+        color: var(--green);
+        content: "root@xhhbot:~$ ";
+        font-weight: 500;
+      }
+
+      .brand-meta {
+        color: #668177;
+        text-transform: uppercase;
+      }
+
+      .brand-meta::before {
+        content: "// ";
+      }
+
+      .header-actions {
+        gap: 12px;
+      }
+
+      .tabs {
+        gap: 8px;
+        padding-bottom: 10px;
+      }
+
+      .tab {
+        min-height: 34px;
+        padding: 5px 12px;
+        border: 1px solid transparent;
+        border-radius: 2px;
+        color: #789086;
+      }
+
+      .tab::before {
+        content: "./";
+        color: #405e53;
+      }
+
+      .tab:hover {
+        border-color: #26443a;
+        color: var(--text);
+      }
+
+      .tab[aria-selected="true"] {
+        border-color: #34634f;
+        background: #0c1914;
+        color: var(--green);
+        box-shadow: inset 0 0 0 1px rgb(118 247 164 / 5%);
+      }
+
+      .main {
+        position: relative;
+        padding-top: 30px;
+        padding-bottom: 70px;
+      }
+
+      .panel {
+        position: relative;
+        min-height: 520px;
+        padding: 24px;
+        border: 1px solid #193028;
+        border-radius: 3px;
+        background: rgb(7 12 13 / 88%);
+        box-shadow: var(--shadow);
+      }
+
+      .panel::before {
+        position: absolute;
+        top: -1px;
+        left: 24px;
+        width: 96px;
+        height: 1px;
+        content: "";
+        background: var(--green);
+        box-shadow: 0 0 14px rgb(118 247 164 / 55%);
+      }
+
+      .toolbar {
+        margin-bottom: 22px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .toolbar h2 {
+        color: var(--text);
+        font-size: 17px;
+        font-weight: 600;
+      }
+
+      .toolbar h2::before {
+        content: "> ";
+        color: var(--green);
+      }
+
+      .toolbar-note {
+        color: #71877e;
+      }
+
+      .button {
+        border-color: #29453b;
+        border-radius: 2px;
+        background: #0a1210;
+        color: #b9cbc3;
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 1%);
+      }
+
+      .button:hover:not(:disabled) {
+        border-color: var(--green);
+        background: #0d1a15;
+        color: var(--green);
+        box-shadow: 0 0 18px rgb(118 247 164 / 10%);
+      }
+
+      .button.primary {
+        border-color: #55d985;
+        background: #173d27;
+        color: #baffd0;
+      }
+
+      .button.danger {
+        border-color: #6b312e;
+        background: #1d1010;
+        color: var(--red);
+      }
+
+      .status-badge {
+        position: relative;
+        min-height: 24px;
+        padding: 2px 8px 2px 19px;
+        border: 1px solid #243631;
+        border-radius: 2px;
+        background: #0b1112;
+        color: var(--muted);
+        font-weight: 500;
+      }
+
+      .status-badge::before {
+        position: absolute;
+        top: 50%;
+        left: 8px;
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        content: "";
+        background: currentColor;
+        box-shadow: 0 0 8px currentColor;
+        transform: translateY(-50%);
+      }
+
+      .status-badge.good,
+      .status-badge.warn,
+      .status-badge.bad,
+      .status-badge.info {
+        background: #0b1112;
+      }
+
+      .metrics {
+        gap: 10px;
+      }
+
+      .metric {
+        position: relative;
+        min-height: 108px;
+        overflow: hidden;
+        padding: 16px;
+        border-color: #20352f;
+        border-radius: 2px;
+        background: #09100f;
+        box-shadow: none;
+      }
+
+      .metric::after {
+        position: absolute;
+        right: -18px;
+        bottom: -22px;
+        width: 72px;
+        height: 72px;
+        border: 1px solid rgb(100 216 255 / 12%);
+        content: "";
+        transform: rotate(45deg);
+      }
+
+      .metric:nth-child(2)::after {
+        border-color: rgb(243 201 105 / 16%);
+      }
+
+      .metric:nth-child(3)::after {
+        border-color: rgb(118 247 164 / 16%);
+      }
+
+      .metric:nth-child(4)::after {
+        border-color: rgb(255 119 111 / 14%);
+      }
+
+      .metric-label {
+        color: #688077;
+        text-transform: uppercase;
+      }
+
+      .metric-label::before {
+        content: "[";
+        color: #3b5b4e;
+      }
+
+      .metric-label::after {
+        content: "]";
+        color: #3b5b4e;
+      }
+
+      .metric-value {
+        color: var(--text);
+        font-size: 26px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .metric-foot {
+        color: #60756d;
+      }
+
+      .section-grid,
+      .distribution {
+        gap: 28px;
+      }
+
+      .section {
+        border-top-color: #244238;
+      }
+
+      .section h3,
+      .distribution h3 {
+        color: #a9beb5;
+      }
+
+      .section h3::before,
+      .distribution h3::before {
+        content: ":: ";
+        color: var(--blue);
+      }
+
+      .kv-row {
+        border-bottom-color: #15231f;
+      }
+
+      .kv-row dt {
+        color: #6f867d;
+      }
+
+      .kv-row dd {
+        color: #c9d8d2;
+      }
+
+      .alert {
+        border: 1px solid #5c4920;
+        border-left: 3px solid var(--amber);
+        background: #1c180d;
+      }
+
+      .alert.bad {
+        border-color: #542724;
+        border-left-color: var(--red);
+        background: #1d1010;
+      }
+
+      .login-layout {
+        gap: 48px;
+      }
+
+      .qr-area {
+        border-color: #28483d;
+        border-radius: 2px;
+        background: #07100d;
+        box-shadow: inset 0 0 40px rgb(118 247 164 / 4%);
+      }
+
+      .qr-canvas {
+        border: 14px solid #fff;
+        box-shadow: 0 0 32px rgb(100 216 255 / 16%);
+      }
+
+      .dataset-control {
+        border-color: #27443a;
+        border-radius: 2px;
+        background: #08100e;
+      }
+
+      .dataset-control button {
+        border-radius: 1px;
+      }
+
+      .dataset-control button[aria-pressed="true"] {
+        background: #153124;
+        color: var(--green);
+        box-shadow: none;
+      }
+
+      .filters,
+      .insight-form {
+        border-color: #1f342d;
+      }
+
+      .field label,
+      .toggle-copy span {
+        color: #728a80;
+      }
+
+      .field input,
+      .field select {
+        border-color: #28443a;
+        border-radius: 2px;
+        background: #070d0e;
+        color: var(--text);
+        caret-color: var(--green);
+      }
+
+      .field input::placeholder {
+        color: #40564e;
+      }
+
+      .field input:focus,
+      .field select:focus {
+        border-color: var(--green);
+        box-shadow: 0 0 0 1px rgb(118 247 164 / 28%);
+      }
+
+      .bar-track {
+        height: 5px;
+        border-radius: 0;
+        background: #13201c;
+      }
+
+      .bar-fill {
+        background: var(--blue);
+        box-shadow: 0 0 8px rgb(100 216 255 / 35%);
+      }
+
+      .table-wrap {
+        border-color: #20372f;
+        border-radius: 2px;
+        background: #070d0e;
+      }
+
+      th,
+      td {
+        border-bottom-color: #14221e;
+      }
+
+      th {
+        background: #0d1715;
+        color: #779086;
+        text-transform: uppercase;
+      }
+
+      tbody tr:hover {
+        background: #0e1b17;
+        box-shadow: inset 2px 0 var(--green);
+      }
+
+      dialog {
+        border-color: #315448;
+        border-radius: 3px;
+        background: #080e0f;
+        box-shadow: 0 24px 80px rgb(0 0 0 / 65%);
+      }
+
+      dialog::backdrop {
+        background: rgb(0 3 4 / 76%);
+        backdrop-filter: blur(4px);
+      }
+
+      .dialog-header {
+        border-bottom-color: #1f352e;
+        background: #0b1312;
+      }
+
+      .message-content {
+        border-color: #20372f;
+        border-radius: 2px;
+        background: #050a0b;
+        color: #c8d7d1;
+        font-family: var(--mono);
+      }
+
+      .toast {
+        border-color: #376b55;
+        border-radius: 2px;
+        background: #0b1813;
+        color: var(--green);
+        box-shadow: 0 12px 40px rgb(0 0 0 / 45%);
+      }
+
+      .toast.error {
+        border-color: #7a3834;
+        background: #1b0f0f;
+      }
+
+      .insight-form {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 14px;
+        align-items: end;
+        padding: 18px 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .insight-topic {
+        grid-column: span 3;
+      }
+
+      .insight-keywords,
+      .insight-emojis {
+        grid-column: span 3;
+      }
+
+      .insight-toggle-row {
+        grid-column: span 3;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px 22px;
+        min-height: 36px;
+        align-items: center;
+      }
+
+      .toggle-control {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        color: #a9bbb4;
+        cursor: pointer;
+      }
+
+      .toggle-control input {
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        accent-color: var(--green);
+      }
+
+      .insight-actions {
+        grid-column: span 3;
+        display: flex;
+        justify-content: flex-end;
+        gap: 9px;
+      }
+
+      .insight-status-line {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 18px;
+        align-items: center;
+        margin: 20px 0;
+        padding: 13px 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .progress-track {
+        height: 7px;
+        overflow: hidden;
+        border: 1px solid #26473a;
+        background: #07100d;
+      }
+
+      .progress-fill {
+        width: 0;
+        height: 100%;
+        background: var(--green);
+        box-shadow: 0 0 12px rgb(118 247 164 / 44%);
+        transition: width 240ms ease;
+      }
+
+      .insight-result[hidden] {
+        display: none;
+      }
+
+      .insight-metrics {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+      }
+
+      .insight-meta {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1px;
+        margin: 18px 0 24px;
+        border: 1px solid #20372f;
+        background: #20372f;
+      }
+
+      .insight-meta-item {
+        min-width: 0;
+        padding: 12px;
+        background: #08100e;
+      }
+
+      .insight-meta-item span {
+        display: block;
+        color: #61786f;
+        font-size: 11px;
+      }
+
+      .insight-meta-item strong {
+        display: block;
+        margin-top: 4px;
+        color: #c7d8d1;
+        font-weight: 500;
+        overflow-wrap: anywhere;
+      }
+
+      .example-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .example-row {
+        display: grid;
+        grid-template-columns: minmax(110px, 0.2fr) minmax(0, 1fr) minmax(150px, 0.28fr);
+        gap: 16px;
+        align-items: start;
+        padding: 13px 0;
+        border-bottom: 1px solid #16251f;
+      }
+
+      .example-kind {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+
+      .example-content {
+        color: #cedbd6;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+
+      .example-meta {
+        color: #61786f;
+        font-size: 11px;
+        text-align: right;
+        overflow-wrap: anywhere;
+      }
+
+      .terminal-empty {
+        min-height: 220px;
+        display: grid;
+        place-items: center;
+        border: 1px dashed #264138;
+        color: #5f756c;
+        text-align: center;
+      }
+
+      .terminal-empty::before {
+        content: "_";
+        margin-right: 8px;
+        color: var(--green);
+        animation: terminal-cursor 1s steps(1) infinite;
+      }
+
+      @keyframes terminal-cursor {
+        50% {
+          opacity: 0;
+        }
+      }
+
+      @media (max-width: 1120px) {
+        .insight-form {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .insight-topic,
+        .insight-keywords,
+        .insight-emojis,
+        .insight-toggle-row,
+        .insight-actions {
+          grid-column: span 3;
+        }
+
+        .insight-actions {
+          justify-content: flex-start;
+        }
+
+        .insight-metrics {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+      }
+
+      @media (max-width: 760px) {
+        body::after {
+          display: none;
+        }
+
+        .header-inner,
+        .main {
+          padding-inline: 12px;
+        }
+
+        .header-top {
+          align-items: flex-start;
+          min-height: 72px;
+          padding-top: 13px;
+        }
+
+        .brand h1 {
+          font-size: 17px;
+        }
+
+        .brand h1::before {
+          display: block;
+          margin-bottom: 2px;
+          font-size: 11px;
+        }
+
+        .header-actions {
+          gap: 7px;
+        }
+
+        .header-actions .toolbar-note {
+          display: none;
+        }
+
+        .tabs {
+          padding-bottom: 8px;
+        }
+
+        .tab {
+          padding-inline: 9px;
+        }
+
+        .panel {
+          min-height: 420px;
+          padding: 16px;
+        }
+
+        .toolbar-actions,
+        .insight-actions {
+          width: 100%;
+        }
+
+        .toolbar-actions .button,
+        .insight-actions .button {
+          min-width: 0;
+          flex: 1 1 140px;
+          min-height: 42px;
+          padding-inline: 8px;
+          line-height: 1.25;
+          white-space: normal;
+        }
+
+        .metrics,
+        .insight-metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .metric {
+          min-height: 98px;
+        }
+
+        .insight-form {
+          grid-template-columns: 1fr;
+        }
+
+        .insight-form > *,
+        .insight-topic,
+        .insight-keywords,
+        .insight-emojis,
+        .insight-toggle-row,
+        .insight-actions {
+          grid-column: 1;
+        }
+
+        .insight-status-line {
+          grid-template-columns: 1fr;
+        }
+
+        .insight-meta {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .example-row {
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+
+        .example-meta {
+          text-align: left;
+        }
+
+        .kv-row {
+          grid-template-columns: 1fr;
+          gap: 4px;
+        }
+
+        .kv-row dd {
+          text-align: left;
+        }
+
+        .kv-row .status-badge {
+          max-width: 100%;
+          white-space: normal;
+          overflow-wrap: anywhere;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          scroll-behavior: auto !important;
+          animation-duration: 0.001ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.001ms !important;
+        }
+      }
+    </style>
   </head>
   <body>
+    <canvas class="network-canvas" id="networkCanvas" aria-hidden="true"></canvas>
     <header class="app-header">
       <div class="header-inner">
         <div class="header-top">
@@ -847,6 +1690,9 @@
           </button>
           <button class="tab" type="button" data-tab="database" aria-selected="false">
             消息数据库
+          </button>
+          <button class="tab" type="button" data-tab="insights" aria-selected="false">
+            评论洞察
           </button>
         </nav>
       </div>
@@ -1036,6 +1882,114 @@
           </div>
         </div>
       </section>
+
+      <section class="panel" id="insightsPanel" data-panel="insights" hidden>
+        <div class="toolbar">
+          <div>
+            <h2>评论洞察</h2>
+            <div class="toolbar-note" id="insightSummary">等待分析任务</div>
+          </div>
+          <div class="toolbar-actions">
+            <span class="status-badge" id="insightBadge">空闲</span>
+          </div>
+        </div>
+
+        <form class="insight-form" id="insightForm">
+          <div class="field insight-topic">
+            <label for="insightTopic">分析主题</label>
+            <input
+              id="insightTopic"
+              name="topic"
+              type="text"
+              maxlength="500"
+              placeholder="例如：喜欢、爱意、心动或明确好感"
+              required
+            />
+          </div>
+          <div class="field insight-keywords">
+            <label for="insightKeywords">字面关键词</label>
+            <input
+              id="insightKeywords"
+              name="keywords"
+              type="text"
+              maxlength="2000"
+              placeholder="喜欢，爱你，好感"
+            />
+          </div>
+          <div class="field insight-emojis">
+            <label for="insightEmojis">小黑盒表情标记</label>
+            <input
+              id="insightEmojis"
+              name="emoji_tokens"
+              type="text"
+              maxlength="3000"
+              placeholder="[cube_喜欢]，[heygirl_喜欢]"
+            />
+          </div>
+          <div class="field">
+            <label for="insightLinkId">帖子 ID</label>
+            <input id="insightLinkId" name="link_id" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label for="insightSource">评论来源</label>
+            <select id="insightSource" name="source">
+              <option value="">全部</option>
+              <option value="mention">@ 消息</option>
+              <option value="own_post_comment">自己帖子评论</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="insightStartTime">开始时间</label>
+            <input id="insightStartTime" name="start_time" type="datetime-local" />
+          </div>
+          <div class="field">
+            <label for="insightEndTime">结束时间</label>
+            <input id="insightEndTime" name="end_time" type="datetime-local" />
+          </div>
+          <div class="insight-toggle-row">
+            <label class="toggle-control">
+              <input id="insightSemantic" name="semantic" type="checkbox" checked />
+              <span>使用模型补充语义表达</span>
+            </label>
+            <label class="toggle-control">
+              <input id="insightInferEmojis" name="infer_emojis" type="checkbox" checked />
+              <span>按关键词推导标准表情</span>
+            </label>
+          </div>
+          <div class="insight-actions">
+            <button class="button" id="cancelInsightButton" type="button" disabled>
+              取消分析
+            </button>
+            <button class="button primary" id="runInsightButton" type="submit">
+              运行分析
+            </button>
+          </div>
+        </form>
+
+        <div class="insight-status-line">
+          <div>
+            <div class="toolbar-note" id="insightProgressText">尚未运行分析</div>
+            <div class="progress-track" aria-hidden="true">
+              <div class="progress-fill" id="insightProgressFill"></div>
+            </div>
+          </div>
+          <div class="toolbar-note" id="insightCacheText">缓存 0 / 模型请求 0</div>
+        </div>
+
+        <div class="terminal-empty" id="insightEmpty">
+          暂无分析结果
+        </div>
+
+        <div class="insight-result" id="insightResult" hidden>
+          <div class="metrics insight-metrics" id="insightMetrics"></div>
+          <div class="insight-meta" id="insightMeta"></div>
+          <section class="section">
+            <h3>代表评论</h3>
+            <div class="example-list" id="insightExamples"></div>
+          </section>
+          <div class="alert" id="insightNote"></div>
+        </div>
+      </section>
     </main>
 
     <dialog id="detailDialog">
@@ -1116,6 +2070,8 @@
         status: null,
         analytics: null,
         loginPollTimer: null,
+        insightPollTimer: null,
+        insight: null,
       };
 
       const byId = (id) => document.getElementById(id);
@@ -1129,6 +2085,20 @@
 
       function fmtNumber(value) {
         return new Intl.NumberFormat("zh-CN").format(Number(value || 0));
+      }
+
+      function splitInputList(value) {
+        return String(value || "")
+          .split(/[,，、;；\n]+/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      }
+
+      function localDateTimeToIso(value) {
+        const text = String(value || "").trim();
+        if (!text) return "";
+        const parsed = new Date(text);
+        return Number.isNaN(parsed.getTime()) ? text : parsed.toISOString();
       }
 
       function paginationSummary(total, offset, limit, returnedCount) {
@@ -1233,6 +2203,123 @@
         return result;
       }
 
+      function initializeNetworkBackground() {
+        const canvas = byId("networkCanvas");
+        const context = canvas?.getContext("2d");
+        if (!canvas || !context) return;
+        const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+        let width = 0;
+        let height = 0;
+        let ratio = 1;
+        let frame = 0;
+        let nodes = [];
+
+        function nodeCount() {
+          return Math.max(28, Math.min(82, Math.round((width * height) / 26000)));
+        }
+
+        function resetNodes() {
+          nodes = Array.from({ length: nodeCount() }, () => ({
+            x: Math.random() * width,
+            y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.16,
+            vy: (Math.random() - 0.5) * 0.16,
+            radius: Math.random() * 1.2 + 0.7,
+            tone: Math.random(),
+          }));
+        }
+
+        function resize() {
+          const nextWidth = window.innerWidth;
+          const nextHeight = window.innerHeight;
+          ratio = Math.min(window.devicePixelRatio || 1, 2);
+          width = nextWidth;
+          height = nextHeight;
+          canvas.width = Math.round(width * ratio);
+          canvas.height = Math.round(height * ratio);
+          canvas.style.width = `${width}px`;
+          canvas.style.height = `${height}px`;
+          context.setTransform(ratio, 0, 0, ratio, 0, 0);
+          resetNodes();
+          draw(true);
+        }
+
+        function draw(staticFrame = false) {
+          context.clearRect(0, 0, width, height);
+          context.fillStyle = "#050708";
+          context.fillRect(0, 0, width, height);
+
+          const grid = 56;
+          context.strokeStyle = "rgba(58, 104, 88, 0.08)";
+          context.lineWidth = 1;
+          context.beginPath();
+          for (let x = 0; x <= width; x += grid) {
+            context.moveTo(x, 0);
+            context.lineTo(x, height);
+          }
+          for (let y = 0; y <= height; y += grid) {
+            context.moveTo(0, y);
+            context.lineTo(width, y);
+          }
+          context.stroke();
+
+          if (!staticFrame) {
+            for (const node of nodes) {
+              node.x += node.vx;
+              node.y += node.vy;
+              if (node.x < -10) node.x = width + 10;
+              if (node.x > width + 10) node.x = -10;
+              if (node.y < -10) node.y = height + 10;
+              if (node.y > height + 10) node.y = -10;
+            }
+          }
+
+          for (let index = 0; index < nodes.length; index += 1) {
+            const node = nodes[index];
+            for (let next = index + 1; next < nodes.length; next += 1) {
+              const other = nodes[next];
+              const distance = Math.hypot(node.x - other.x, node.y - other.y);
+              if (distance > 150) continue;
+              const alpha = (1 - distance / 150) * 0.22;
+              context.strokeStyle = `rgba(77, 196, 151, ${alpha})`;
+              context.beginPath();
+              context.moveTo(node.x, node.y);
+              context.lineTo(other.x, other.y);
+              context.stroke();
+            }
+          }
+
+          for (const node of nodes) {
+            context.fillStyle =
+              node.tone > 0.86
+                ? "rgba(243, 201, 105, 0.72)"
+                : node.tone < 0.13
+                  ? "rgba(100, 216, 255, 0.72)"
+                  : "rgba(118, 247, 164, 0.78)";
+            context.beginPath();
+            context.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+            context.fill();
+          }
+        }
+
+        function animate() {
+          draw(false);
+          frame = window.requestAnimationFrame(animate);
+        }
+
+        function syncMotion() {
+          if (frame) window.cancelAnimationFrame(frame);
+          frame = 0;
+          if (reduceMotion.matches) draw(true);
+          else animate();
+        }
+
+        window.addEventListener("resize", resize, { passive: true });
+        reduceMotion.addEventListener?.("change", syncMotion);
+        resize();
+        syncMotion();
+      }
+
       function setGlobalBadge(status) {
         const badgeElement = byId("globalBadge");
         const account = status?.account || {};
@@ -1320,7 +2407,7 @@
           ["自动巡帖", badge(features.auto_browse ? "启用" : "关闭", features.auto_browse ? "warn" : "")],
           ["LLM 工具", badge(features.llm_tools ? "启用" : "关闭", features.llm_tools ? "info" : "")],
           ["写工具", badge(features.write_tools ? "启用" : "关闭", features.write_tools ? "warn" : "")],
-          ["世界书钩子", badge(features.worldbook_hooks ? "可用" : "不可用", features.worldbook_hooks ? "good" : "warn")],
+          ["扩展请求钩子", badge(features.worldbook_hooks ? "可用" : "不可用", features.worldbook_hooks ? "good" : "warn")],
         ]);
 
         const alertContainer = byId("runtimeAlert");
@@ -1569,6 +2656,189 @@
           byId("databaseSummary").textContent = error.message;
           showToast(error.message, true);
         }
+      }
+
+      function insightStateLabel(value) {
+        return {
+          idle: "空闲",
+          running: "分析中",
+          complete: "已完成",
+          failed: "失败",
+          cancelled: "已取消",
+        }[value] || value || "未知";
+      }
+
+      function insightStateTone(value) {
+        if (value === "complete") return "good";
+        if (value === "running") return "info";
+        if (value === "failed") return "bad";
+        if (value === "cancelled") return "warn";
+        return "";
+      }
+
+      function insightMetric(label, value, foot) {
+        return `<div class="metric"><div class="metric-label">${escapeHtml(label)}</div><div class="metric-value">${escapeHtml(value)}</div><div class="metric-foot">${escapeHtml(foot)}</div></div>`;
+      }
+
+      function renderInsight(payload) {
+        state.insight = payload;
+        const report = payload.report || null;
+        const progress = payload.progress || {};
+        const taskState = payload.state || "idle";
+        const completed = Number(progress.completed || 0);
+        const total = Number(progress.total || 0);
+        const percent = total ? Math.min(100, (completed / total) * 100) : taskState === "complete" ? 100 : 0;
+        const badgeElement = byId("insightBadge");
+        badgeElement.textContent = insightStateLabel(taskState);
+        badgeElement.className = `status-badge ${insightStateTone(taskState)}`;
+        byId("insightProgressFill").style.width = `${percent}%`;
+        byId("insightProgressText").textContent =
+          taskState === "running"
+            ? `语义分析 ${fmtNumber(completed)} / ${fmtNumber(total)}，已完成 ${fmtNumber(progress.batches_completed)} 批`
+            : taskState === "idle"
+              ? "尚未运行分析"
+              : `${insightStateLabel(taskState)}于 ${fmtTime(payload.updated_at)}`;
+        byId("insightCacheText").textContent = `缓存 ${fmtNumber(progress.cache_hits)} / 模型请求 ${fmtNumber(progress.model_calls)}`;
+        byId("cancelInsightButton").disabled = taskState !== "running";
+        byId("runInsightButton").disabled = taskState === "running";
+
+        if (payload.semantic_available === false) {
+          byId("insightSemantic").checked = false;
+          byId("insightSemantic").disabled = true;
+        } else {
+          byId("insightSemantic").disabled = false;
+        }
+
+        if (!report) {
+          byId("insightEmpty").hidden = false;
+          byId("insightResult").hidden = true;
+          byId("insightEmpty").textContent = payload.error || "暂无分析结果";
+          return;
+        }
+
+        byId("insightEmpty").hidden = true;
+        byId("insightResult").hidden = false;
+        byId("insightMetrics").innerHTML = [
+          ["归档样本", fmtNumber(report.total_comments), `${fmtNumber(report.unique_users)} 个用户 / ${fmtNumber(report.unique_posts)} 个帖子`],
+          ["文字命中", fmtNumber(report.keyword_matches), `关键词 ${fmtNumber(report.criteria?.keywords?.length)} 个`],
+          ["表情命中", fmtNumber(report.emoji_matches), `与文字重叠 ${fmtNumber(report.keyword_emoji_overlap)}`],
+          ["语义补充", fmtNumber(report.semantic_matches), `覆盖 ${fmtNumber(report.semantic_coverage_percent)}%`],
+          ["去重并集", fmtNumber(report.union_matches), `确定性 ${fmtNumber(report.deterministic_union)}`],
+          ["样本占比", `${Number(report.union_percentage || 0).toFixed(2)}%`, report.semantic_complete ? "语义范围已完成" : "当前为已确认下限"],
+        ]
+          .map(([label, value, foot]) => insightMetric(label, value, foot))
+          .join("");
+
+        const filters = payload.filters || {};
+        byId("insightMeta").innerHTML = [
+          ["主题", report.criteria?.topic || "无"],
+          ["关键词", (report.criteria?.keywords || []).join(" / ") || "无"],
+          ["表情", (report.criteria?.emoji_tokens || []).map((item) => `[${item}]`).join(" / ") || "无"],
+          ["模型", report.provider_id || "未使用"],
+          ["帖子", filters.link_id || "全部"],
+          ["来源", sourceLabel(filters.source) || "全部"],
+          ["语义候选", `${fmtNumber(report.semantic_selected)} / ${fmtNumber(report.semantic_candidates)}`],
+          ["未纳入本轮", fmtNumber(report.semantic_not_selected)],
+        ]
+          .map(
+            ([label, value]) =>
+              `<div class="insight-meta-item"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`,
+          )
+          .join("");
+
+        const examples = report.examples || [];
+        byId("insightExamples").innerHTML = examples.length
+          ? examples
+              .map((example) => {
+                const kinds = (example.matched_by || []).map((kind) => {
+                  const labels = { keyword: "文字", emoji: "表情", semantic: "语义" };
+                  const tones = { keyword: "good", emoji: "info", semantic: "warn" };
+                  return badge(labels[kind] || kind, tones[kind] || "");
+                });
+                const reason = example.reason ? ` / ${example.reason}` : "";
+                return `<article class="example-row"><div class="example-kind">${kinds.join("")}</div><div class="example-content">${escapeHtml(example.content || "[空评论]")}</div><div class="example-meta">帖子 ${escapeHtml(example.link_id || "无")} / 评论 ${escapeHtml(example.comment_id || "无")}<br>用户 ${escapeHtml(example.user_id || "无")}${escapeHtml(reason)}</div></article>`;
+              })
+              .join("")
+          : `<div class="toolbar-note">${report.examples_hidden ? "评论正文已在 WebUI 配置中隐藏" : "当前没有代表样例"}</div>`;
+        const noteParts = [report.counting_note];
+        if (payload.error) noteParts.unshift(payload.error);
+        if (report.semantic_not_selected > 0) {
+          noteParts.unshift(`有 ${fmtNumber(report.semantic_not_selected)} 条语义候选未纳入本轮模型分析，请调大“单次语义分析评论上限”或设为 0。`);
+        }
+        byId("insightNote").className = payload.error ? "alert bad" : "alert";
+        byId("insightNote").textContent = noteParts.filter(Boolean).join(" ");
+        byId("insightSummary").textContent = `任务 ${payload.job_id ? payload.job_id.slice(0, 8) : "-"} / 更新于 ${fmtTime(payload.updated_at)}`;
+      }
+
+      async function loadInsightStatus() {
+        try {
+          const payload = await getApi("analytics/insights/status");
+          renderInsight(payload);
+          if (payload.state === "running") startInsightPolling();
+          else stopInsightPolling();
+        } catch (error) {
+          byId("insightSummary").textContent = error.message;
+          stopInsightPolling();
+          showToast(error.message, true);
+        }
+      }
+
+      function insightPayload() {
+        const form = new FormData(byId("insightForm"));
+        const payload = {};
+        for (const [key, value] of form.entries()) {
+          if (key === "semantic" || key === "infer_emojis") continue;
+          const text = String(value || "").trim();
+          if (text) payload[key] = text;
+        }
+        payload.keywords = splitInputList(byId("insightKeywords").value);
+        payload.emoji_tokens = splitInputList(byId("insightEmojis").value);
+        payload.semantic = byId("insightSemantic").checked;
+        payload.infer_emojis = byId("insightInferEmojis").checked;
+        if (payload.start_time) payload.start_time = localDateTimeToIso(payload.start_time);
+        if (payload.end_time) payload.end_time = localDateTimeToIso(payload.end_time);
+        return payload;
+      }
+
+      async function runInsight(event) {
+        event.preventDefault();
+        const button = byId("runInsightButton");
+        button.disabled = true;
+        button.textContent = "启动中";
+        try {
+          const payload = await postApi("analytics/insights/run", insightPayload());
+          renderInsight(payload);
+          showToast(payload.state === "complete" ? "本地统计已完成" : "评论洞察任务已启动");
+          if (payload.state === "running") startInsightPolling();
+        } catch (error) {
+          showToast(error.message, true);
+        } finally {
+          if (state.insight?.state !== "running") button.disabled = false;
+          button.textContent = "运行分析";
+        }
+      }
+
+      async function cancelInsight() {
+        const button = byId("cancelInsightButton");
+        button.disabled = true;
+        try {
+          const payload = await postApi("analytics/insights/cancel", {});
+          renderInsight(payload);
+          showToast(payload.message || "评论洞察任务已取消");
+        } catch (error) {
+          showToast(error.message, true);
+        }
+      }
+
+      function startInsightPolling() {
+        if (state.insightPollTimer) return;
+        state.insightPollTimer = window.setInterval(loadInsightStatus, 2000);
+      }
+
+      function stopInsightPolling() {
+        if (!state.insightPollTimer) return;
+        window.clearInterval(state.insightPollTimer);
+        state.insightPollTimer = null;
       }
 
       async function startRuntime() {
@@ -1879,6 +3149,7 @@
           loadAnalytics();
           loadMessages();
         }
+        if (tabName === "insights") loadInsightStatus();
       }
 
       function bindEvents() {
@@ -1905,6 +3176,7 @@
           button.disabled = true;
           await Promise.all([loadStatus(), loadAnalytics()]);
           if (state.activeTab === "database") await loadMessages();
+          if (state.activeTab === "insights") await loadInsightStatus();
           button.disabled = false;
         });
         byId("startRuntimeButton").addEventListener("click", startRuntime);
@@ -1920,6 +3192,8 @@
           byId("clearLoginDialog").close();
         });
         byId("confirmClearLoginButton").addEventListener("click", clearLogin);
+        byId("insightForm").addEventListener("submit", runInsight);
+        byId("cancelInsightButton").addEventListener("click", cancelInsight);
         byId("filterForm").addEventListener("submit", (event) => {
           event.preventDefault();
           state.offset = 0;
@@ -1957,6 +3231,7 @@
       }
 
       async function initialize() {
+        initializeNetworkBackground();
         bindEvents();
         updateFilterOptions();
         try {
@@ -1975,7 +3250,7 @@
           showToast(error.message, true);
           return;
         }
-        await Promise.all([loadStatus(), loadAnalytics()]);
+        await Promise.all([loadStatus(), loadAnalytics(), loadInsightStatus()]);
       }
 
       initialize();
