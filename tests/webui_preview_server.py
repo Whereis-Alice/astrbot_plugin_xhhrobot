@@ -3,8 +3,12 @@ from __future__ import annotations
 import base64
 import json
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from io import BytesIO
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+
+from PIL import Image as PillowImage
+from PIL import ImageDraw
 
 ROOT = Path(__file__).parents[1]
 PAGE = ROOT / "pages" / "dashboard" / "index.html"
@@ -80,10 +84,15 @@ STATUS = {
     },
 }
 
+avatar_image = PillowImage.new("RGB", (64, 64), (11, 36, 28))
+avatar_draw = ImageDraw.Draw(avatar_image)
+avatar_draw.ellipse((7, 7, 57, 57), fill=(63, 196, 124))
+avatar_draw.rectangle((29, 18, 35, 46), fill=(5, 20, 15))
+avatar_draw.rectangle((18, 29, 46, 35), fill=(5, 20, 15))
+avatar_buffer = BytesIO()
+avatar_image.save(avatar_buffer, format="PNG")
 AVATAR_DATA_URL = "data:image/png;base64," + base64.b64encode(
-    base64.b64decode(
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
-    )
+    avatar_buffer.getvalue()
 ).decode("ascii")
 
 

@@ -80,6 +80,7 @@ DEFAULT_SESSION_UMO = "xhhrobot:FriendMessage:community"
 ACCOUNT_PROFILE_CACHE_SECONDS = 300
 ACCOUNT_AVATAR_CACHE_SECONDS = 3600
 ACCOUNT_AVATAR_MAX_BYTES = 2 * 1024 * 1024
+ACCOUNT_AVATAR_MIN_EDGE = 16
 SEARCH_TOOL_HINTS = (
     "search",
     "搜索",
@@ -4266,11 +4267,12 @@ class XhhRobotPlugin(Star):
                 payload = await fetch_profile(str(auth.heybox_id))
                 profile = self._summarize_account_profile(payload, str(auth.heybox_id))
                 if not profile.get("avatar"):
-                    cookie_avatar = self._account_avatar_url(
+                    login_avatar = self._account_avatar_url(
+                        auth.avatar,
                         XhhClient.parse_cookie_header(auth.cookie).get("avatar")
                     )
-                    if cookie_avatar:
-                        profile["avatar"] = cookie_avatar
+                    if login_avatar:
+                        profile["avatar"] = login_avatar
                     elif cached.get("avatar"):
                         profile["avatar"] = cached["avatar"]
                 self._account_profile_updated_at = now
@@ -4283,9 +4285,13 @@ class XhhRobotPlugin(Star):
                     self._account_profile = profile
                     if str(profile.get("avatar") or "").strip() != previous_avatar:
                         self._clear_account_avatar_cache()
-                    nickname = str(profile.get("nickname") or "").strip()
-                    if nickname and nickname != auth.nickname:
-                        self.auth = replace(auth, nickname=nickname)
+                    updated_auth = replace(
+                        auth,
+                        nickname=str(profile.get("nickname") or auth.nickname).strip(),
+                        avatar=str(profile.get("avatar") or auth.avatar).strip(),
+                    )
+                    if updated_auth != auth:
+                        self.auth = updated_auth
                         client.set_auth(self.auth)
                         if self._auth_source == "qr":
                             await self.put_kv_data(AUTH_STORAGE_KEY, self.auth.to_dict())
@@ -4355,6 +4361,10 @@ class XhhRobotPlugin(Star):
                 detail.get("headimg"),
                 profile.get("avatar"),
                 profile.get("avatar_url"),
+                result.get("avatar"),
+                result.get("avatar_url"),
+                payload.get("avatar"),
+                payload.get("avatar_url"),
             ),
             "level": level_value(
                 level_info.get("level"), detail.get("level"), profile.get("level")
@@ -4396,14 +4406,18 @@ class XhhRobotPlugin(Star):
         }
 
     @staticmethod
-    def _account_avatar_url(*values: Any) -> str:
+    def _account_avatar_urls(*values: Any) -> list[str]:
         preferred_keys = (
             "original",
             "original_url",
+            "origin",
+            "origin_url",
             "url",
             "src",
             "avatar",
             "avatar_url",
+            "avatar_large",
+            "large_avatar",
             "headimg",
             "large",
             "big",
@@ -4433,11 +4447,15 @@ class XhhRobotPlugin(Star):
                 decoded = next_value
             return extract_image_urls(decoded)
 
+        urls: list[str] = []
         for value in values:
-            urls = unique_strings(candidates(value))
-            if urls:
-                return urls[0]
-        return ""
+            urls.extend(candidates(value))
+        return unique_strings(urls)
+
+    @classmethod
+    def _account_avatar_url(cls, *values: Any) -> str:
+        urls = cls._account_avatar_urls(*values)
+        return urls[0] if urls else ""
 
     def _clear_account_avatar_cache(self) -> None:
         self._account_avatar_source = ""
@@ -4447,16 +4465,20 @@ class XhhRobotPlugin(Star):
 
     async def _refresh_account_avatar(self, *, force: bool = False) -> str:
         profile = dict(getattr(self, "_account_profile", {}) or {})
-        source = str(profile.get("avatar") or "").strip()
-        if not source:
+        if not str(profile.get("avatar") or "").strip():
             await self._refresh_account_profile(force=force)
             profile = dict(getattr(self, "_account_profile", {}) or {})
-            source = str(profile.get("avatar") or "").strip()
-        if not source and self.auth is not None:
-            source = self._account_avatar_url(
-                XhhClient.parse_cookie_header(self.auth.cookie).get("avatar")
-            )
-        if not source:
+        auth = getattr(self, "auth", None)
+        sources = self._account_avatar_urls(
+            profile.get("avatar"),
+            auth.avatar if auth is not None else "",
+            (
+                XhhClient.parse_cookie_header(auth.cookie).get("avatar")
+                if auth is not None
+                else ""
+            ),
+        )
+        if not sources:
             raise XhhError("当前账号资料没有返回头像地址。", retryable=False)
 
         now = time.time()
@@ -4466,7 +4488,7 @@ class XhhRobotPlugin(Star):
         if (
             not force
             and cached_data
-            and cached_source == source
+            and cached_source in sources
             and now - updated_at < ACCOUNT_AVATAR_CACHE_SECONDS
         ):
             return cached_data
@@ -4490,30 +4512,45 @@ class XhhRobotPlugin(Star):
             if (
                 not force
                 and cached_data
-                and cached_source == source
+                and cached_source in sources
                 and now - updated_at < ACCOUNT_AVATAR_CACHE_SECONDS
             ):
                 return cached_data
-            try:
-                payload = await fetch_image(source, max_bytes=ACCOUNT_AVATAR_MAX_BYTES)
-                data_url = image_payload_to_data_url(payload)
-            except asyncio.CancelledError:
-                raise
-            except XhhError as exc:
-                self._account_avatar_error = str(exc)
-                if cached_data and cached_source == source:
-                    return cached_data
-                raise
-            except Exception as exc:
-                self._account_avatar_error = str(exc)
-                if cached_data and cached_source == source:
-                    return cached_data
-                raise XhhError(f"账号头像读取失败：{exc}", retryable=True) from exc
-            self._account_avatar_source = source
-            self._account_avatar_data_url = data_url
-            self._account_avatar_updated_at = now
-            self._account_avatar_error = ""
-            return data_url
+            last_error: XhhError | None = None
+            for source in sources:
+                try:
+                    payload = await fetch_image(
+                        source,
+                        max_bytes=ACCOUNT_AVATAR_MAX_BYTES,
+                    )
+                    if min(payload.width, payload.height) < ACCOUNT_AVATAR_MIN_EDGE:
+                        raise XhhError(
+                            "账号头像返回了异常小的占位图。",
+                            retryable=False,
+                        )
+                    data_url = image_payload_to_data_url(payload)
+                except asyncio.CancelledError:
+                    raise
+                except XhhError as exc:
+                    last_error = exc
+                    continue
+                except Exception as exc:
+                    last_error = XhhError(
+                        f"账号头像读取失败：{exc}",
+                        retryable=True,
+                    )
+                    continue
+                self._account_avatar_source = source
+                self._account_avatar_data_url = data_url
+                self._account_avatar_updated_at = now
+                self._account_avatar_error = ""
+                return data_url
+            self._account_avatar_error = str(last_error or "账号头像读取失败。")
+            if cached_data and cached_source in sources:
+                return cached_data
+            if last_error is not None:
+                raise last_error
+            raise XhhError("账号头像读取失败。", retryable=True)
 
     async def _resolve_device_id(self) -> str:
         configured = self._str_cfg("account.device_id", "")

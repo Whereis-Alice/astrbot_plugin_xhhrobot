@@ -807,7 +807,11 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
                 FakeResponse(
                     {
                         "status": "ok",
-                        "result": {"error": "ok", "nickname": "tester"},
+                        "result": {
+                            "error": "ok",
+                            "nickname": "tester",
+                            "avatar": "https://imgheybox.max-c.com/avatar.jpg",
+                        },
                     }
                 ),
             ]
@@ -833,6 +837,10 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
         assert result.auth is not None
         self.assertEqual(result.auth.heybox_id, "88")
         self.assertEqual(result.auth.nickname, "tester")
+        self.assertEqual(
+            result.auth.avatar,
+            "https://imgheybox.max-c.com/avatar.jpg",
+        )
         self.assertEqual(result.auth.cookie, "user_heybox_id=88")
         self.assertNotIn("session=", result.auth.cookie)
         self.assertNotIn("x_xhh_tokenid=", result.auth.cookie)

@@ -11,6 +11,7 @@ import astrbot_plugin_xhhrobot.main as main_module
 from astrbot_plugin_xhhrobot.main import PLUGIN_ID, XhhRobotPlugin
 from astrbot_plugin_xhhrobot.media import ImagePayload
 from astrbot_plugin_xhhrobot.models import AuthInfo, Mention
+from astrbot_plugin_xhhrobot.xhh_client import XhhError
 
 
 class FakeArchive:
@@ -249,6 +250,9 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn('content: "> "', page)
         self.assertNotIn('content: ":: "', page)
         self.assertNotIn('content: "["', page)
+        self.assertIn('class="runtime-overview"', page)
+        self.assertIn('class="metrics runtime-metrics"', page)
+        self.assertIn("#statusPanel .runtime-metrics .metric", page)
 
     async def test_account_profile_refresh_updates_cached_nickname_and_fields(
         self,
@@ -316,6 +320,19 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             object_profile["avatar"],
             "https://imgheybox.max-c.com/original.jpg",
+        )
+        root_profile = XhhRobotPlugin._summarize_account_profile(
+            {
+                "result": {
+                    "avatar": "https://imgheybox.max-c.com/root-avatar.jpg",
+                    "account_detail": {"username": "爱丽丝"},
+                }
+            },
+            "102013423",
+        )
+        self.assertEqual(
+            root_profile["avatar"],
+            "https://imgheybox.max-c.com/root-avatar.jpg",
         )
 
         plugin = self.plugin()
@@ -421,6 +438,78 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
             max_bytes=main_module.ACCOUNT_AVATAR_MAX_BYTES,
         )
 
+    async def test_account_avatar_rejects_tiny_placeholder(self) -> None:
+        plugin = self.plugin()
+        plugin._account_profile = {
+            "avatar": "https://imgheybox.max-c.com/avatar.png"
+        }
+        plugin._account_avatar_source = ""
+        plugin._account_avatar_data_url = ""
+        plugin._account_avatar_updated_at = 0.0
+        plugin._account_avatar_error = ""
+        plugin._account_avatar_lock = asyncio.Lock()
+        plugin.client = SimpleNamespace(
+            fetch_image_payload=AsyncMock(
+                return_value=ImagePayload(
+                    name="avatar.png",
+                    mimetype="image/png",
+                    data=b"placeholder",
+                    width=1,
+                    height=1,
+                )
+            )
+        )
+
+        with self.assertRaisesRegex(XhhError, "异常小"):
+            await plugin._refresh_account_avatar()
+
+    async def test_account_avatar_tries_next_candidate_after_tiny_image(self) -> None:
+        plugin = self.plugin()
+        plugin.auth = AuthInfo(
+            cookie=(
+                "user_heybox_id=102013423; "
+                "avatar=https%253A%252F%252Fimgheybox.max-c.com%252Fcookie.jpg"
+            ),
+            heybox_id="102013423",
+        )
+        plugin._account_profile = {
+            "avatar": "https://imgheybox.max-c.com/tiny.png"
+        }
+        plugin._account_avatar_source = ""
+        plugin._account_avatar_data_url = ""
+        plugin._account_avatar_updated_at = 0.0
+        plugin._account_avatar_error = ""
+        plugin._account_avatar_lock = asyncio.Lock()
+        plugin.client = SimpleNamespace(
+            fetch_image_payload=AsyncMock(
+                side_effect=[
+                    ImagePayload(
+                        name="tiny.png",
+                        mimetype="image/png",
+                        data=b"tiny",
+                        width=1,
+                        height=1,
+                    ),
+                    ImagePayload(
+                        name="avatar.jpg",
+                        mimetype="image/jpeg",
+                        data=b"avatar",
+                        width=64,
+                        height=64,
+                    ),
+                ]
+            )
+        )
+
+        data_url = await plugin._refresh_account_avatar()
+
+        self.assertTrue(data_url.startswith("data:image/jpeg;base64,"))
+        self.assertEqual(plugin.client.fetch_image_payload.await_count, 2)
+        self.assertEqual(
+            plugin._account_avatar_source,
+            "https://imgheybox.max-c.com/cookie.jpg",
+        )
+
     async def test_web_account_avatar_returns_cached_data_url(self) -> None:
         plugin = self.plugin()
         plugin.auth = AuthInfo(cookie="cookie=value", heybox_id="102013423")
@@ -515,6 +604,9 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn('getApi("account/avatar"', page)
         self.assertIn("function applyAccountAvatar", page)
         self.assertIn("account-avatar-fallback", page)
+        self.assertIn('shell.dataset.loaded = "true"', page)
+        self.assertIn('image.naturalWidth < 8', page)
+        self.assertIn('.account-avatar-shell[data-loaded="true"]', page)
         self.assertIn(
             'avatar || `account:${account.heybox_id || account.nickname || "authenticated"}`',
             page,

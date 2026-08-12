@@ -1230,6 +1230,68 @@
         color: #91a79e;
       }
 
+      .runtime-overview {
+        display: grid;
+        grid-template-columns: minmax(0, 1.55fr) minmax(420px, 1fr);
+        gap: 1px;
+        margin-bottom: 18px;
+        border: 1px solid #20372f;
+        background: #20372f;
+      }
+
+      #statusPanel .toolbar {
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+      }
+
+      #statusPanel .toolbar > div:first-child {
+        display: flex;
+        min-width: 0;
+        gap: 12px;
+        align-items: baseline;
+      }
+
+      #statusPanel .account-profile-strip {
+        min-height: 70px;
+        align-content: center;
+        margin: 0;
+        padding: 10px 14px;
+        border: 0;
+        background: #08100e;
+      }
+
+      #statusPanel .runtime-metrics {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1px;
+        margin: 0;
+        background: #20372f;
+      }
+
+      #statusPanel .runtime-metrics .metric {
+        min-height: 70px;
+        padding: 10px 12px;
+        border: 0;
+        background: #08100e;
+      }
+
+      #statusPanel .runtime-metrics .metric::after {
+        display: none;
+      }
+
+      #statusPanel .runtime-metrics .metric-label {
+        font-size: 10px;
+      }
+
+      #statusPanel .runtime-metrics .metric-value {
+        margin-top: 5px;
+        font-size: 20px;
+      }
+
+      #statusPanel .runtime-metrics .metric-foot {
+        margin-top: 5px;
+        font-size: 10px;
+      }
+
       .account-profile-main {
         display: inline-flex;
         min-width: 0;
@@ -1240,9 +1302,9 @@
       }
 
       .account-avatar-shell {
-        width: 30px;
-        height: 30px;
-        flex: 0 0 30px;
+        width: 38px;
+        height: 38px;
+        flex: 0 0 38px;
         position: relative;
         display: inline-grid;
         place-items: center;
@@ -1258,13 +1320,26 @@
       .account-avatar {
         position: absolute;
         inset: 0;
+        z-index: 1;
         width: 100%;
         height: 100%;
+        opacity: 0;
         object-fit: cover;
+        transition: opacity 120ms ease;
       }
 
       .account-avatar-fallback {
+        transition: opacity 120ms ease;
         line-height: 1;
+      }
+
+      .account-avatar-shell[data-loaded="true"] .account-avatar {
+        opacity: 1;
+      }
+
+      .account-avatar-shell[data-loaded="true"] .account-avatar-fallback {
+        opacity: 0;
+        visibility: hidden;
       }
 
       .account-profile-item {
@@ -1659,6 +1734,10 @@
       }
 
       @media (max-width: 1120px) {
+        .runtime-overview {
+          grid-template-columns: 1fr;
+        }
+
         .insight-form {
           grid-template-columns: repeat(3, minmax(0, 1fr));
         }
@@ -1737,6 +1816,39 @@
         .panel {
           min-height: 420px;
           padding: 16px;
+        }
+
+        #statusPanel .toolbar > div:first-child {
+          gap: 6px;
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        #statusPanel .toolbar-actions {
+          width: auto;
+        }
+
+        #statusPanel .toolbar-actions .button {
+          min-height: 34px;
+          flex: 0 1 auto;
+        }
+
+        #statusPanel .account-profile-strip {
+          min-height: 0;
+          padding: 10px;
+        }
+
+        #statusPanel .runtime-metrics {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        #statusPanel .runtime-metrics .metric {
+          min-height: 64px;
+          padding: 9px 8px;
+        }
+
+        #statusPanel .runtime-metrics .metric-value {
+          font-size: 18px;
         }
 
         .toolbar-actions,
@@ -2040,26 +2152,23 @@
           </div>
         </div>
 
-        <div class="metrics" id="runtimeMetrics">
-          <div class="metric">
-            <div class="metric-label">账号</div>
-            <div class="metric-value skeleton">读取中</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">待处理</div>
-            <div class="metric-value skeleton">0</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">评论归档</div>
-            <div class="metric-value skeleton">0</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">私信归档</div>
-            <div class="metric-value skeleton">0</div>
+        <div class="runtime-overview">
+          <div class="account-profile-strip" id="accountProfileStrip" hidden></div>
+          <div class="metrics runtime-metrics" id="runtimeMetrics">
+            <div class="metric">
+              <div class="metric-label">待处理</div>
+              <div class="metric-value skeleton">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">评论归档</div>
+              <div class="metric-value skeleton">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">私信归档</div>
+              <div class="metric-value skeleton">0</div>
+            </div>
           </div>
         </div>
-
-        <div class="account-profile-strip" id="accountProfileStrip" hidden></div>
 
         <div class="section-grid">
           <section class="section">
@@ -2449,10 +2558,33 @@
         const image = document.createElement("img");
         image.className = "account-avatar";
         image.alt = "";
-        image.src = dataUrl;
-        image.addEventListener("error", () => image.remove(), { once: true });
+        shell.dataset.loaded = "false";
+        image.addEventListener(
+          "load",
+          () => {
+            if (
+              shell.dataset.source !== avatarKey ||
+              image.naturalWidth < 8 ||
+              image.naturalHeight < 8
+            ) {
+              image.remove();
+              return;
+            }
+            shell.dataset.loaded = "true";
+          },
+          { once: true },
+        );
+        image.addEventListener(
+          "error",
+          () => {
+            shell.dataset.loaded = "false";
+            image.remove();
+          },
+          { once: true },
+        );
         shell.querySelector(".account-avatar")?.remove();
         shell.append(image);
+        image.src = dataUrl;
       }
 
       async function loadAccountAvatar(avatarKey, { force = false } = {}) {
@@ -2754,7 +2886,6 @@
               ? "已失效"
               : "未登录";
         byId("runtimeMetrics").innerHTML = [
-          ["账号", accountLabel, account.source || "none"],
           ["待处理", fmtNumber(events.queue_total), `处理中 ${fmtNumber(events.in_flight)}`],
           [
             "评论归档",

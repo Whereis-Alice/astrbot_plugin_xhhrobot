@@ -450,6 +450,11 @@ class XhhClient:
         if state == "ok":
             cookies = self._filter_login_cookies(self._all_session_cookies())
             cookies.update(self._filter_login_cookies(response.cookies))
+            avatar_urls = extract_image_urls(
+                result.get("avatar")
+                or result.get("avatar_url")
+                or cookies.get("avatar")
+            )
             heybox_id = str(
                 result.get("heyboxid")
                 or result.get("heybox_id")
@@ -468,6 +473,7 @@ class XhhClient:
                 cookie=cookie_header,
                 heybox_id=heybox_id,
                 nickname=str(result.get("nickname") or "").strip(),
+                avatar=avatar_urls[0] if avatar_urls else "",
                 login_at=int(time.time()),
             )
             self.set_auth(auth)

@@ -725,6 +725,7 @@ class AuthInfo:
     heybox_id: str
     nickname: str = ""
     login_at: int = 0
+    avatar: str = ""
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any] | None) -> "AuthInfo | None":
@@ -739,6 +740,7 @@ class AuthInfo:
                 value.get("heybox_id") or value.get("heyboxId") or ""
             ).strip(),
             nickname=str(value.get("nickname") or "").strip(),
+            avatar=str(value.get("avatar") or "").strip(),
             login_at=_as_int(value.get("login_at") or value.get("time")),
         )
 
