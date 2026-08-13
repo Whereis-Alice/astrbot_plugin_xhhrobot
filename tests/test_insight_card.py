@@ -165,8 +165,13 @@ class InsightCardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.theme, "cyberpunk")
         self.assertEqual(result.image_url, "https://render.example/card.png")
         self.assertTrue(plugin.calls[0]["return_url"])
-        self.assertEqual(plugin.calls[0]["options"]["selector"], "#insight-card")
-        self.assertEqual(plugin.calls[0]["options"]["type"], "png")
+        options = plugin.calls[0]["options"]
+        self.assertEqual(options["selector"], "#insight-card")
+        self.assertEqual(options["type"], "png")
+        self.assertEqual(options["viewport_width"], 1080)
+        self.assertEqual(options["viewport_height"], 720)
+        self.assertTrue(options["full_page"])
+        self.assertNotIn("viewport", options)
 
     async def test_renderer_requires_completed_report(self) -> None:
         with self.assertRaisesRegex(ValueError, "尚未完成"):

@@ -210,9 +210,10 @@ class InsightCardRenderer:
             payload,
             return_url=True,
             options={
-                "viewport": {"width": 1080, "height": 1800},
+                "viewport_width": 1080,
+                "viewport_height": 720,
                 "selector": "#insight-card",
-                "full_page": False,
+                "full_page": True,
                 "type": "png",
                 "animations": "disabled",
                 "caret": "hide",
