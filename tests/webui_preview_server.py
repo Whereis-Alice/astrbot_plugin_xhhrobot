@@ -272,7 +272,7 @@ BRIDGE = """
       if (endpoint === 'analytics/insights/cancel') return {...payloads.insight,state:'cancelled',message:'评论洞察任务已取消。'};
       if (endpoint === 'analytics/insights/render') {
         const theme = String(body?.theme || 'terminal');
-        const labels = {terminal:'小黑盒终端',cyberpunk:'霓虹街刊',editorial:'编辑部头版',command:'信号作战室'};
+        const labels = {terminal:'小黑盒终端',cyberpunk:'霓虹街刊',editorial:'编辑部头版',command:'信号海报'};
         const resolution = String(body?.resolution || 'high');
         return {ok:true,image_url:'http://127.0.0.1:8765/card-preview.png',theme,theme_label:labels[theme] || labels.terminal,mode:'exploratory',resolution};
       }

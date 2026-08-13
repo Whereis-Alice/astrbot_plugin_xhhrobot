@@ -917,7 +917,7 @@
           "editorial",
           "command"
         ],
-        "hint": "小黑盒终端、霓虹街刊、编辑部头版或信号作战室。LLM 工具和 WebUI 未指定主题时使用本项。"
+        "hint": "小黑盒终端、霓虹街刊、编辑部头版或信号海报。LLM 工具和 WebUI 未指定主题时使用本项；旧配置中的 command 和“信号作战室”仍兼容。"
       },
       "insight_card_resolution": {
         "type": "string",

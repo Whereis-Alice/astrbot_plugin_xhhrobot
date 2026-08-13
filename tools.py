@@ -508,7 +508,7 @@ def tool_specs() -> tuple[ToolSpec, ...]:
                 "把最近一次已经完成的评论洞察结果渲染成图片卡片，并直接发送到当前 AstrBot 会话。"
                 "只有用户明确要求卡片、图片或可视化报告时才调用；普通分析请求只使用 "
                 "xhh_comment_insights。若还没有完成的结果，应先调用 xhh_comment_insights 运行分析并等待完成。"
-                "支持小黑盒终端、霓虹街刊、编辑部头版和信号作战室主题，以及标准、高清、超清三档清晰度。"
+                "支持小黑盒终端、霓虹街刊、编辑部头版和信号海报主题，以及标准、高清、超清三档清晰度。"
                 "属于账号私密信息，仅管理员可调用。"
             ),
             _object_schema(
@@ -518,7 +518,7 @@ def tool_specs() -> tuple[ToolSpec, ...]:
                         "enum": ["terminal", "cyberpunk", "editorial", "command"],
                         "description": (
                             "卡片主题：terminal 小黑盒终端、cyberpunk 霓虹街刊、"
-                            "editorial 编辑部头版、command 信号作战室。留空使用插件默认主题。"
+                            "editorial 编辑部头版、command 信号海报。留空使用插件默认主题；旧称信号作战室仍可识别。"
                         ),
                     },
                     "resolution": {

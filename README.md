@@ -181,7 +181,7 @@ https://github.com/Whereis-Alice/astrbot_plugin_xhhrobot
 
 查看当前账号自己发布的帖子、评论和动态时，先用 `xhh_status` 取得账号 ID，再调用 `xhh_get_user_activity`。
 
-`xhh_comment_insights` 的 `mode` 支持 `run`、`status`、`cancel`。用户只说“分析评论”“看看大家都在说什么”时，应将主题和关键词留空，让工具自动探索；只有询问特定问题时才填写 `topic`。卡片主题为 `terminal`、`cyberpunk`、`editorial`、`command`，清晰度为 `standard`、`high`、`ultra`。
+`xhh_comment_insights` 的 `mode` 支持 `run`、`status`、`cancel`。用户只说“分析评论”“看看大家都在说什么”时，应将主题和关键词留空，让工具自动探索；只有询问特定问题时才填写 `topic`。卡片主题为 `terminal`（小黑盒终端）、`cyberpunk`（霓虹街刊）、`editorial`（编辑部头版）、`command`（信号海报），清晰度为 `standard`、`high`、`ultra`。旧称“信号作战室”仍可识别。
 
 ### 写操作工具
 

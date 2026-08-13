@@ -117,8 +117,11 @@ def exploratory_snapshot() -> dict:
 class InsightCardTests(unittest.IsolatedAsyncioTestCase):
     def test_theme_aliases_and_public_theme_list(self) -> None:
         self.assertEqual(normalize_insight_card_theme("赛博朋克"), "cyberpunk")
+        self.assertEqual(normalize_insight_card_theme("信号海报"), "command")
+        self.assertEqual(normalize_insight_card_theme("信号作战室"), "command")
         self.assertEqual(normalize_insight_card_theme("", "editorial"), "editorial")
         self.assertEqual(len(available_insight_card_themes()), 4)
+        self.assertEqual(THEMES["command"].label, "信号海报")
         with self.assertRaisesRegex(ValueError, "未知洞察卡片主题"):
             normalize_insight_card_theme("unknown")
 
@@ -178,15 +181,25 @@ class InsightCardTests(unittest.IsolatedAsyncioTestCase):
         for key, html in rendered.items():
             self.assertIn('id="insight-card"', html)
             self.assertIn(f"theme-{key}", html)
+            self.assertIn("mode-exploratory", html)
             self.assertNotIn("provider/model", html)
         self.assertIn(
             "font: 800 30px/1.3 Consolas, 'Microsoft YaHei UI', monospace",
             rendered["terminal"],
         )
         self.assertIn("[ ONLINE ]  XHHBOT ANALYTICS", rendered["terminal"])
-        self.assertIn("asymmetric poster blocks", INSIGHT_CARD_TEMPLATE)
+        self.assertIn("explicit console grid", INSIGHT_CARD_TEMPLATE)
+        self.assertIn("translucent fluorescent gradients", INSIGHT_CARD_TEMPLATE)
         self.assertIn("serif hierarchy", INSIGHT_CARD_TEMPLATE)
-        self.assertIn("operational bands", INSIGHT_CARD_TEMPLATE)
+        self.assertIn("Signal poster", INSIGHT_CARD_TEMPLATE)
+        self.assertIn("background-size: 32px 32px", rendered["terminal"])
+        self.assertIn("rgba(255, 79, 154, .24)", rendered["cyberpunk"])
+        self.assertNotIn(
+            '<section class="section evidence-section">', rendered["editorial"]
+        )
+        self.assertIn(
+            '<section class="section evidence-section">', rendered["terminal"]
+        )
 
     def test_directed_payload_uses_match_statistics(self) -> None:
         snapshot = {
@@ -219,6 +232,14 @@ class InsightCardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["headline"], "吐槽价格")
         self.assertEqual(payload["primary_value"], 20)
         self.assertEqual(payload["criteria"][1]["value"], "1 个")
+        self.assertTrue(payload["show_evidence"])
+        rendered = (
+            Environment(autoescape=True)
+            .from_string(INSIGHT_CARD_TEMPLATE)
+            .render(**payload)
+        )
+        self.assertIn("mode-directed", rendered)
+        self.assertIn('<section class="section evidence-section">', rendered)
 
     async def test_renderer_calls_astrbot_html_render_with_png_selector(self) -> None:
         plugin = FakeRendererPlugin()
