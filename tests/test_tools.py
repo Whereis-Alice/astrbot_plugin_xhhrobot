@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from typing import Any
 
 import jsonschema
+from astrbot.api.message_components import Image, Reply
 
 from astrbot_plugin_xhhrobot.draft_store import DraftStore
 from astrbot_plugin_xhhrobot.insight_card import InsightCardResult
@@ -24,6 +25,9 @@ class FakeEvent:
         umo: str = "test:FriendMessage:session",
         message: str = "",
         platform: str = "test",
+        message_components: list[Any] | None = None,
+        provider_image_urls: list[str] | None = None,
+        provider_extra_parts: list[Any] | None = None,
     ) -> None:
         self._admin = admin
         self._sender_id = sender_id
@@ -31,6 +35,13 @@ class FakeEvent:
         self.message_str = message
         self.platform = platform
         self.sent: list[Any] = []
+        self.message_obj = SimpleNamespace(message=list(message_components or []))
+        self._extras: dict[str, Any] = {}
+        if provider_image_urls is not None or provider_extra_parts is not None:
+            self._extras["provider_request"] = SimpleNamespace(
+                image_urls=list(provider_image_urls or []),
+                extra_user_content_parts=list(provider_extra_parts or []),
+            )
 
     def is_admin(self) -> bool:
         return self._admin
@@ -43,6 +54,9 @@ class FakeEvent:
 
     def get_platform_name(self) -> str:
         return self.platform
+
+    def get_extra(self, key: str, default: Any = None) -> Any:
+        return self._extras.get(key, default)
 
     def image_result(self, source: str) -> dict[str, str]:
         return {"image": source}
@@ -476,6 +490,316 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result["ok"])
         self.assertEqual(plugin.client.published[0]["image_urls"], [str(image)])
+
+    async def test_publish_post_restores_original_event_image_url(self) -> None:
+        plugin = FakePlugin(self.config(require_explicit_confirmation=False))
+        runtime = XhhToolRuntime(plugin)
+        compressed = "/root/AstrBot/data/temp/compressed_message.jpg"
+        original = "https://multimedia.nt.qq.com.cn/original-image.jpg"
+        event = FakeEvent(
+            admin=True,
+            message="把这张图发到小黑盒",
+            message_components=[Image(file=original, url=original)],
+            provider_image_urls=[compressed],
+        )
+
+        result = json.loads(
+            await runtime.execute(
+                "publish_post",
+                event,
+                {
+                    "title": "原图测试",
+                    "body": "正文",
+                    "image_urls": [compressed],
+                },
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(plugin.client.published[0]["image_urls"], [original])
+
+    async def test_publish_post_restores_multiple_and_quoted_images_in_order(
+        self,
+    ) -> None:
+        plugin = FakePlugin(self.config(require_explicit_confirmation=False))
+        runtime = XhhToolRuntime(plugin)
+        compressed_a = "/tmp/compressed_a.jpg"
+        compressed_b = "/tmp/compressed_b.jpg"
+        original_a = "https://images.example/original-a.png"
+        original_b = "https://images.example/original-b.png"
+        generated = "https://images.example/model-created.png"
+        event = FakeEvent(
+            admin=True,
+            message="按顺序发图",
+            message_components=[
+                Image(file=original_a, url=original_a),
+                Reply(
+                    id="reply-1",
+                    chain=[Image(file=original_b, url=original_b)],
+                ),
+            ],
+            provider_image_urls=[compressed_a, compressed_b],
+        )
+
+        result = json.loads(
+            await runtime.execute(
+                "publish_post",
+                event,
+                {
+                    "title": "多图测试",
+                    "body": "正文",
+                    "image_urls": [compressed_a, generated, compressed_b],
+                },
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            plugin.client.published[0]["image_urls"],
+            [original_a, generated, original_b],
+        )
+
+    async def test_publish_post_restores_event_image_in_content_blocks(self) -> None:
+        plugin = FakePlugin(self.config(require_explicit_confirmation=False))
+        runtime = XhhToolRuntime(plugin)
+        compressed = "/tmp/compressed_content.jpg"
+        original = "https://images.example/original-content.jpg"
+        event = FakeEvent(
+            admin=True,
+            message="按内容块发帖",
+            message_components=[Image(file=original, url=original)],
+            provider_image_urls=[compressed],
+        )
+
+        result = json.loads(
+            await runtime.execute(
+                "publish_post",
+                event,
+                {
+                    "title": "富文本原图测试",
+                    "content_blocks": [
+                        {"type": "text", "text": "正文"},
+                        {"type": "image", "url": compressed},
+                    ],
+                },
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(
+            plugin.client.published[0]["content_blocks"][1]["url"], original
+        )
+
+    async def test_publish_post_restores_image_when_caption_mode_clears_urls(
+        self,
+    ) -> None:
+        plugin = FakePlugin(self.config(require_explicit_confirmation=False))
+        runtime = XhhToolRuntime(plugin)
+        compressed = "/tmp/compressed_caption.jpg"
+        original = "https://images.example/original-caption.jpg"
+        event = FakeEvent(
+            admin=True,
+            message="发这张图",
+            message_components=[Image(file=original, url=original)],
+            provider_image_urls=[],
+            provider_extra_parts=[
+                SimpleNamespace(text=f"[Image Attachment: path {compressed}]"),
+                SimpleNamespace(text="<image_caption>图片描述</image_caption>"),
+            ],
+        )
+
+        result = json.loads(
+            await runtime.execute(
+                "publish_post",
+                event,
+                {
+                    "title": "图片描述模式测试",
+                    "body": "正文",
+                    "image_urls": [compressed],
+                },
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(plugin.client.published[0]["image_urls"], [original])
+
+    async def test_ambiguous_quoted_fallback_does_not_misroute_image(self) -> None:
+        plugin = FakePlugin(self.config(require_explicit_confirmation=False))
+        runtime = XhhToolRuntime(plugin)
+        fallback = "https://images.example/fallback.jpg"
+        compressed = "/tmp/compressed_embedded.jpg"
+        original = "https://images.example/original-embedded.jpg"
+        event = FakeEvent(
+            admin=True,
+            message="引用图片测试",
+            message_components=[
+                Reply(id="fallback-reply", chain=[]),
+                Reply(
+                    id="embedded-reply",
+                    chain=[Image(file=original, url=original)],
+                ),
+            ],
+            provider_image_urls=[fallback, compressed],
+            provider_extra_parts=[
+                SimpleNamespace(
+                    text=f"[Image Attachment in quoted message: path {fallback}]"
+                ),
+                SimpleNamespace(
+                    text=f"[Image Attachment in quoted message: path {compressed}]"
+                ),
+            ],
+        )
+
+        prepared, trusted_files = await runtime._restore_publish_event_images(
+            event,
+            {
+                "title": "引用图片测试",
+                "body": "正文",
+                "image_urls": [compressed],
+            },
+        )
+
+        self.assertEqual(prepared["image_urls"], [compressed])
+        self.assertEqual(trusted_files, set())
+
+    async def test_publish_post_allows_only_exact_restored_local_attachment(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            original = root / "original.png"
+            original.write_bytes(b"original image bytes")
+            compressed = root / "compressed.jpg"
+            compressed.write_bytes(b"compressed image bytes")
+            plugin = FakePlugin(self.config(require_explicit_confirmation=False))
+            runtime = XhhToolRuntime(plugin)
+            event = FakeEvent(
+                admin=True,
+                message="发布本地原图",
+                message_components=[Image.fromFileSystem(str(original))],
+                provider_image_urls=[str(compressed)],
+            )
+
+            result = json.loads(
+                await runtime.execute(
+                    "publish_post",
+                    event,
+                    {
+                        "title": "本地原图测试",
+                        "body": "正文",
+                        "image_urls": [str(compressed)],
+                    },
+                )
+            )
+
+        self.assertTrue(result["ok"])
+        published = plugin.client.published[0]
+        self.assertEqual(
+            Path(published["image_urls"][0].removeprefix("file:///")).resolve(),
+            original.resolve(),
+        )
+        self.assertIn(original.resolve(), published["allowed_local_roots"])
+        self.assertNotIn(original.parent.resolve(), published["allowed_local_roots"])
+
+    async def test_current_event_attachment_does_not_require_broad_local_uploads(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            original = root / "original.png"
+            original.write_bytes(b"original image bytes")
+            compressed = root / "compressed.jpg"
+            compressed.write_bytes(b"compressed image bytes")
+            config = self.config(require_explicit_confirmation=False)
+            config["media"] = {"allow_local_tool_uploads": False}
+            plugin = FakePlugin(config)
+            runtime = XhhToolRuntime(plugin)
+            event = FakeEvent(
+                admin=False,
+                message="发布我刚发的图片",
+                message_components=[Image.fromFileSystem(str(original))],
+                provider_image_urls=[str(compressed)],
+            )
+
+            dispatch_kwargs, trusted_files = await runtime._restore_publish_event_images(
+                event,
+                {
+                    "title": "当前附件测试",
+                    "body": "正文",
+                    "image_urls": [str(compressed)],
+                },
+            )
+            result = await runtime._dispatch(
+                "publish_post",
+                dispatch_kwargs,
+                allow_local_images=False,
+                trusted_local_files=trusted_files,
+            )
+
+        self.assertEqual(result["result"]["link_id"], 123)
+        self.assertEqual(len(plugin.client.published), 1)
+
+    async def test_publish_post_does_not_trust_unrelated_local_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            original = root / "original.png"
+            original.write_bytes(b"original image bytes")
+            sibling = root / "unrelated.png"
+            sibling.write_bytes(b"unrelated image bytes")
+            compressed = root / "compressed.jpg"
+            compressed.write_bytes(b"compressed image bytes")
+            plugin = FakePlugin(self.config(require_explicit_confirmation=False))
+            runtime = XhhToolRuntime(plugin)
+            event = FakeEvent(
+                admin=True,
+                message="发布图片",
+                message_components=[Image.fromFileSystem(str(original))],
+                provider_image_urls=[str(compressed)],
+            )
+
+            result = json.loads(
+                await runtime.execute(
+                    "publish_post",
+                    event,
+                    {
+                        "title": "安全测试",
+                        "body": "正文",
+                        "image_urls": [str(compressed), str(sibling)],
+                    },
+                )
+            )
+
+        self.assertFalse(result["ok"])
+        self.assertIn("allowed_local_roots", result["error"])
+        self.assertEqual(plugin.client.published, [])
+
+    async def test_publish_post_leaves_unmatched_image_url_unchanged(self) -> None:
+        plugin = FakePlugin(self.config(require_explicit_confirmation=False))
+        runtime = XhhToolRuntime(plugin)
+        compressed = "/tmp/compressed.jpg"
+        original = "https://images.example/original.jpg"
+        unrelated = "https://images.example/unrelated.jpg"
+        event = FakeEvent(
+            admin=True,
+            message="发布指定链接",
+            message_components=[Image(file=original, url=original)],
+            provider_image_urls=[compressed],
+        )
+
+        result = json.loads(
+            await runtime.execute(
+                "publish_post",
+                event,
+                {
+                    "title": "不匹配测试",
+                    "body": "正文",
+                    "image_urls": [unrelated],
+                },
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(plugin.client.published[0]["image_urls"], [unrelated])
 
     async def test_admin_write_tool_preserves_data_url_as_one_image(self) -> None:
         config = self.config(require_explicit_confirmation=False)

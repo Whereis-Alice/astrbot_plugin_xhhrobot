@@ -14,6 +14,7 @@ from typing import Any
 from urllib.parse import urlparse
 
 from astrbot.api import FunctionTool, logger
+from astrbot.api.message_components import Image, Reply
 from pydantic import Field
 from pydantic.dataclasses import dataclass as pydantic_dataclass
 
@@ -83,6 +84,13 @@ class ToolSpec:
     @property
     def is_draft(self) -> bool:
         return self.action in DRAFT_ACTIONS
+
+
+@std_dataclass(frozen=True, slots=True)
+class _EventImageSource:
+    source: str
+    local_file: Path | None
+    kind: str
 
 
 def _object_schema(
@@ -1079,10 +1087,17 @@ class XhhToolRuntime:
             if cooldown and elapsed < cooldown:
                 await asyncio.sleep(cooldown - elapsed)
             try:
+                dispatch_kwargs: Mapping[str, Any] = kwargs
+                trusted_local_files: set[Path] = set()
+                if action == "publish_post":
+                    dispatch_kwargs, trusted_local_files = (
+                        await self._restore_publish_event_images(event, kwargs)
+                    )
                 result = await self._dispatch(
                     action,
-                    kwargs,
+                    dispatch_kwargs,
                     allow_local_images=is_admin,
+                    trusted_local_files=trusted_local_files,
                 )
             except (ToolInputError, XhhError) as exc:
                 if not isinstance(exc, XhhError) or not exc.delivery_uncertain:
@@ -1096,13 +1111,227 @@ class XhhToolRuntime:
             self._last_write_at = time.monotonic()
             return result
 
+    async def _restore_publish_event_images(
+        self,
+        event: Any,
+        kwargs: Mapping[str, Any],
+    ) -> tuple[dict[str, Any], set[Path]]:
+        provider_request = None
+        get_extra = getattr(event, "get_extra", None)
+        if callable(get_extra):
+            provider_request = get_extra("provider_request")
+        direct_components, quoted_components = self._event_image_component_groups(event)
+        if not direct_components and not quoted_components:
+            return dict(kwargs), set()
+
+        replacements: dict[str, _EventImageSource] = {}
+        direct_refs, quoted_refs = self._provider_image_reference_groups(provider_request)
+        if not direct_refs and not quoted_refs:
+            provider_images = getattr(provider_request, "image_urls", None)
+            if not isinstance(provider_images, (list, tuple)) or not provider_images:
+                return dict(kwargs), set()
+            normalized_refs = [
+                str(source or "").strip()
+                for source in provider_images
+                if str(source or "").strip()
+            ]
+            direct_refs = normalized_refs[: len(direct_components)]
+            remaining_refs = normalized_refs[len(direct_components) :]
+            if len(remaining_refs) == len(quoted_components):
+                quoted_refs = remaining_refs
+
+        async def add_pairs(refs: list[str], components: list[Image]) -> None:
+            for provider_source, component in zip(refs, components, strict=False):
+                compressed_source = str(provider_source or "").strip()
+                if not compressed_source or compressed_source in replacements:
+                    continue
+                restored = await self._event_image_source(component)
+                if restored is not None:
+                    replacements[compressed_source] = restored
+
+        await add_pairs(direct_refs, direct_components)
+        if len(quoted_refs) == len(quoted_components):
+            await add_pairs(quoted_refs, quoted_components)
+        elif quoted_components and quoted_refs:
+            logger.debug(
+                "astrbot_plugin_xhhrobot skipped ambiguous quoted-image restoration: "
+                "provider_refs=%s embedded_components=%s",
+                len(quoted_refs),
+                len(quoted_components),
+            )
+        if not replacements:
+            return dict(kwargs), set()
+
+        prepared = dict(kwargs)
+        trusted_local_files: set[Path] = set()
+        restored_kinds: dict[str, int] = {}
+        restored_count = 0
+
+        def replace_source(value: Any) -> str:
+            nonlocal restored_count
+            source = str(value or "").strip()
+            restored = replacements.get(source)
+            if restored is None:
+                return source
+            restored_count += 1
+            restored_kinds[restored.kind] = restored_kinds.get(restored.kind, 0) + 1
+            if restored.local_file is not None:
+                trusted_local_files.add(restored.local_file)
+            return restored.source
+
+        if "image_urls" in prepared:
+            raw_images = prepared.get("image_urls")
+            if isinstance(raw_images, str) and raw_images.strip().startswith(
+                ("base64://", "data:image/")
+            ):
+                image_values: Any = [raw_images.strip()]
+            elif isinstance(raw_images, (str, list, tuple, set)) or raw_images is None:
+                image_values = self._string_list(raw_images)
+            else:
+                image_values = None
+            if image_values is not None:
+                prepared["image_urls"] = [replace_source(item) for item in image_values]
+
+        raw_blocks = prepared.get("content_blocks")
+        if isinstance(raw_blocks, (list, tuple)):
+            blocks: list[Any] = []
+            for raw_block in raw_blocks:
+                if not isinstance(raw_block, Mapping):
+                    blocks.append(raw_block)
+                    continue
+                block = dict(raw_block)
+                if str(block.get("type") or "").strip().lower() == "image":
+                    key = "url" if "url" in block else "image_url"
+                    if key in block:
+                        block[key] = replace_source(block.get(key))
+                blocks.append(block)
+            prepared["content_blocks"] = blocks
+
+        if restored_count:
+            kinds = ", ".join(
+                f"{kind}={count}" for kind, count in sorted(restored_kinds.items())
+            )
+            logger.info(
+                "astrbot_plugin_xhhrobot restored %s publish image reference(s) "
+                "from current AstrBot message originals: %s",
+                restored_count,
+                kinds,
+            )
+        return prepared, trusted_local_files
+
+    @staticmethod
+    def _provider_image_reference_groups(provider_request: Any) -> tuple[list[str], list[str]]:
+        direct: list[str] = []
+        quoted: list[str] = []
+        parts = getattr(provider_request, "extra_user_content_parts", None)
+        if not isinstance(parts, (list, tuple)):
+            return direct, quoted
+        direct_pattern = re.compile(r"^\[Image Attachment: path (.+)\]$")
+        quoted_pattern = re.compile(
+            r"^\[Image Attachment in quoted message: path (.+)\]$"
+        )
+        for part in parts:
+            if isinstance(part, Mapping):
+                text = str(part.get("text") or "").strip()
+            else:
+                text = str(getattr(part, "text", "") or "").strip()
+            direct_match = direct_pattern.match(text)
+            if direct_match:
+                direct.append(direct_match.group(1).strip())
+                continue
+            quoted_match = quoted_pattern.match(text)
+            if quoted_match:
+                quoted.append(quoted_match.group(1).strip())
+        return direct, quoted
+
+    @staticmethod
+    def _event_image_component_groups(event: Any) -> tuple[list[Image], list[Image]]:
+        message_obj = getattr(event, "message_obj", None)
+        chain = getattr(message_obj, "message", None)
+        if not isinstance(chain, (list, tuple)):
+            return [], []
+        direct = [component for component in chain if isinstance(component, Image)]
+        quoted: list[Image] = []
+        for component in chain:
+            if not isinstance(component, Reply):
+                continue
+            reply_chain = getattr(component, "chain", None)
+            if not isinstance(reply_chain, (list, tuple)):
+                continue
+            quoted.extend(item for item in reply_chain if isinstance(item, Image))
+        return direct, quoted
+
+    async def _event_image_source(self, component: Image) -> _EventImageSource | None:
+        candidates = list(
+            dict.fromkeys(
+                str(getattr(component, name, "") or "").strip()
+                for name in ("url", "file", "path")
+                if str(getattr(component, name, "") or "").strip()
+            )
+        )
+        for source in candidates:
+            parsed = urlparse(source)
+            if parsed.scheme.lower() not in {"http", "https"}:
+                continue
+            try:
+                return _EventImageSource(
+                    source=self._validate_http_url(source),
+                    local_file=None,
+                    kind="remote_url",
+                )
+            except ToolInputError:
+                continue
+
+        for source in candidates:
+            path = local_path_from_source(source)
+            if path is None:
+                continue
+            try:
+                resolved = path.resolve(strict=True)
+            except (OSError, RuntimeError):
+                continue
+            if resolved.is_file():
+                return _EventImageSource(
+                    source=str(resolved),
+                    local_file=resolved,
+                    kind="local_file",
+                )
+
+        converter = getattr(component, "convert_to_file_path", None)
+        if not callable(converter):
+            return None
+        try:
+            converted = converter()
+            if inspect.isawaitable(converted):
+                converted = await converted
+            path = local_path_from_source(converted)
+            if path is None:
+                return None
+            resolved = path.resolve(strict=True)
+            if not resolved.is_file():
+                return None
+            return _EventImageSource(
+                source=str(resolved),
+                local_file=resolved,
+                kind="converted_local_file",
+            )
+        except Exception as exc:  # noqa: BLE001 - keep the original tool argument usable
+            logger.warning(
+                "astrbot_plugin_xhhrobot could not restore an original event image "
+                "for publishing: %r",
+                exc,
+            )
+            return None
+
     async def _dispatch(
         self,
         action: str,
         kwargs: Mapping[str, Any],
         *,
         allow_local_images: bool = False,
+        trusted_local_files: set[Path] | None = None,
     ) -> Any:
+        trusted_local_files = trusted_local_files or set()
         if action == "status":
             status = await self.plugin._status_text(refresh_account=True)
             auth = getattr(self.plugin, "auth", None)
@@ -1436,10 +1665,12 @@ class XhhToolRuntime:
             image_urls = self._image_sources(
                 kwargs.get("image_urls"),
                 allow_local=allow_local_images,
+                trusted_local_files=trusted_local_files,
             )
             content_blocks = self._content_blocks(
                 kwargs.get("content_blocks"),
                 allow_local=allow_local_images,
+                trusted_local_files=trusted_local_files,
             )
             body = self._text(
                 kwargs.get("body"),
@@ -1481,7 +1712,10 @@ class XhhToolRuntime:
                 hashtags=self._hashtags(kwargs.get("hashtags")),
                 image_urls=image_urls,
                 content_blocks=content_blocks,
-                allowed_local_roots=self._allowed_local_roots(),
+                allowed_local_roots=[
+                    *self._allowed_local_roots(),
+                    *sorted(trusted_local_files, key=str),
+                ],
                 max_local_image_bytes=self._max_local_image_bytes(),
                 preserve_remote_image_bytes=self._bool_cfg(
                     "media.preserve_remote_image_bytes", True
@@ -1990,6 +2224,7 @@ class XhhToolRuntime:
         value: Any,
         *,
         allow_local: bool,
+        trusted_local_files: set[Path] | None = None,
     ) -> list[dict[str, str]]:
         try:
             blocks = normalize_rich_content_blocks(
@@ -2012,13 +2247,23 @@ class XhhToolRuntime:
             sources = self._image_sources(
                 block["url"],
                 allow_local=allow_local,
+                trusted_local_files=trusted_local_files,
             )
             if len(sources) != 1:
                 raise ToolInputError("内容块图片地址无效。")
             block["url"] = sources[0]
         return blocks
 
-    def _image_sources(self, value: Any, *, allow_local: bool) -> list[str]:
+    def _image_sources(
+        self,
+        value: Any,
+        *,
+        allow_local: bool,
+        trusted_local_files: set[Path] | None = None,
+    ) -> list[str]:
+        trusted_files = {
+            Path(path).resolve(strict=False) for path in (trusted_local_files or set())
+        }
         if isinstance(value, str) and value.strip().startswith(
             ("base64://", "data:image/")
         ):
@@ -2043,28 +2288,38 @@ class XhhToolRuntime:
             if parsed.scheme.lower() in {"http", "https"}:
                 sources.append(self._validate_http_url(source))
                 continue
-            if not allow_local:
-                raise ToolInputError("本地图片仅允许 AstrBot 管理员通过写工具上传。")
-            if not self._bool_cfg("media.allow_local_tool_uploads", True):
-                raise ToolInputError("本地图片工具上传已在插件配置中关闭。")
             path = local_path_from_source(source)
             if path is None:
                 raise ToolInputError(
                     "图片来源必须是公开 HTTP(S) 地址或允许的本地文件路径。"
                 )
             try:
+                candidate = path.resolve(strict=False)
+            except (OSError, RuntimeError) as exc:
+                raise ToolInputError(f"本地图片路径无法解析：{path}") from exc
+            is_trusted_file = candidate in trusted_files
+            if not is_trusted_file and not allow_local:
+                raise ToolInputError("本地图片仅允许 AstrBot 管理员通过写工具上传。")
+            if (
+                not is_trusted_file
+                and not self._bool_cfg("media.allow_local_tool_uploads", True)
+            ):
+                raise ToolInputError("本地图片工具上传已在插件配置中关闭。")
+            try:
                 resolved = path.resolve(strict=True)
             except (OSError, RuntimeError) as exc:
                 raise ToolInputError(f"本地图片不存在或无法访问：{path}") from exc
             if not resolved.is_file():
                 raise ToolInputError(f"本地图片路径不是文件：{resolved}")
-            roots = self._allowed_local_roots()
-            if not roots or not any(
-                resolved == root or resolved.is_relative_to(root) for root in roots
-            ):
-                raise ToolInputError(
-                    "本地图片不在 media.allowed_local_roots 允许范围内。"
-                )
+            is_trusted_file = resolved in trusted_files
+            if not is_trusted_file:
+                roots = self._allowed_local_roots()
+                if not roots or not any(
+                    resolved == root or resolved.is_relative_to(root) for root in roots
+                ):
+                    raise ToolInputError(
+                        "本地图片不在 media.allowed_local_roots 允许范围内。"
+                    )
             sources.append(source)
         return list(dict.fromkeys(sources))
 
