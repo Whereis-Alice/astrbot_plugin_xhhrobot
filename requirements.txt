@@ -1,4 +1,1 @@
-aiohttp>=3.10.0,<4
-aiohttp-socks>=0.11.0,<0.12
-Pillow>=10.0,<13
-qrcode[pil]>=7.4,<9
+YWlvaHR0cD49My4xMC4wLDw0CmFpb2h0dHAtc29ja3M+PTAuMTEuMCw8MC4xMgpQaWxsb3c+PTEwLjAsPDEzCnFyY29kZVtwaWxdPj03LjQsPDkK

@@ -1,7 +1,1 @@
-name: astrbot_plugin_xhhrobot
-display_name: 小黑盒bot
-desc: 小黑盒扫码登录、人设回复、私信、自主巡帖、当前账号视图、评论洞察卡片、消息统计与自然语言工具。
-version: v0.6.44
-author: Whereis-Alice
-repo: https://github.com/Whereis-Alice/astrbot_plugin_xhhrobot
-astrbot_version: ">=4.24.5,<5"
+bmFtZTogYXN0cmJvdF9wbHVnaW5feGhocm9ib3QKZGlzcGxheV9uYW1lOiDlsI/pu5Hnm5Jib3QKZGVzYzog5bCP6buR55uS5omr56CB55m75b2V44CB5Lq66K6+5Zue5aSN44CB56eB5L+h44CB6Ieq5Li75beh5biW44CB5b2T5YmN6LSm5Y+36KeG5Zu+44CB6K+E6K665rSe5a+f5Y2h54mH44CB5raI5oGv57uf6K6h5LiO6Ieq54S26K+t6KiA5bel5YW344CCCnZlcnNpb246IHYwLjYuNDUKYXV0aG9yOiBXaGVyZWlzLUFsaWNlCnJlcG86IGh0dHBzOi8vZ2l0aHViLmNvbS9XaGVyZWlzLUFsaWNlL2FzdHJib3RfcGx1Z2luX3hoaHJvYm90CmFzdHJib3RfdmVyc2lvbjogIj49NC4yNC41LDw1Igo=

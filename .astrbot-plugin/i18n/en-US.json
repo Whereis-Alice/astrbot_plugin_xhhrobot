@@ -1,11 +1,1 @@
-{
-  "metadata": {
-    "display_name": "Heybox bot"
-  },
-  "pages": {
-    "dashboard": {
-      "title": "Heybox bot",
-      "desc": "Login, runtime status, and message database"
-    }
-  }
-}
+ewogICJtZXRhZGF0YSI6IHsKICAgICJkaXNwbGF5X25hbWUiOiAiSGV5Ym94IGJvdCIKICB9LAogICJwYWdlcyI6IHsKICAgICJkYXNoYm9hcmQiOiB7CiAgICAgICJ0aXRsZSI6ICJIZXlib3ggYm90IiwKICAgICAgImRlc2MiOiAiTG9naW4sIHJ1bnRpbWUgc3RhdHVzLCBhbmQgbWVzc2FnZSBkYXRhYmFzZSIKICAgIH0KICB9Cn0K
