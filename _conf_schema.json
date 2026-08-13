@@ -917,7 +917,7 @@
           "editorial",
           "command"
         ],
-        "hint": "终端黑客、赛博朋克、编辑部报告或数据指挥台。LLM 工具和 WebUI 未指定主题时使用本项。"
+        "hint": "小黑盒终端、霓虹街刊、编辑部头版或信号作战室。LLM 工具和 WebUI 未指定主题时使用本项。"
       },
       "insight_card_resolution": {
         "type": "string",

@@ -152,7 +152,7 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
             return_value=InsightCardResult(
                 image_url="https://render.example/card.png",
                 theme="editorial",
-                theme_label="编辑部报告",
+                theme_label="编辑部头版",
                 mode="exploratory",
                 resolution="high",
             )
@@ -168,7 +168,7 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
             result = await plugin.web_comment_insight_render()
 
         self.assertTrue(result["ok"])
-        self.assertEqual(result["theme_label"], "编辑部报告")
+        self.assertEqual(result["theme_label"], "编辑部头版")
         plugin._render_comment_insight_card.assert_awaited_once_with(
             theme="editorial",
             resolution=None,

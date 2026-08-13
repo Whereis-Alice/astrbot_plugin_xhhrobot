@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import unittest
 
+from jinja2 import Environment
+
 from astrbot_plugin_xhhrobot.insight_card import (
     INSIGHT_CARD_TEMPLATE,
     THEMES,
@@ -145,9 +147,46 @@ class InsightCardTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("evidence", payload)
         self.assertNotIn("job_id", payload)
         self.assertNotIn("counting_note", payload)
+        self.assertNotIn("provider_id", payload)
         self.assertNotIn("{{ job_id", INSIGHT_CARD_TEMPLATE)
         self.assertNotIn("{{ counting_note", INSIGHT_CARD_TEMPLATE)
         json.dumps(payload, ensure_ascii=False)
+
+    def test_redesigned_card_is_mobile_readable_and_has_distinct_themes(
+        self,
+    ) -> None:
+        snapshot = exploratory_snapshot()
+        rendered = {
+            key: Environment(autoescape=True)
+            .from_string(INSIGHT_CARD_TEMPLATE)
+            .render(
+                **build_insight_card_payload(snapshot, theme, example_limit=2)
+            )
+            for key, theme in THEMES.items()
+        }
+
+        self.assertEqual(
+            build_insight_card_payload(snapshot, THEMES["terminal"])["headline"],
+            "",
+        )
+        self.assertNotIn("评论区正在形成怎样的共识", INSIGHT_CARD_TEMPLATE)
+        self.assertIn("width: 720px", INSIGHT_CARD_TEMPLATE)
+        self.assertIn("width: 680px", INSIGHT_CARD_TEMPLATE)
+        self.assertIn("font-size: 30px", INSIGHT_CARD_TEMPLATE)
+        self.assertIn("font-size: 27px", INSIGHT_CARD_TEMPLATE)
+        self.assertIn("title_family | safe", INSIGHT_CARD_TEMPLATE)
+        for key, html in rendered.items():
+            self.assertIn('id="insight-card"', html)
+            self.assertIn(f"theme-{key}", html)
+            self.assertNotIn("provider/model", html)
+        self.assertIn(
+            "font: 800 30px/1.3 Consolas, 'Microsoft YaHei UI', monospace",
+            rendered["terminal"],
+        )
+        self.assertIn("[ ONLINE ]  XHHBOT ANALYTICS", rendered["terminal"])
+        self.assertIn("asymmetric poster blocks", INSIGHT_CARD_TEMPLATE)
+        self.assertIn("serif hierarchy", INSIGHT_CARD_TEMPLATE)
+        self.assertIn("operational bands", INSIGHT_CARD_TEMPLATE)
 
     def test_directed_payload_uses_match_statistics(self) -> None:
         snapshot = {
@@ -197,7 +236,7 @@ class InsightCardTests(unittest.IsolatedAsyncioTestCase):
         options = plugin.calls[0]["options"]
         self.assertEqual(options["selector"], "#insight-card")
         self.assertEqual(options["type"], "png")
-        self.assertEqual(options["viewport_width"], 1280)
+        self.assertEqual(options["viewport_width"], 720)
         self.assertEqual(options["viewport_height"], 720)
         self.assertTrue(options["full_page"])
         self.assertEqual(options["scale"], "device")
