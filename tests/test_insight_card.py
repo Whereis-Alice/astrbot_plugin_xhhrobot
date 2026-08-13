@@ -193,6 +193,11 @@ class InsightCardTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("serif hierarchy", INSIGHT_CARD_TEMPLATE)
         self.assertIn("Signal poster", INSIGHT_CARD_TEMPLATE)
         self.assertIn("background-size: 32px 32px", rendered["terminal"])
+        self.assertEqual(THEMES["terminal"].accent, "#5cff9a")
+        self.assertEqual(THEMES["terminal"].accent_alt, "#58ddeb")
+        self.assertIn("rgba(88, 221, 235, .14)", rendered["terminal"])
+        self.assertNotIn("#ffd166", rendered["terminal"])
+        self.assertNotIn("rgba(255, 209, 102", rendered["terminal"])
         self.assertIn("rgba(255, 79, 154, .24)", rendered["cyberpunk"])
         self.assertNotIn(
             '<section class="section evidence-section">', rendered["editorial"]

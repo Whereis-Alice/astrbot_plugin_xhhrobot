@@ -68,32 +68,32 @@ INSIGHT_CARD_TEMPLATE = r"""
 
     /* Terminal: fluorescent glass surfaces over an explicit console grid. */
     .theme-terminal#insight-card {
-      border-color: rgba(98, 245, 157, .72);
+      border-color: rgba(92, 255, 154, .72);
       background-color: #050c09;
       background-image:
-        linear-gradient(rgba(98, 245, 157, .08) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(98, 245, 157, .08) 1px, transparent 1px),
-        repeating-linear-gradient(0deg, transparent 0 5px, rgba(98, 245, 157, .025) 5px 6px);
+        linear-gradient(rgba(92, 255, 154, .08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(92, 255, 154, .08) 1px, transparent 1px),
+        repeating-linear-gradient(0deg, transparent 0 5px, rgba(92, 255, 154, .025) 5px 6px);
       background-size: 32px 32px, 32px 32px, 100% 6px;
-      box-shadow: 0 0 0 1px rgba(98, 245, 157, .12), 0 0 34px rgba(98, 245, 157, .16);
+      box-shadow: 0 0 0 1px rgba(92, 255, 154, .12), 0 0 34px rgba(92, 255, 154, .16);
     }
     .theme-terminal#insight-card::before {
       content: "[ ONLINE ]  XHHBOT ANALYTICS"; display: block; margin: -34px -34px 30px; padding: 16px 20px;
-      color: {{ theme.accent }}; border-bottom: 1px solid rgba(98, 245, 157, .62);
-      background: linear-gradient(90deg, rgba(98, 245, 157, .22), rgba(54, 231, 242, .08) 62%, rgba(5, 12, 9, .74));
-      text-shadow: 0 0 12px rgba(98, 245, 157, .65); font: 800 18px/1 {{ theme.title_family | safe }};
+      color: {{ theme.accent }}; border-bottom: 1px solid rgba(92, 255, 154, .62);
+      background: linear-gradient(90deg, rgba(92, 255, 154, .22), rgba(88, 221, 235, .09) 62%, rgba(5, 12, 9, .74));
+      text-shadow: 0 0 12px rgba(92, 255, 154, .65); font: 800 18px/1 {{ theme.title_family | safe }};
     }
-    .theme-terminal .theme-mark { border-color: rgba(98, 245, 157, .72); color: {{ theme.accent }}; background: rgba(98, 245, 157, .07); box-shadow: inset 0 0 18px rgba(98, 245, 157, .05); }
-    .theme-terminal .summary { border-color: {{ theme.accent_alt }}; background: linear-gradient(135deg, rgba(255, 209, 102, .14), rgba(98, 245, 157, .055)); }
-    .theme-terminal .section-title { color: {{ theme.accent }}; text-shadow: 0 0 10px rgba(98, 245, 157, .26); }
+    .theme-terminal .theme-mark { border-color: rgba(92, 255, 154, .72); color: {{ theme.accent }}; background: rgba(92, 255, 154, .07); box-shadow: inset 0 0 18px rgba(92, 255, 154, .05); }
+    .theme-terminal .summary { border-color: {{ theme.accent_alt }}; background: linear-gradient(135deg, rgba(88, 221, 235, .14), rgba(92, 255, 154, .055)); }
+    .theme-terminal .section-title { color: {{ theme.accent }}; text-shadow: 0 0 10px rgba(92, 255, 154, .26); }
     .theme-terminal .section-title::before { content: ">"; width: auto; height: auto; color: {{ theme.accent }}; background: none; }
     .theme-terminal .metric, .theme-terminal .criterion, .theme-terminal .evidence-stat, .theme-terminal .sentiment, .theme-terminal .rank, .theme-terminal .signal-box, .theme-terminal .example, .theme-terminal .evidence-layer, .theme-terminal .chip {
-      border-color: rgba(98, 245, 157, .34); border-left-width: 4px;
-      background: linear-gradient(135deg, rgba(98, 245, 157, .105), rgba(54, 231, 242, .025) 72%);
-      box-shadow: inset 0 0 22px rgba(98, 245, 157, .025);
+      border-color: rgba(92, 255, 154, .34); border-left-width: 4px;
+      background: linear-gradient(135deg, rgba(92, 255, 154, .105), rgba(88, 221, 235, .025) 72%);
+      box-shadow: inset 0 0 22px rgba(92, 255, 154, .025);
     }
-    .theme-terminal .metric:nth-child(even), .theme-terminal .sentiment:nth-child(even), .theme-terminal .signal-box:nth-child(even) { background: linear-gradient(135deg, rgba(54, 231, 242, .09), rgba(98, 245, 157, .03) 72%); }
-    .theme-terminal .tag { color: {{ theme.accent }}; border: 1px solid rgba(98, 245, 157, .58); background: rgba(98, 245, 157, .12); text-shadow: 0 0 8px rgba(98, 245, 157, .3); }
+    .theme-terminal .metric:nth-child(even), .theme-terminal .sentiment:nth-child(even), .theme-terminal .signal-box:nth-child(even) { background: linear-gradient(135deg, rgba(88, 221, 235, .09), rgba(92, 255, 154, .03) 72%); }
+    .theme-terminal .tag { color: {{ theme.accent }}; border: 1px solid rgba(92, 255, 154, .58); background: rgba(92, 255, 154, .12); text-shadow: 0 0 8px rgba(92, 255, 154, .3); }
     .theme-terminal .header { order: 10; }
     .theme-terminal .summary { order: 20; }
     .theme-terminal .metrics { order: 30; }
