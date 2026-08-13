@@ -2,17 +2,26 @@ from __future__ import annotations
 
 import base64
 import json
+import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from io import BytesIO
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from jinja2 import Environment
 from PIL import Image as PillowImage
 from PIL import ImageDraw
 
 ROOT = Path(__file__).parents[1]
 PAGE = ROOT / "pages" / "dashboard" / "index.html"
+sys.path.insert(0, str(ROOT))
 
+from insight_card import (  # noqa: E402
+    INSIGHT_CARD_TEMPLATE,
+    THEMES,
+    available_insight_card_themes,
+    build_insight_card_payload,
+)
 
 STATUS = {
     "ok": True,
@@ -95,6 +104,25 @@ AVATAR_DATA_URL = "data:image/png;base64," + base64.b64encode(
     avatar_buffer.getvalue()
 ).decode("ascii")
 
+card_preview = PillowImage.new("RGB", (760, 980), (5, 9, 8))
+card_draw = ImageDraw.Draw(card_preview)
+card_draw.rectangle((26, 26, 734, 954), outline=(36, 68, 56), width=3)
+card_draw.rectangle((26, 26, 734, 34), fill=(121, 242, 168))
+card_draw.text((58, 76), "XHHBOT / COMMENT INSIGHT", fill=(121, 242, 168))
+card_draw.text((58, 116), "COMMUNITY SIGNAL REPORT", fill=(225, 238, 232))
+card_draw.rectangle((58, 180, 702, 300), fill=(13, 25, 21))
+card_draw.text((82, 208), "2,726 COMMENTS", fill=(244, 201, 107))
+card_draw.text((82, 248), "63.61% SAMPLE COVERAGE", fill=(225, 238, 232))
+for index, width in enumerate((570, 430, 350, 260)):
+    top = 360 + index * 92
+    card_draw.rectangle((58, top, 702, top + 60), outline=(36, 68, 56), width=2)
+    card_draw.rectangle((58, top, 58 + width, top + 60), fill=(13, 45, 32))
+card_draw.text((58, 774), "TOP SIGNALS / QUESTIONS / SUGGESTIONS", fill=(121, 242, 168))
+card_draw.text((58, 900), "ASTRBOT HTML RENDER PREVIEW", fill=(126, 151, 140))
+card_preview_buffer = BytesIO()
+card_preview.save(card_preview_buffer, format="PNG")
+CARD_PREVIEW_PNG = card_preview_buffer.getvalue()
+
 
 ANALYTICS = {
     "ok": True,
@@ -138,6 +166,11 @@ INSIGHT = {
     "semantic_available": True,
     "semantic_batch_size": 20,
     "semantic_max_comments_per_run": 0,
+    "card": {
+        "enabled": True,
+        "default_theme": "terminal",
+        "themes": available_insight_card_themes(),
+    },
     "error": "",
     "report": {
         "analysis_mode": "exploratory",
@@ -215,9 +248,14 @@ BRIDGE = """
       if (endpoint === 'login/session' || endpoint === 'login/poll') return {ok:true,state:'authenticated',message:'',account:payloads.status.account};
       return {ok:true};
     },
-    apiPost: async (endpoint) => {
+    apiPost: async (endpoint, body) => {
       if (endpoint === 'analytics/insights/run') return payloads.insight;
       if (endpoint === 'analytics/insights/cancel') return {...payloads.insight,state:'cancelled',message:'评论洞察任务已取消。'};
+      if (endpoint === 'analytics/insights/render') {
+        const theme = String(body?.theme || 'terminal');
+        const labels = {terminal:'小黑盒终端',cyberpunk:'赛博朋克',editorial:'编辑部报告',command:'数据指挥台'};
+        return {ok:true,image_url:'http://127.0.0.1:8765/card-preview.png',theme,theme_label:labels[theme] || labels.terminal,mode:'exploratory'};
+      }
       if (endpoint === 'runtime/start' || endpoint === 'runtime/stop') return {ok:true,status:payloads.status};
       return {ok:true};
     },
@@ -244,6 +282,27 @@ class Handler(BaseHTTPRequestHandler):
             data = BRIDGE.encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/javascript; charset=utf-8")
+        elif parsed.path == "/card-preview.png":
+            data = CARD_PREVIEW_PNG
+            self.send_response(200)
+            self.send_header("Content-Type", "image/png")
+        elif parsed.path.startswith("/cards/"):
+            theme = parsed.path.rsplit("/", 1)[-1].removesuffix(".html")
+            if theme not in THEMES:
+                theme = "terminal"
+            payload = build_insight_card_payload(
+                INSIGHT,
+                THEMES[theme],
+                example_limit=4,
+            )
+            data = (
+                Environment(autoescape=True)
+                .from_string(INSIGHT_CARD_TEMPLATE)
+                .render(**payload)
+                .encode("utf-8")
+            )
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
         else:
             query = parse_qs(parsed.query)
             data = json.dumps({"ok": True, "query": query}).encode("utf-8")

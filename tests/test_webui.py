@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 import astrbot_plugin_xhhrobot.main as main_module
+from astrbot_plugin_xhhrobot.insight_card import InsightCardResult
 from astrbot_plugin_xhhrobot.main import PLUGIN_ID, XhhRobotPlugin
 from astrbot_plugin_xhhrobot.media import ImagePayload
 from astrbot_plugin_xhhrobot.models import AuthInfo, Mention
@@ -145,6 +146,61 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(payload["report"]["examples"], [])
         self.assertTrue(payload["report"]["examples_hidden"])
 
+    async def test_comment_insight_card_web_api_renders_selected_theme(self) -> None:
+        plugin = self.plugin()
+        plugin._render_comment_insight_card = AsyncMock(
+            return_value=InsightCardResult(
+                image_url="https://render.example/card.png",
+                theme="editorial",
+                theme_label="编辑部报告",
+                mode="exploratory",
+            )
+        )
+        fake_request = SimpleNamespace(
+            get_json=AsyncMock(return_value={"theme": "editorial"})
+        )
+
+        with (
+            patch.object(main_module, "request", fake_request),
+            patch.object(main_module, "jsonify", side_effect=lambda value: value),
+        ):
+            result = await plugin.web_comment_insight_render()
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["theme_label"], "编辑部报告")
+        plugin._render_comment_insight_card.assert_awaited_once_with(
+            theme="editorial",
+            include_examples=True,
+        )
+
+    async def test_comment_insight_card_web_api_hides_examples_with_webui_setting(
+        self,
+    ) -> None:
+        plugin = self.plugin(
+            {"webui": {"enabled": True, "show_message_content": False}}
+        )
+        plugin._render_comment_insight_card = AsyncMock(
+            return_value=InsightCardResult(
+                image_url="https://render.example/card.png",
+                theme="terminal",
+                theme_label="小黑盒终端",
+                mode="directed",
+            )
+        )
+        fake_request = SimpleNamespace(get_json=AsyncMock(return_value={}))
+
+        with (
+            patch.object(main_module, "request", fake_request),
+            patch.object(main_module, "jsonify", side_effect=lambda value: value),
+        ):
+            result = await plugin.web_comment_insight_render()
+
+        self.assertTrue(result["ok"])
+        plugin._render_comment_insight_card.assert_awaited_once_with(
+            theme=None,
+            include_examples=False,
+        )
+
     async def test_status_reports_real_own_post_reply_setting(self) -> None:
         plugin = self.plugin(
             {
@@ -210,7 +266,7 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
 
         plugin._register_web_apis()
 
-        self.assertEqual(len(routes), 14)
+        self.assertEqual(len(routes), 15)
         self.assertTrue(all(route[0].startswith(f"/{PLUGIN_ID}/") for route in routes))
         self.assertIn(f"/{PLUGIN_ID}/account/avatar", {route[0] for route in routes})
         suffixes = {route[0].rsplit("/", 1)[-1] for route in routes}
@@ -235,6 +291,10 @@ class WebUiTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(".terminal-empty[hidden]", page)
         self.assertIn('postApi("analytics/insights/run", insightPayload())', page)
         self.assertIn('postApi("analytics/insights/cancel", {})', page)
+        self.assertIn('postApi("analytics/insights/render", {', page)
+        self.assertIn('id="insightCardTheme"', page)
+        self.assertIn('id="renderInsightCardButton"', page)
+        self.assertIn('id="insightCardDialog"', page)
         self.assertIn('getApi("analytics/insights/status")', page)
         self.assertIn("prefers-reduced-motion", page)
 

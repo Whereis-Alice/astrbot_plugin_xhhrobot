@@ -1,0 +1,180 @@
+from __future__ import annotations
+
+import json
+import unittest
+
+from astrbot_plugin_xhhrobot.insight_card import (
+    INSIGHT_CARD_TEMPLATE,
+    THEMES,
+    InsightCardRenderer,
+    available_insight_card_themes,
+    build_insight_card_payload,
+    normalize_insight_card_theme,
+)
+
+
+class FakeRendererPlugin:
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    async def html_render(
+        self,
+        template: str,
+        data: dict,
+        *,
+        return_url: bool,
+        options: dict,
+    ) -> str:
+        self.calls.append(
+            {
+                "template": template,
+                "data": data,
+                "return_url": return_url,
+                "options": options,
+            }
+        )
+        return "https://render.example/card.png"
+
+
+def exploratory_snapshot() -> dict:
+    return {
+        "state": "complete",
+        "job_id": "job-123",
+        "filters": {"link_id": 187917301, "source": "own_post_comment"},
+        "report": {
+            "analysis_mode": "exploratory",
+            "provider_id": "provider/model",
+            "total_comments": 800,
+            "selected_comments": 500,
+            "analyzed_comments": 500,
+            "coverage_percent": 62.5,
+            "unique_users": 612,
+            "unique_posts": 1,
+            "sentiment_counts": {
+                "positive": 300,
+                "neutral": 130,
+                "negative": 50,
+                "mixed": 20,
+            },
+            "sentiment_percentages": {
+                "positive": 60,
+                "neutral": 26,
+                "negative": 10,
+                "mixed": 4,
+            },
+            "intent_counts": {"praise": 230, "question": 90, "joke": 80},
+            "summary": "整体偏正面，原图需求集中。",
+            "themes": [
+                {
+                    "label": "角色反馈",
+                    "count": 260,
+                    "percentage": 52,
+                    "description": "多数评论喜欢角色表现。",
+                }
+            ],
+            "top_questions": [
+                {"label": "原图来源", "count": 70, "percentage": 14}
+            ],
+            "top_suggestions": [
+                {"label": "发布原图", "count": 34, "percentage": 6.8}
+            ],
+            "controversies": ["少量用户认为压缩明显"],
+            "notable_findings": ["原图请求是最集中的需求"],
+            "examples": [
+                {
+                    "content": "<script>alert('x')</script> 这张很好看",
+                    "link_id": 187917301,
+                    "comment_id": 930158150,
+                    "sentiment": "positive",
+                    "intent": "praise",
+                    "summary": "称赞图片",
+                }
+            ],
+            "counting_note": "样本统计说明。",
+        },
+    }
+
+
+class InsightCardTests(unittest.IsolatedAsyncioTestCase):
+    def test_theme_aliases_and_public_theme_list(self) -> None:
+        self.assertEqual(normalize_insight_card_theme("赛博朋克"), "cyberpunk")
+        self.assertEqual(normalize_insight_card_theme("", "editorial"), "editorial")
+        self.assertEqual(len(available_insight_card_themes()), 4)
+        with self.assertRaisesRegex(ValueError, "未知洞察卡片主题"):
+            normalize_insight_card_theme("unknown")
+
+    def test_exploratory_payload_is_bounded_and_keeps_text_as_data(self) -> None:
+        snapshot = exploratory_snapshot()
+        snapshot["report"]["examples"] *= 10
+
+        payload = build_insight_card_payload(
+            snapshot,
+            THEMES["terminal"],
+            example_limit=3,
+        )
+
+        self.assertEqual(payload["mode"], "exploratory")
+        self.assertEqual(payload["primary_value"], 500)
+        self.assertEqual(len(payload["examples"]), 3)
+        self.assertIn("<script>", payload["examples"][0]["content"])
+        self.assertIn("{{ item.content | e }}", INSIGHT_CARD_TEMPLATE)
+        json.dumps(payload, ensure_ascii=False)
+
+    def test_directed_payload_uses_match_statistics(self) -> None:
+        snapshot = {
+            "state": "complete",
+            "filters": {},
+            "report": {
+                "criteria": {
+                    "topic": "吐槽价格",
+                    "keywords": ["贵"],
+                    "emoji_tokens": [],
+                },
+                "total_comments": 100,
+                "unique_users": 80,
+                "unique_posts": 2,
+                "keyword_matches": 12,
+                "emoji_matches": 0,
+                "semantic_matches": 8,
+                "deterministic_union": 12,
+                "union_matches": 20,
+                "union_percentage": 20,
+                "semantic_coverage_percent": 100,
+                "semantic_complete": True,
+                "examples": [],
+            },
+        }
+
+        payload = build_insight_card_payload(snapshot, THEMES["command"])
+
+        self.assertEqual(payload["mode"], "directed")
+        self.assertEqual(payload["headline"], "吐槽价格")
+        self.assertEqual(payload["primary_value"], 20)
+        self.assertEqual(payload["criteria"][1]["value"], "1 个")
+
+    async def test_renderer_calls_astrbot_html_render_with_png_selector(self) -> None:
+        plugin = FakeRendererPlugin()
+
+        result = await InsightCardRenderer().render(
+            plugin,
+            exploratory_snapshot(),
+            theme="cyberpunk",
+            example_limit=4,
+        )
+
+        self.assertEqual(result.theme, "cyberpunk")
+        self.assertEqual(result.image_url, "https://render.example/card.png")
+        self.assertTrue(plugin.calls[0]["return_url"])
+        self.assertEqual(plugin.calls[0]["options"]["selector"], "#insight-card")
+        self.assertEqual(plugin.calls[0]["options"]["type"], "png")
+
+    async def test_renderer_requires_completed_report(self) -> None:
+        with self.assertRaisesRegex(ValueError, "尚未完成"):
+            await InsightCardRenderer().render(
+                FakeRendererPlugin(),
+                {"state": "running", "report": {}},
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()

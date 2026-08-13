@@ -63,6 +63,12 @@ from .event_bridge import (
     build_direct_message,
     strip_internal_xhh_identifiers,
 )
+from .insight_card import (
+    InsightCardRenderer,
+    InsightCardResult,
+    available_insight_card_themes,
+    normalize_insight_card_theme,
+)
 from .media import (
     extract_image_urls,
     image_payload_to_data_url,
@@ -241,6 +247,7 @@ class XhhRobotPlugin(Star):
         self._account_avatar_error = ""
         self._account_avatar_lock = asyncio.Lock()
         self._insight_state = self._empty_comment_insight_state()
+        self._insight_card_renderer = InsightCardRenderer()
         self._register_web_apis()
 
     async def initialize(self) -> None:
@@ -403,6 +410,12 @@ class XhhRobotPlugin(Star):
                 self.web_comment_insight_cancel,
                 ["POST"],
                 "取消评论洞察分析",
+            ),
+            (
+                "analytics/insights/render",
+                self.web_comment_insight_render,
+                ["POST"],
+                "渲染评论洞察卡片",
             ),
         )
         for suffix, handler, methods, description in routes:
@@ -822,6 +835,34 @@ class XhhRobotPlugin(Star):
         )
         return jsonify(payload)
 
+    async def web_comment_insight_render(self):
+        if not self._webui_enabled():
+            return jsonify({"ok": False, "error": "插件 WebUI 已在配置中关闭。"}), 403
+        payload = await request.get_json(silent=True)
+        payload = payload if isinstance(payload, Mapping) else {}
+        try:
+            result = await self._render_comment_insight_card(
+                theme=payload.get("theme"),
+                include_examples=self._bool_cfg("webui.show_message_content", True),
+            )
+            return jsonify(
+                {
+                    "ok": True,
+                    "image_url": result.image_url,
+                    "theme": result.theme,
+                    "theme_label": result.theme_label,
+                    "mode": result.mode,
+                }
+            )
+        except ValueError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 400
+        except RuntimeError as exc:
+            return jsonify({"ok": False, "error": str(exc)}), 503
+        except Exception as exc:
+            logger.exception("%s comment insight card render failed", PLUGIN_ID)
+            await self._notify_error("评论洞察卡片渲染失败", exc)
+            return jsonify({"ok": False, "error": f"渲染评论洞察卡片失败：{exc}"}), 500
+
     @staticmethod
     def _empty_comment_insight_state() -> dict[str, Any]:
         return {
@@ -858,6 +899,15 @@ class XhhRobotPlugin(Star):
         payload["semantic_max_comments_per_run"] = self._int_cfg(
             "analytics.semantic_max_comments_per_run", 500, 0, None
         )
+        default_card_theme = normalize_insight_card_theme(
+            "",
+            self._str_cfg("analytics.insight_card_default_theme", "terminal"),
+        )
+        payload["card"] = {
+            "enabled": self._bool_cfg("analytics.insight_card_enabled", True),
+            "default_theme": default_card_theme,
+            "themes": available_insight_card_themes(),
+        }
         return payload
 
     def _web_comment_insight_snapshot(self) -> dict[str, Any]:
@@ -871,6 +921,31 @@ class XhhRobotPlugin(Star):
             report["examples_hidden"] = True
             payload["report"] = report
         return payload
+
+    async def _render_comment_insight_card(
+        self,
+        *,
+        theme: Any = "",
+        include_examples: bool = True,
+    ) -> InsightCardResult:
+        if not self._bool_cfg("analytics.insight_card_enabled", True):
+            raise ValueError("评论洞察卡片渲染已在插件配置中关闭。")
+        renderer = getattr(self, "_insight_card_renderer", None)
+        if not isinstance(renderer, InsightCardRenderer):
+            renderer = InsightCardRenderer()
+            self._insight_card_renderer = renderer
+        return await renderer.render(
+            self,
+            self._comment_insight_snapshot(),
+            theme=theme,
+            default_theme=self._str_cfg(
+                "analytics.insight_card_default_theme", "terminal"
+            ),
+            example_limit=self._int_cfg(
+                "analytics.insight_card_example_limit", 4, 0, 8
+            ),
+            include_examples=include_examples,
+        )
 
     async def _start_comment_insight(self, payload: Mapping[str, Any]) -> dict[str, Any]:
         lock = getattr(self, "_insight_lock", None)

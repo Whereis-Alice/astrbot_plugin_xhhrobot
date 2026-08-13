@@ -58,6 +58,7 @@ PRIVATE_ACTIONS = {
     "direct_messages",
     "comment_stats",
     "comment_insights",
+    "render_comment_insight_card",
     "search_comment_archive",
     "drafts",
 }
@@ -497,6 +498,28 @@ def tool_specs() -> tuple[ToolSpec, ...]:
             ),
         ),
         ToolSpec(
+            "xhh_render_comment_insight_card",
+            "render_comment_insight_card",
+            (
+                "把最近一次已经完成的评论洞察结果渲染成图片卡片，并直接发送到当前 AstrBot 会话。"
+                "只有用户明确要求卡片、图片或可视化报告时才调用；普通分析请求只使用 "
+                "xhh_comment_insights。若还没有完成的结果，应先调用 xhh_comment_insights 运行分析并等待完成。"
+                "支持小黑盒终端、赛博朋克、编辑部报告和数据指挥台主题。属于账号私密信息，仅管理员可调用。"
+            ),
+            _object_schema(
+                {
+                    "theme": {
+                        "type": "string",
+                        "enum": ["terminal", "cyberpunk", "editorial", "command"],
+                        "description": (
+                            "卡片主题：terminal 小黑盒终端、cyberpunk 赛博朋克、"
+                            "editorial 编辑部报告、command 数据指挥台。留空使用插件默认主题。"
+                        ),
+                    }
+                }
+            ),
+        ),
+        ToolSpec(
             "xhh_search_comment_archive",
             "search_comment_archive",
             (
@@ -892,6 +915,13 @@ class XhhToolRuntime:
                         "local_draft_box" if action in DRAFT_ACTIONS else "xiaoheihe"
                     ),
                 )
+            if action == "render_comment_insight_card":
+                data = await self._render_comment_insight_card(event, kwargs)
+                return self._success(
+                    data,
+                    external=False,
+                    source="astrbot_html_renderer",
+                )
             data = await self._dispatch(action, kwargs)
             if action == "drafts":
                 return self._success(
@@ -936,6 +966,54 @@ class XhhToolRuntime:
                 action,
                 notify_error,
             )
+
+    async def _render_comment_insight_card(
+        self,
+        event: Any,
+        kwargs: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        render = getattr(self.plugin, "_render_comment_insight_card", None)
+        if not callable(render):
+            raise ToolInputError("当前插件实例不支持评论洞察卡片渲染。")
+        theme = self._optional_enum(
+            kwargs.get("theme"),
+            "theme",
+            {"terminal", "cyberpunk", "editorial", "command"},
+        )
+        try:
+            result = await render(theme=theme, include_examples=True)
+        except (ValueError, RuntimeError) as exc:
+            raise ToolInputError(str(exc)) from exc
+
+        sender = getattr(event, "send", None)
+        image_result = getattr(event, "image_result", None)
+        sent = False
+        send_error = ""
+        if callable(sender) and callable(image_result):
+            try:
+                await sender(image_result(result.image_url))
+                sent = True
+            except Exception as exc:  # noqa: BLE001 - keep the rendered URL usable
+                send_error = f"{type(exc).__name__}: {exc}"
+                logger.warning(
+                    "小黑盒评论洞察卡片发送失败: theme=%s error=%r",
+                    result.theme,
+                    exc,
+                )
+        return {
+            "rendered": True,
+            "sent_to_current_session": sent,
+            "image_url": result.image_url,
+            "theme": result.theme,
+            "theme_label": result.theme_label,
+            "analysis_mode": result.mode,
+            "send_error": send_error,
+            "message": (
+                "评论洞察卡片已生成并发送到当前会话。"
+                if sent
+                else "评论洞察卡片已生成，但当前会话未能直接发送，请使用 image_url。"
+            ),
+        }
 
     async def _execute_write_once(
         self,

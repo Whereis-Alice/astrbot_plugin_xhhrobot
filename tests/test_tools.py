@@ -10,6 +10,7 @@ from typing import Any
 import jsonschema
 
 from astrbot_plugin_xhhrobot.draft_store import DraftStore
+from astrbot_plugin_xhhrobot.insight_card import InsightCardResult
 from astrbot_plugin_xhhrobot.main import XhhRobotPlugin
 from astrbot_plugin_xhhrobot.tools import WRITE_ACTIONS, XhhToolRuntime, tool_specs
 
@@ -29,6 +30,7 @@ class FakeEvent:
         self.unified_msg_origin = umo
         self.message_str = message
         self.platform = platform
+        self.sent: list[Any] = []
 
     def is_admin(self) -> bool:
         return self._admin
@@ -41,6 +43,12 @@ class FakeEvent:
 
     def get_platform_name(self) -> str:
         return self.platform
+
+    def image_result(self, source: str) -> dict[str, str]:
+        return {"image": source}
+
+    async def send(self, result: Any) -> None:
+        self.sent.append(result)
 
 
 class FakeClient:
@@ -87,6 +95,7 @@ class FakePlugin:
         self.local_roots: list[Path] = []
         self.insight_started: list[dict[str, Any]] = []
         self.insight_cancelled = False
+        self.insight_card_calls: list[dict[str, Any]] = []
         self.status_refresh_account: bool | None = None
 
     async def _status_text(self, *, refresh_account: bool = False) -> str:
@@ -113,6 +122,22 @@ class FakePlugin:
     async def _cancel_comment_insight(self) -> bool:
         self.insight_cancelled = True
         return True
+
+    async def _render_comment_insight_card(
+        self,
+        *,
+        theme: str = "",
+        include_examples: bool = True,
+    ) -> InsightCardResult:
+        self.insight_card_calls.append(
+            {"theme": theme, "include_examples": include_examples}
+        )
+        return InsightCardResult(
+            image_url="https://render.example/insight.png",
+            theme=theme or "terminal",
+            theme_label="小黑盒终端",
+            mode="exploratory",
+        )
 
 
 class FakeArchive:
@@ -170,7 +195,7 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         tools = XhhToolRuntime(plugin).build_tools()
         by_name = {tool.name: tool for tool in tools}
 
-        self.assertEqual(len(tools), 26)
+        self.assertEqual(len(tools), 27)
         self.assertTrue(by_name["xhh_search"].active)
         self.assertFalse(by_name["xhh_publish_post"].active)
         self.assertNotIn("xhh_get_drafts", by_name)
@@ -186,7 +211,7 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         enabled = XhhToolRuntime(FakePlugin(self.config(enable_draft_tools=True)))
         by_name = {tool.name: tool for tool in enabled.build_tools()}
 
-        self.assertEqual(len(by_name), 29)
+        self.assertEqual(len(by_name), 30)
         self.assertTrue(by_name["xhh_get_drafts"].active)
         self.assertTrue(by_name["xhh_save_draft"].active)
         self.assertTrue(by_name["xhh_delete_draft"].active)
@@ -777,6 +802,41 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("仅管理员", spec.description)
         self.assertIn("自动探索", spec.parameters["properties"]["topic"]["description"])
 
+    async def test_comment_insight_card_tool_sends_rendered_image(self) -> None:
+        plugin = FakePlugin(self.config())
+        runtime = XhhToolRuntime(plugin)
+        event = FakeEvent(admin=True)
+
+        result = json.loads(
+            await runtime.execute(
+                "render_comment_insight_card",
+                event,
+                {"theme": "cyberpunk"},
+            )
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(result["data"]["sent_to_current_session"])
+        self.assertEqual(result["data"]["theme"], "cyberpunk")
+        self.assertEqual(event.sent, [{"image": "https://render.example/insight.png"}])
+        self.assertEqual(
+            plugin.insight_card_calls,
+            [{"theme": "cyberpunk", "include_examples": True}],
+        )
+
+    async def test_comment_insight_card_tool_remains_admin_protected(self) -> None:
+        plugin = FakePlugin(self.config())
+        result = json.loads(
+            await XhhToolRuntime(plugin).execute(
+                "render_comment_insight_card",
+                FakeEvent(admin=False),
+                {"theme": "terminal"},
+            )
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(plugin.insight_card_calls, [])
+
     async def test_tool_call_reads_event_from_astrbot_context_wrapper(self) -> None:
         plugin = FakePlugin(self.config())
         runtime = XhhToolRuntime(plugin)
@@ -798,11 +858,11 @@ class XhhToolTests(unittest.IsolatedAsyncioTestCase):
         plugin._registered_tool_names = []
 
         plugin._register_llm_tools()
-        self.assertEqual(len(plugin.context.added), 26)
-        self.assertEqual(len(plugin._registered_tool_names), 26)
+        self.assertEqual(len(plugin.context.added), 27)
+        self.assertEqual(len(plugin._registered_tool_names), 27)
 
         plugin._unregister_llm_tools()
-        self.assertEqual(len(plugin.context.manager.removed), 26)
+        self.assertEqual(len(plugin.context.manager.removed), 27)
         self.assertEqual(plugin._registered_tool_names, [])
 
 

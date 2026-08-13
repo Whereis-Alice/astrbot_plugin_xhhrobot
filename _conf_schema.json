@@ -891,6 +891,33 @@
         "min": 1,
         "max": 50,
         "hint": "评论洞察报告最多展示多少条代表评论。关闭 WebUI 正文显示时，页面不会返回样例原文。"
+      },
+      "insight_card_enabled": {
+        "type": "bool",
+        "description": "启用洞察卡片渲染",
+        "default": true,
+        "hint": "允许 WebUI 和 xhh_render_comment_insight_card 使用 AstrBot HTML 渲染器，把最近一次完成的评论洞察生成图片。关闭后分析本身仍可使用。",
+        "obvious_hint": true
+      },
+      "insight_card_default_theme": {
+        "type": "string",
+        "description": "洞察卡片默认主题",
+        "default": "terminal",
+        "options": [
+          "terminal",
+          "cyberpunk",
+          "editorial",
+          "command"
+        ],
+        "hint": "终端黑客、赛博朋克、编辑部报告或数据指挥台。LLM 工具和 WebUI 未指定主题时使用本项。"
+      },
+      "insight_card_example_limit": {
+        "type": "int",
+        "description": "洞察卡片代表评论上限",
+        "default": 4,
+        "min": 0,
+        "max": 8,
+        "hint": "卡片最多展示多少条代表评论；0 表示不展示评论原文。"
       }
     }
   },

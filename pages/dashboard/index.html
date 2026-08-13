@@ -1645,6 +1645,61 @@
         display: none;
       }
 
+      .insight-card-toolbar {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(190px, 240px) auto;
+        gap: 12px;
+        align-items: end;
+        margin: 4px 0 22px;
+        padding: 14px 0;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .insight-card-copy strong {
+        display: block;
+        color: #d9e6e1;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .insight-card-copy span {
+        display: block;
+        margin-top: 4px;
+        color: #657c72;
+        font-size: 11px;
+      }
+
+      .insight-card-toolbar .field label {
+        font-size: 10px;
+      }
+
+      .insight-card-preview-dialog {
+        width: min(1120px, calc(100% - 32px));
+      }
+
+      .insight-card-preview-shell {
+        display: grid;
+        min-height: 320px;
+        place-items: center;
+        border: 1px solid #20372f;
+        background: #040908;
+      }
+
+      .insight-card-preview-shell img {
+        display: block;
+        width: 100%;
+        max-height: calc(100vh - 170px);
+        object-fit: contain;
+      }
+
+      .insight-card-preview-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
       .insight-metrics {
         grid-template-columns: repeat(6, minmax(0, 1fr));
       }
@@ -1811,6 +1866,10 @@
 
         .insight-overview-grid {
           grid-template-columns: 1fr;
+        }
+
+        .insight-card-toolbar {
+          grid-template-columns: minmax(0, 1fr) minmax(180px, 220px) auto;
         }
 
         .database-commandbar {
@@ -2093,6 +2152,20 @@
 
         .insight-meta {
           grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .insight-card-toolbar {
+          grid-template-columns: 1fr;
+          align-items: stretch;
+        }
+
+        .insight-card-toolbar .button {
+          width: 100%;
+        }
+
+        .insight-card-preview-actions {
+          align-items: stretch;
+          flex-direction: column;
         }
 
         .example-row {
@@ -2475,6 +2548,19 @@
         </div>
 
         <div class="insight-result" id="insightResult" hidden>
+          <div class="insight-card-toolbar" id="insightCardToolbar">
+            <div class="insight-card-copy">
+              <strong>洞察图片卡片</strong>
+              <span>使用 AstrBot HTML 渲染器，不会再次调用分析模型</span>
+            </div>
+            <div class="field">
+              <label for="insightCardTheme">卡片主题</label>
+              <select id="insightCardTheme"></select>
+            </div>
+            <button class="button primary" id="renderInsightCardButton" type="button">
+              渲染卡片
+            </button>
+          </div>
           <div class="metrics insight-metrics" id="insightMetrics"></div>
           <div class="insight-meta" id="insightMeta"></div>
           <section class="section" id="insightOverviewSection" hidden>
@@ -2496,6 +2582,28 @@
         <button class="button compact" type="button" id="closeDialogButton">关闭</button>
       </div>
       <div class="dialog-body" id="detailBody"></div>
+    </dialog>
+
+    <dialog class="insight-card-preview-dialog" id="insightCardDialog">
+      <div class="dialog-header">
+        <div>
+          <h2>评论洞察卡片</h2>
+          <div class="toolbar-note" id="insightCardDialogNote">等待渲染</div>
+        </div>
+        <button class="button compact" type="button" id="closeInsightCardDialogButton">关闭</button>
+      </div>
+      <div class="dialog-body">
+        <div class="insight-card-preview-shell" id="insightCardPreviewShell">
+          <div class="terminal-empty" id="insightCardPreviewEmpty">正在生成卡片</div>
+          <img id="insightCardPreviewImage" alt="评论洞察卡片" hidden />
+        </div>
+        <div class="insight-card-preview-actions">
+          <div class="toolbar-note">图片由 AstrBot 自定义 HTML 模板渲染</div>
+          <a class="button" id="openInsightCardLink" href="#" target="_blank" rel="noopener" hidden>
+            在新窗口打开
+          </a>
+        </div>
+      </div>
     </dialog>
 
     <dialog
@@ -2570,6 +2678,7 @@
         loginPollTimer: null,
         insightPollTimer: null,
         insight: null,
+        insightCardUrl: "",
         avatarSource: "",
         avatarDataUrl: "",
         avatarLoadingSource: "",
@@ -2597,6 +2706,10 @@
         const text = String(value || "").trim();
         if (text.startsWith("//")) return `https:${text}`;
         return /^https?:\/\//i.test(text) ? text : "";
+      }
+
+      function safeRenderedImageUrl(value) {
+        return safeImageUrl(value) || safeImageDataUrl(value);
       }
 
       function safeImageDataUrl(value) {
@@ -3365,6 +3478,18 @@
         byId("insightCacheText").textContent = `缓存 ${fmtNumber(progress.cache_hits)} / 模型请求 ${fmtNumber(progress.model_calls)}`;
         byId("cancelInsightButton").disabled = taskState !== "running";
         byId("runInsightButton").disabled = taskState === "running";
+        const card = payload.card || {};
+        const cardThemes = Array.isArray(card.themes) ? card.themes : [];
+        const cardSelect = byId("insightCardTheme");
+        const currentTheme = cardSelect.value;
+        cardSelect.innerHTML = cardThemes
+          .map((item) => `<option value="${escapeHtml(item.key)}">${escapeHtml(item.label)}</option>`)
+          .join("");
+        cardSelect.value = cardThemes.some((item) => item.key === currentTheme)
+          ? currentTheme
+          : card.default_theme || cardThemes[0]?.key || "terminal";
+        byId("insightCardToolbar").hidden = card.enabled === false;
+        byId("renderInsightCardButton").disabled = taskState !== "complete" || !report || card.enabled === false;
 
         if (payload.semantic_available === false) {
           byId("insightSemantic").checked = false;
@@ -3521,6 +3646,46 @@
           showToast(payload.message || "评论洞察任务已取消");
         } catch (error) {
           showToast(error.message, true);
+        }
+      }
+
+      async function renderInsightCard() {
+        const button = byId("renderInsightCardButton");
+        const dialog = byId("insightCardDialog");
+        const image = byId("insightCardPreviewImage");
+        const empty = byId("insightCardPreviewEmpty");
+        const openLink = byId("openInsightCardLink");
+        button.disabled = true;
+        button.textContent = "渲染中";
+        image.hidden = true;
+        image.removeAttribute("src");
+        openLink.hidden = true;
+        empty.hidden = false;
+        empty.textContent = "正在生成卡片";
+        byId("insightCardDialogNote").textContent = "正在调用 AstrBot HTML 渲染器";
+        if (typeof dialog.showModal === "function") dialog.showModal();
+        try {
+          const payload = await postApi("analytics/insights/render", {
+            theme: byId("insightCardTheme").value,
+          });
+          const imageUrl = safeRenderedImageUrl(payload.image_url);
+          if (!imageUrl) throw new Error("渲染器返回了不受支持的图片地址");
+          state.insightCardUrl = imageUrl;
+          image.src = imageUrl;
+          image.hidden = false;
+          empty.hidden = true;
+          openLink.href = imageUrl;
+          openLink.hidden = false;
+          byId("insightCardDialogNote").textContent = `${payload.theme_label || "洞察卡片"} / ${payload.mode === "exploratory" ? "自动探索" : "定向统计"}`;
+          showToast("评论洞察卡片已生成");
+        } catch (error) {
+          empty.hidden = false;
+          empty.textContent = error.message;
+          byId("insightCardDialogNote").textContent = "渲染失败";
+          showToast(error.message, true);
+        } finally {
+          button.disabled = state.insight?.state !== "complete";
+          button.textContent = "渲染卡片";
         }
       }
 
@@ -3895,6 +4060,10 @@
         byId("confirmClearLoginButton").addEventListener("click", clearLogin);
         byId("insightForm").addEventListener("submit", runInsight);
         byId("cancelInsightButton").addEventListener("click", cancelInsight);
+        byId("renderInsightCardButton").addEventListener("click", renderInsightCard);
+        byId("closeInsightCardDialogButton").addEventListener("click", () => {
+          byId("insightCardDialog").close();
+        });
         byId("filterForm").addEventListener("submit", (event) => {
           event.preventDefault();
           state.offset = 0;
