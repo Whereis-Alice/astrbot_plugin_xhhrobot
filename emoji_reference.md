@@ -1,1 +1,91 @@
-IyDlsI/pu5Hnm5Looajmg4Xlr7nnhafooagKCuacrOihqOiusOW9leaPkuS7tuWGhee9rueahCAxNTYg5Liq5bCP6buR55uS5qCH5YeG6KGo5oOF5qCH6K+G56ym77yM5b+r54Wn5pel5pyf5Li6IDIwMjYtMDgtMTHjgILlj5HpgIHml7blupTkvJjlhYjkvb/nlKjooajkuK3nmoTlrozmlbTmoIforrDvvIzkvovlpoIgYFtjdWJlX2RvZ2VdYOOAggoK6L+Q6KGM5pe277yM5o+S5Lu25Lya5YWI6K+75Y+W5b2T5YmN55m75b2V6LSm5Y+355qEIGAvYmJzL2FwcC9hcGkvZW1vamlzL2xpc3RgIOi/lOWbnuWAvO+8m+ivpeWunuaXtuWIl+ihqOS8mOWFiOS6juacrOihqOOAguiLpeaOpeWPo+aaguaXtuS4jeWPr+eUqO+8jOaJjeS9v+eUqOacrOihqOS9nOS4uuemu+e6v+WFnOW6leOAguWPr+S7peiwg+eUqCBgeGhoX2dldF9lbW9qaXNgIOafpeeci+W9k+WJjei0puWPt+WunumZhei/lOWbnueahOWQjeensOOAggoKfCDooajmg4XljIUgfCDmoIflh4bmoIfor4bnrKbmlbAgfCDmoIforrDmoLzlvI8gfAp8IC0tLSB8IC0tLTogfCAtLS0gfAp8IGBjdWJlYCB8IDEwMCB8IGBbY3ViZV/moIfor4bnrKZdYCB8CnwgYGhleWdpcmxgIHwgMjQgfCBgW2hleWdpcmxf5qCH6K+G56ymXWAgfAp8IGBiaWdlbW9qaWAgfCAxNiB8IGBbYmlnZW1vamlf5qCH6K+G56ymXWAgfAp8IGBncmFuZGVtb2ppYCB8IDE2IHwgYFtncmFuZGVtb2ppX+agh+ivhuespl1gIHwKCiMjIOi+k+WFpeWFvOWuuQoK5o+S5Lu25Lya5a+55a6M5pW05qCH6K6w55qE5YyF5ZCN5ZKM5qCH6K+G56ym5YGa5aSn5bCP5YaZ5LiO5YWo5Y2K6KeS5b2S5LiA5YyW77yM5bm25YW85a655q+P5Liq5qCH5YeG5qCH6K6w55qE5bi46KeB5Lit5paH44CB6Iux5paH5ZKM5Y6G5Y+y5Y+r5rOV44CC5Y+R6YCB5YmN5Lya6L2s5o2i5Li65b2T5YmN6LSm5Y+35Y+v55So55qE5a6e6ZmF5qCH6K+G56ym44CCCgp8IOi+k+WFpeekuuS+iyB8IOWPkemAgeaXtueahOagh+WHhuagh+iusCB8CnwgLS0tIHwgLS0tIHwKfCBgW2N1YmVf54uX5aS0XWDjgIFgW2N1YmVfZG9naGVhZF1g44CBYFtjdWJlX3NoaWJhXWAgfCBgW2N1YmVfZG9nZV1gIHwKfCBgW2N1YmVf5ZCQ6KGAXWDjgIFgW2N1YmVfdm9taXRdYOOAgWBbY3ViZV9wdWtlXWAgfCBgW2N1YmVf5ZCQXWAgfAp8IGBbY3ViZV/liZHmmJ/mtoLpuKZdYOOAgWBbY3ViZV9zdGVsbGFyX2JsYWRlX3JhdmVuXWAgfCBgW2N1YmVf5YmR5pif5rih6bimXWAgfAp8IGBbaGV5Z2lybF/ogLblmL9dYOOAgWBbaGV5Z2lybF9laGVoZV1g44CBYFtoZXlnaXJsX3llaGV5XWAgfCBgW2hleWdpcmxf6K+25Zi/XWAgfAp8IGBbaGV5Z2lybF9taWxrX3RlYV1gIHwgYFtoZXlnaXJsX+WWneWltuiMtl1gIHwKfCBgW2JpZ2Vtb2ppX21lbG9uXWAgfCBgW2JpZ2Vtb2ppX+WQg+eTnF1gIHwKfCBgW2dyYW5kZW1vamlfYWxsX3Bvd2VyZnVsX2hleWJveF9naXJsXWAgfCBgW2dyYW5kZW1vamlf5LiH6IO955uS5aiYXWAgfAoK5Y+q5Lya5YW85a655bim5YyF5ZCN5YmN57yA55qE5a6M5pW05qCH6K6w77yM5L6L5aaCIGBbY3ViZV9kb2dlXWDjgILmnKrnn6XmoIforrDkuI3kvJrlh63or63kuYnnjJzmtYvvvIzmj5Lku7bkvJrpmY3nuqfkuLrlj6/or7vnmoTmma7pgJrmlofmnKzvvIzpgb/lhY3miorplJnor6/ooajmg4Xlj5HliLDlsI/pu5Hnm5LjgIIKCiMjIGBjdWJlYAoKfCDmoIflh4bmoIforrAgfCDmoIflh4bmoIforrAgfCDmoIflh4bmoIforrAgfCDmoIflh4bmoIforrAgfAp8IC0tLSB8IC0tLSB8IC0tLSB8IC0tLSB8CnwgYFtjdWJlXysxXWAgfCBgW2N1YmVfLTFdYCB8IGBbY3ViZV8yMDIzXWAgfCBgW2N1YmVfMjAyNF1gIHwKfCBgW2N1YmVfMjAyNV1gIHwgYFtjdWJlXzIwMjZdYCB8IGBbY3ViZV9kb2dlXWAgfCBgW2N1YmVfSOW4gV1gIHwKfCBgW2N1YmVfUOeahOiwjuiogF1gIHwgYFtjdWJlX3dvdGFdYCB8IGBbY3ViZV/niLHlv4NdYCB8IGBbY3ViZV/mr5Tlv4NdYCB8CnwgYFtjdWJlX+avlOiAtl1gIHwgYFtjdWJlX+mXreWYtF1gIHwgYFtjdWJlX+W5tuS4jeeugOWNlV1gIHwgYFtjdWJlX+iPnGRvZ2VdYCB8CnwgYFtjdWJlX+ayp+ahkV1gIHwgYFtjdWJlX+i2heS6ul1gIHwgYFtjdWJlX+eCkuiPnF1gIHwgYFtjdWJlX+WQg+eTnF1gIHwKfCBgW2N1YmVf5ZCD6bih5ZWmXWAgfCBgW2N1YmVf5ZC55Y+j5ZOoXWAgfCBgW2N1YmVf5omT6IS4XWAgfCBgW2N1YmVf5omT5ZKpXWAgfAp8IGBbY3ViZV/om4vns5VdYCB8IGBbY3ViZV/ngrnotZ5dYCB8IGBbY3ViZV/nlLXniZtdYCB8IGBbY3ViZV/puYVdYCB8CnwgYFtjdWJlX+aEn+WKqF1gIHwgYFtjdWJlX+WSleWSlV1gIHwgYFtjdWJlX+m8k+aOjF1gIHwgYFtjdWJlX+S5ll1gIHwKfCBgW2N1YmVf5a6z576eXWAgfCBgW2N1YmVf5rGXXWAgfCBgW2N1YmVf55uS5Y2BXWAgfCBgW2N1YmVf6buR5Lq66Zeu5Y+3XWAgfAp8IGBbY3ViZV/nuqLljIVdYCB8IGBbY3ViZV/mu5HnqL1dYCB8IGBbY3ViZV/mr4Hnga3miJjlo6tdYCB8IGBbY3ViZV/puKHmr5nkvaBdYCB8CnwgYFtjdWJlX+WKoOayuV1gIHwgYFtjdWJlX+WJkeaYn+a4oem4pl1gIHwgYFtjdWJlX+WJkeaYn+S8iuiKmV1gIHwgYFtjdWJlX+WDteWwuF1gIHwKfCBgW2N1YmVf5oOK6K62XWAgfCBgW2N1YmVf5byA5b+DXWAgfCBgW2N1YmVf5ZOt5rOjXWAgfCBgW2N1YmVf6YW3XWAgfAp8IGBbY3ViZV/lm7BdYCB8IGBbY3ViZV/mnaXotKJdYCB8IGBbY3ViZV/mtarkurrnoI3kuIDliIBdYCB8IGBbY3ViZV/oia/msJFdYCB8CnwgYFtjdWJlX+eBteWFieS4gOmXql1gIHwgYFtjdWJlX+a0m+eahOeCuei1nl1gIHwgYFtjdWJlX+mprOW5tOWQieelpV1gIHwgYFtjdWJlX+eOq+eRsF1gIHwKfCBgW2N1YmVf54yb55S35b6u56yRXWAgfCBgW2N1YmVf5pG45pG45aS0XWAgfCBgW2N1YmVf5L2g5oeC5oiRXWAgfCBgW2N1YmVf5p+g5qqsXWAgfAp8IGBbY3ViZV/mgJJdYCB8IGBbY3ViZV/mrKfmtqblkIldYCB8IGBbY3ViZV/llrfmsLRdYCB8IGBbY3ViZV/norDmi7NdYCB8CnwgYFtjdWJlX+WHhOWHiV1gIHwgYFtjdWJlX+W6huelnV1gIHwgYFtjdWJlX+W6huelnS3lnKPor55dYCB8IGBbY3ViZV/lsbHlp4bml6DlpYhdYCB8CnwgYFtjdWJlX+S4iuWtpi3kuZBdYCB8IGBbY3ViZV/kuIrlraYt5LinXWAgfCBgW2N1YmVf55Sf5rCUXWAgfCBgW2N1YmVf5Zyj6K+e5qCRXWAgfAp8IGBbY3ViZV/ml7bpl7Tml4XogIVdYCB8IGBbY3ViZV/nnaHop4ldYCB8IGBbY3ViZV/lpKrphbfllaZdYCB8IGBbY3ViZV/mkYrmiYtdYCB8CnwgYFtjdWJlX+WPueawlF1gIHwgYFtjdWJlX+WQkF1gIHwgYFtjdWJlX+WTh11gIHwgYFtjdWJlX+W+rueskV1gIHwKfCBgW2N1YmVf5aeU5bGIXWAgfCBgW2N1YmVf56qd5ZuKXWAgfCBgW2N1YmVf5oiR5oeC5L2gXWAgfCBgW2N1YmVf5oiR5pa55LqGXWAgfAp8IGBbY3ViZV/mj6HojYldYCB8IGBbY3ViZV/mjYLohLjlk61dYCB8IGBbY3ViZV/mgp/nqbpdYCB8IGBbY3ViZV/lrInmsLTlpbPnjotdYCB8CnwgYFtjdWJlX+WWnCsxXWAgfCBgW2N1YmVf5Zac5qyiXWAgfCBgW2N1YmVf5ZCTXWAgfCBgW2N1YmVf5bCP6bihXWAgfAp8IGBbY3ViZV/nrJFjcnldYCB8IGBbY3ViZV/lrabkuaBdYCB8IGBbY3ViZV/pmLNdYCB8IGBbY3ViZV/ogLZdYCB8CnwgYFtjdWJlX+aZlV1gIHwgYFtjdWJlX+i1nl1gIHwgYFtjdWJlX+aRmOWiqOmVnF1gIHwgYFtjdWJlX+i/meaYr+S7gOS5iOm4n11gIHwKCiMjIGBoZXlnaXJsYAoKfCDmoIflh4bmoIforrAgfCDmoIflh4bmoIforrAgfCDmoIflh4bmoIforrAgfCDmoIflh4bmoIforrAgfAp8IC0tLSB8IC0tLSB8IC0tLSB8IC0tLSB8CnwgYFtoZXlnaXJsX3J1YSFdYCB8IGBbaGV5Z2lybF/mjKjliIBdYCB8IGBbaGV5Z2lybF/nmb3lq5bmgKpdYCB8IGBbaGV5Z2lybF/lkIPnk5xdYCB8CnwgYFtoZXlnaXJsX+eXtF1gIHwgYFtoZXlnaXJsX+ivtuWYv11gIHwgYFtoZXlnaXJsX+WTiOWTiF1gIHwgYFtoZXlnaXJsX+Wus+e+nl1gIHwKfCBgW2hleWdpcmxf5Zad5aW26Iy2XWAgfCBgW2hleWdpcmxf5ruR56i9XWAgfCBgW2hleWdpcmxf6K6w5LiL5p2lXWAgfCBgW2hleWdpcmxf5oOKXWAgfAp8IGBbaGV5Z2lybF/lvIDlj6/kuZBdYCB8IGBbaGV5Z2lybF/lk61dYCB8IGBbaGV5Z2lybF/oi6bphZLlhaXlloldYCB8IGBbaGV5Z2lybF/mjY/ohLhdYCB8CnwgYFtoZXlnaXJsX+aVsuW8gOW/g11gIHwgYFtoZXlnaXJsX+iMhOWMll1gIHwgYFtoZXlnaXJsX+WBt+eci11gIHwgYFtoZXlnaXJsX+eng11gIHwKfCBgW2hleWdpcmxf5peg6K+tXWAgfCBgW2hleWdpcmxf5Zac5qyiXWAgfCBgW2hleWdpcmxf55aR6ZeuXWAgfCBgW2hleWdpcmxf6L+Z4oCmXWAgfAoKIyMgYGJpZ2Vtb2ppYAoKfCDmoIflh4bmoIforrAgfCDmoIflh4bmoIforrAgfCDmoIflh4bmoIforrAgfCDmoIflh4bmoIforrAgfAp8IC0tLSB8IC0tLSB8IC0tLSB8IC0tLSB8CnwgYFtiaWdlbW9qaV/vvJ9dYCB8IGBbYmlnZW1vamlf5pqX5Lit6KeC5a+fXWAgfCBgW2JpZ2Vtb2ppX+avlOW/g11gIHwgYFtiaWdlbW9qaV/lkIPnk5xdYCB8CnwgYFtiaWdlbW9qaV/miZPmiphdYCB8IGBbYmlnZW1vamlf6aOO57qq5aeU5ZGYXWAgfCBgW2JpZ2Vtb2ppX+WTiOWTiF1gIHwgYFtiaWdlbW9qaV/mu5HnqL1dYCB8CnwgYFtiaWdlbW9qaV/lvIDlj6/kuZBdYCB8IGBbYmlnZW1vamlf5Y6J5a6zXWAgfCBgW2JpZ2Vtb2ppX+axguW4pl1gIHwgYFtiaWdlbW9qaV/mkZRdYCB8CnwgYFtiaWdlbW9qaV/lp5TlsYhdYCB8IGBbYmlnZW1vamlf5Zac5Yqg5LiAXWAgfCBgW2JpZ2Vtb2ppX+e+oeaFlV1gIHwgYFtiaWdlbW9qaV/lgZrmoqZdYCB8CgojIyBgZ3JhbmRlbW9qaWAKCnwg5qCH5YeG5qCH6K6wIHwg5qCH5YeG5qCH6K6wIHwg5qCH5YeG5qCH6K6wIHwg5qCH5YeG5qCH6K6wIHwKfCAtLS0gfCAtLS0gfCAtLS0gfCAtLS0gfAp8IGBbZ3JhbmRlbW9qaV9hd3NsXWAgfCBgW2dyYW5kZW1vamlfbXVy5YyWXWAgfCBgW2dyYW5kZW1vamlf55e0XWAgfCBgW2dyYW5kZW1vamlf55uS5by55p2l6KKtXWAgfAp8IGBbZ3JhbmRlbW9qaV/kuqTkuKrmnIvlj4tdYCB8IGBbZ3JhbmRlbW9qaV/mkbjkuI3nnYDlpLTohJFdYCB8IGBbZ3JhbmRlbW9qaV/niKxdYCB8IGBbZ3JhbmRlbW9qaV/niKzkuoZdYCB8CnwgYFtncmFuZGVtb2ppX+WVpeeOqeaEj11gIHwgYFtncmFuZGVtb2ppX+e8qV1gIHwgYFtncmFuZGVtb2ppX+i6uuW5s11gIHwgYFtncmFuZGVtb2ppX+S4h+iDveebkuWomF1gIHwKfCBgW2dyYW5kZW1vamlf5oiR5b6I5Y+v54ixXWAgfCBgW2dyYW5kZW1vamlf5ZGA5Zie5ZGA5ZieXWAgfCBgW2dyYW5kZW1vamlf5pW05oy65aW9XWAgfCBgW2dyYW5kZW1vamlf5YGa5Liq5aW95qKmXWAgfAoKIyMg57u05oqk6K+05piOCgrlsI/pu5Hnm5Llj6/og73mjInlrqLmiLfnq6/niYjmnKzjgIHotKblj7fmiJbmtLvliqjosIPmlbTooajmg4XliJfooajjgILmlrDlop7miJblj5jljJbnmoTooajmg4Xku6XlvZPliY3otKblj7fnmoTlrp7ml7bliJfooajkuLrlh4bvvJvpnIDopoHmm7TmlrDnprvnur/lhZzlupXml7bvvIzlkIzml7bkv67mlLkgYGVtb2ppX2NhdGFsb2cucHlg44CB5pys6KGo5LiO5a+55bqU5Y2V5YWD5rWL6K+V44CCCg==
+# 小黑盒表情对照表
+
+本表记录插件内置的 156 个小黑盒标准表情标识符，快照日期为 2026-08-11。发送时应优先使用表中的完整标记，例如 `[cube_doge]`。
+
+运行时，插件会先读取当前登录账号的 `/bbs/app/api/emojis/list` 返回值；该实时列表优先于本表。若接口暂时不可用，才使用本表作为离线兜底。可以调用 `xhh_get_emojis` 查看当前账号实际返回的名称。
+
+| 表情包 | 标准标识符数 | 标记格式 |
+| --- | ---: | --- |
+| `cube` | 100 | `[cube_标识符]` |
+| `heygirl` | 24 | `[heygirl_标识符]` |
+| `bigemoji` | 16 | `[bigemoji_标识符]` |
+| `grandemoji` | 16 | `[grandemoji_标识符]` |
+
+## 输入兼容
+
+插件会对完整标记的包名和标识符做大小写与全半角归一化，并兼容每个标准标记的常见中文、英文和历史叫法。发送前会转换为当前账号可用的实际标识符。
+
+| 输入示例 | 发送时的标准标记 |
+| --- | --- |
+| `[cube_狗头]`、`[cube_doghead]`、`[cube_shiba]` | `[cube_doge]` |
+| `[cube_吐血]`、`[cube_vomit]`、`[cube_puke]` | `[cube_吐]` |
+| `[cube_剑星涂鸦]`、`[cube_stellar_blade_raven]` | `[cube_剑星渡鸦]` |
+| `[heygirl_耶嘿]`、`[heygirl_ehehe]`、`[heygirl_yehey]` | `[heygirl_诶嘿]` |
+| `[heygirl_milk_tea]` | `[heygirl_喝奶茶]` |
+| `[bigemoji_melon]` | `[bigemoji_吃瓜]` |
+| `[grandemoji_all_powerful_heybox_girl]` | `[grandemoji_万能盒娘]` |
+
+只会兼容带包名前缀的完整标记，例如 `[cube_doge]`。未知标记不会凭语义猜测，插件会降级为可读的普通文本，避免把错误表情发到小黑盒。
+
+## `cube`
+
+| 标准标记 | 标准标记 | 标准标记 | 标准标记 |
+| --- | --- | --- | --- |
+| `[cube_+1]` | `[cube_-1]` | `[cube_2023]` | `[cube_2024]` |
+| `[cube_2025]` | `[cube_2026]` | `[cube_doge]` | `[cube_H币]` |
+| `[cube_P的谎言]` | `[cube_wota]` | `[cube_爱心]` | `[cube_比心]` |
+| `[cube_比耶]` | `[cube_闭嘴]` | `[cube_并不简单]` | `[cube_菜doge]` |
+| `[cube_沧桑]` | `[cube_超人]` | `[cube_炒菜]` | `[cube_吃瓜]` |
+| `[cube_吃鸡啦]` | `[cube_吹口哨]` | `[cube_打脸]` | `[cube_打咩]` |
+| `[cube_蛋糕]` | `[cube_点赞]` | `[cube_电牛]` | `[cube_鹅]` |
+| `[cube_感动]` | `[cube_咕咕]` | `[cube_鼓掌]` | `[cube_乖]` |
+| `[cube_害羞]` | `[cube_汗]` | `[cube_盒十]` | `[cube_黑人问号]` |
+| `[cube_红包]` | `[cube_滑稽]` | `[cube_毁灭战士]` | `[cube_鸡毙你]` |
+| `[cube_加油]` | `[cube_剑星渡鸦]` | `[cube_剑星伊芙]` | `[cube_僵尸]` |
+| `[cube_惊讶]` | `[cube_开心]` | `[cube_哭泣]` | `[cube_酷]` |
+| `[cube_困]` | `[cube_来财]` | `[cube_浪人砍一刀]` | `[cube_良民]` |
+| `[cube_灵光一闪]` | `[cube_洛的点赞]` | `[cube_马年吉祥]` | `[cube_玫瑰]` |
+| `[cube_猛男微笑]` | `[cube_摸摸头]` | `[cube_你懂我]` | `[cube_柠檬]` |
+| `[cube_怒]` | `[cube_欧润吉]` | `[cube_喷水]` | `[cube_碰拳]` |
+| `[cube_凄凉]` | `[cube_庆祝]` | `[cube_庆祝-圣诞]` | `[cube_山姆无奈]` |
+| `[cube_上学-乐]` | `[cube_上学-丧]` | `[cube_生气]` | `[cube_圣诞树]` |
+| `[cube_时间旅者]` | `[cube_睡觉]` | `[cube_太酷啦]` | `[cube_摊手]` |
+| `[cube_叹气]` | `[cube_吐]` | `[cube_哇]` | `[cube_微笑]` |
+| `[cube_委屈]` | `[cube_窝囊]` | `[cube_我懂你]` | `[cube_我方了]` |
+| `[cube_握草]` | `[cube_捂脸哭]` | `[cube_悟空]` | `[cube_嬉水女王]` |
+| `[cube_喜+1]` | `[cube_喜欢]` | `[cube_吓]` | `[cube_小鸡]` |
+| `[cube_笑cry]` | `[cube_学习]` | `[cube_阳]` | `[cube_耶]` |
+| `[cube_晕]` | `[cube_赞]` | `[cube_摘墨镜]` | `[cube_这是什么鸟]` |
+
+## `heygirl`
+
+| 标准标记 | 标准标记 | 标准标记 | 标准标记 |
+| --- | --- | --- | --- |
+| `[heygirl_rua!]` | `[heygirl_挨刀]` | `[heygirl_白嫖怪]` | `[heygirl_吃瓜]` |
+| `[heygirl_痴]` | `[heygirl_诶嘿]` | `[heygirl_哈哈]` | `[heygirl_害羞]` |
+| `[heygirl_喝奶茶]` | `[heygirl_滑稽]` | `[heygirl_记下来]` | `[heygirl_惊]` |
+| `[heygirl_开可乐]` | `[heygirl_哭]` | `[heygirl_苦酒入喉]` | `[heygirl_捏脸]` |
+| `[heygirl_敲开心]` | `[heygirl_茄化]` | `[heygirl_偷看]` | `[heygirl_秃]` |
+| `[heygirl_无语]` | `[heygirl_喜欢]` | `[heygirl_疑问]` | `[heygirl_这…]` |
+
+## `bigemoji`
+
+| 标准标记 | 标准标记 | 标准标记 | 标准标记 |
+| --- | --- | --- | --- |
+| `[bigemoji_？]` | `[bigemoji_暗中观察]` | `[bigemoji_比心]` | `[bigemoji_吃瓜]` |
+| `[bigemoji_打折]` | `[bigemoji_风纪委员]` | `[bigemoji_哈哈]` | `[bigemoji_滑稽]` |
+| `[bigemoji_开可乐]` | `[bigemoji_厉害]` | `[bigemoji_求带]` | `[bigemoji_摔]` |
+| `[bigemoji_委屈]` | `[bigemoji_喜加一]` | `[bigemoji_羡慕]` | `[bigemoji_做梦]` |
+
+## `grandemoji`
+
+| 标准标记 | 标准标记 | 标准标记 | 标准标记 |
+| --- | --- | --- | --- |
+| `[grandemoji_awsl]` | `[grandemoji_mur化]` | `[grandemoji_痴]` | `[grandemoji_盒弹来袭]` |
+| `[grandemoji_交个朋友]` | `[grandemoji_摸不着头脑]` | `[grandemoji_爬]` | `[grandemoji_爬了]` |
+| `[grandemoji_啥玩意]` | `[grandemoji_缩]` | `[grandemoji_躺平]` | `[grandemoji_万能盒娘]` |
+| `[grandemoji_我很可爱]` | `[grandemoji_呀嘞呀嘞]` | `[grandemoji_整挺好]` | `[grandemoji_做个好梦]` |
+
+## 维护说明
+
+小黑盒可能按客户端版本、账号或活动调整表情列表。新增或变化的表情以当前账号的实时列表为准；需要更新离线兜底时，同时修改 `emoji_catalog.py`、本表与对应单元测试。

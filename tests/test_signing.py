@@ -1,1 +1,42 @@
-ZnJvbSBfX2Z1dHVyZV9fIGltcG9ydCBhbm5vdGF0aW9ucwoKaW1wb3J0IGJhc2U2NAppbXBvcnQgdW5pdHRlc3QKCmZyb20gYXN0cmJvdF9wbHVnaW5feGhocm9ib3Quc2lnbmluZyBpbXBvcnQgKAogICAgYnVpbGRfaGV5Ym94X2hrZXksCiAgICBidWlsZF9oa2V5LAogICAgZ2VuZXJhdGVfeGhoX3Rva2VuLAopCgoKY2xhc3MgU2lnbmluZ1Rlc3RzKHVuaXR0ZXN0LlRlc3RDYXNlKToKICAgIGRlZiB0ZXN0X2ZpeGVkX2hrZXlfdmVjdG9yKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbCgKICAgICAgICAgICAgYnVpbGRfaGtleSgKICAgICAgICAgICAgICAgICIvYmJzL2FwcC91c2VyL21lc3NhZ2UiLAogICAgICAgICAgICAgICAgMV83MDBfMDAwXzAwMCwKICAgICAgICAgICAgICAgICIwMTIzNDU2Nzg5QUJDREVGMDEyMzQ1Njc4OUFCQ0RFRiIsCiAgICAgICAgICAgICksCiAgICAgICAgICAgICJZVDI3UDQ3IiwKICAgICAgICApCgogICAgZGVmIHRlc3RfZ2VuZXJhdGVkX3Rva2VuX2hhc19leHBlY3RlZF9iaW5hcnlfc2hhcGUoc2VsZikgLT4gTm9uZToKICAgICAgICB0b2tlbiA9IGdlbmVyYXRlX3hoaF90b2tlbigxXzcwMF8wMDBfMDAwKQogICAgICAgIGRlY29kZWQgPSBiYXNlNjQuYjY0ZGVjb2RlKHRva2VuKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwobGVuKGRlY29kZWQpLCA2NSkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGRlY29kZWRbLTFdLCAwKQoKICAgIGRlZiB0ZXN0X2ZpeGVkX2hleWJveF9oa2V5X3ZlY3Rvcl9tYXRjaGVzX2N1cnJlbnRfd2ViX3NpZ25pbmcoc2VsZikgLT4gTm9uZToKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKAogICAgICAgICAgICBidWlsZF9oZXlib3hfaGtleSgKICAgICAgICAgICAgICAgICIvY2hhdHJvb20vdjIvbXNnL3VzZXIiLAogICAgICAgICAgICAgICAgMV83MDBfMDAwXzAwMCwKICAgICAgICAgICAgICAgICJDREIzQjEyNDQxQkIwNzY5RUNCN0M1MjU0OThFOEJBMyIsCiAgICAgICAgICAgICksCiAgICAgICAgICAgICJUN0QxVTA0IiwKICAgICAgICApCgoKaWYgX19uYW1lX18gPT0gIl9fbWFpbl9fIjoKICAgIHVuaXR0ZXN0Lm1haW4oKQo=
+from __future__ import annotations
+
+import base64
+import unittest
+
+from astrbot_plugin_xhhrobot.signing import (
+    build_heybox_hkey,
+    build_hkey,
+    generate_xhh_token,
+)
+
+
+class SigningTests(unittest.TestCase):
+    def test_fixed_hkey_vector(self) -> None:
+        self.assertEqual(
+            build_hkey(
+                "/bbs/app/user/message",
+                1_700_000_000,
+                "0123456789ABCDEF0123456789ABCDEF",
+            ),
+            "YT27P47",
+        )
+
+    def test_generated_token_has_expected_binary_shape(self) -> None:
+        token = generate_xhh_token(1_700_000_000)
+        decoded = base64.b64decode(token)
+        self.assertEqual(len(decoded), 65)
+        self.assertEqual(decoded[-1], 0)
+
+    def test_fixed_heybox_hkey_vector_matches_current_web_signing(self) -> None:
+        self.assertEqual(
+            build_heybox_hkey(
+                "/chatroom/v2/msg/user",
+                1_700_000_000,
+                "CDB3B12441BB0769ECB7C525498E8BA3",
+            ),
+            "T7D1U04",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

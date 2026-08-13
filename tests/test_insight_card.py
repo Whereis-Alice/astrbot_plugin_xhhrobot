@@ -1,1 +1,229 @@
-ZnJvbSBfX2Z1dHVyZV9fIGltcG9ydCBhbm5vdGF0aW9ucwoKaW1wb3J0IGpzb24KaW1wb3J0IHVuaXR0ZXN0Cgpmcm9tIGFzdHJib3RfcGx1Z2luX3hoaHJvYm90Lmluc2lnaHRfY2FyZCBpbXBvcnQgKAogICAgSU5TSUdIVF9DQVJEX1RFTVBMQVRFLAogICAgVEhFTUVTLAogICAgSW5zaWdodENhcmRSZW5kZXJlciwKICAgIGF2YWlsYWJsZV9pbnNpZ2h0X2NhcmRfdGhlbWVzLAogICAgYnVpbGRfaW5zaWdodF9jYXJkX3BheWxvYWQsCiAgICBub3JtYWxpemVfaW5zaWdodF9jYXJkX3Jlc29sdXRpb24sCiAgICBub3JtYWxpemVfaW5zaWdodF9jYXJkX3RoZW1lLAopCgoKY2xhc3MgRmFrZVJlbmRlcmVyUGx1Z2luOgogICAgZGVmIF9faW5pdF9fKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgc2VsZi5jYWxsczogbGlzdFtkaWN0XSA9IFtdCgogICAgYXN5bmMgZGVmIGh0bWxfcmVuZGVyKAogICAgICAgIHNlbGYsCiAgICAgICAgdGVtcGxhdGU6IHN0ciwKICAgICAgICBkYXRhOiBkaWN0LAogICAgICAgICosCiAgICAgICAgcmV0dXJuX3VybDogYm9vbCwKICAgICAgICBvcHRpb25zOiBkaWN0LAogICAgKSAtPiBzdHI6CiAgICAgICAgc2VsZi5jYWxscy5hcHBlbmQoCiAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgICJ0ZW1wbGF0ZSI6IHRlbXBsYXRlLAogICAgICAgICAgICAgICAgImRhdGEiOiBkYXRhLAogICAgICAgICAgICAgICAgInJldHVybl91cmwiOiByZXR1cm5fdXJsLAogICAgICAgICAgICAgICAgIm9wdGlvbnMiOiBvcHRpb25zLAogICAgICAgICAgICB9CiAgICAgICAgKQogICAgICAgIHJldHVybiAiaHR0cHM6Ly9yZW5kZXIuZXhhbXBsZS9jYXJkLnBuZyIKCgpkZWYgZXhwbG9yYXRvcnlfc25hcHNob3QoKSAtPiBkaWN0OgogICAgcmV0dXJuIHsKICAgICAgICAic3RhdGUiOiAiY29tcGxldGUiLAogICAgICAgICJqb2JfaWQiOiAiam9iLTEyMyIsCiAgICAgICAgImZpbHRlcnMiOiB7ImxpbmtfaWQiOiAxODc5MTczMDEsICJzb3VyY2UiOiAib3duX3Bvc3RfY29tbWVudCJ9LAogICAgICAgICJyZXBvcnQiOiB7CiAgICAgICAgICAgICJhbmFseXNpc19tb2RlIjogImV4cGxvcmF0b3J5IiwKICAgICAgICAgICAgInByb3ZpZGVyX2lkIjogInByb3ZpZGVyL21vZGVsIiwKICAgICAgICAgICAgInRvdGFsX2NvbW1lbnRzIjogODAwLAogICAgICAgICAgICAic2VsZWN0ZWRfY29tbWVudHMiOiA1MDAsCiAgICAgICAgICAgICJhbmFseXplZF9jb21tZW50cyI6IDUwMCwKICAgICAgICAgICAgImNvdmVyYWdlX3BlcmNlbnQiOiA2Mi41LAogICAgICAgICAgICAidW5pcXVlX3VzZXJzIjogNjEyLAogICAgICAgICAgICAidW5pcXVlX3Bvc3RzIjogMSwKICAgICAgICAgICAgInNlbnRpbWVudF9jb3VudHMiOiB7CiAgICAgICAgICAgICAgICAicG9zaXRpdmUiOiAzMDAsCiAgICAgICAgICAgICAgICAibmV1dHJhbCI6IDEzMCwKICAgICAgICAgICAgICAgICJuZWdhdGl2ZSI6IDUwLAogICAgICAgICAgICAgICAgIm1peGVkIjogMjAsCiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJzZW50aW1lbnRfcGVyY2VudGFnZXMiOiB7CiAgICAgICAgICAgICAgICAicG9zaXRpdmUiOiA2MCwKICAgICAgICAgICAgICAgICJuZXV0cmFsIjogMjYsCiAgICAgICAgICAgICAgICAibmVnYXRpdmUiOiAxMCwKICAgICAgICAgICAgICAgICJtaXhlZCI6IDQsCiAgICAgICAgICAgIH0sCiAgICAgICAgICAgICJpbnRlbnRfY291bnRzIjogeyJwcmFpc2UiOiAyMzAsICJxdWVzdGlvbiI6IDkwLCAiam9rZSI6IDgwfSwKICAgICAgICAgICAgInN1bW1hcnkiOiAi5pW05L2T5YGP5q2j6Z2i77yM5Y6f5Zu+6ZyA5rGC6ZuG5Lit44CCIiwKICAgICAgICAgICAgInRoZW1lcyI6IFsKICAgICAgICAgICAgICAgIHsKICAgICAgICAgICAgICAgICAgICAibGFiZWwiOiAi6KeS6Imy5Y+N6aaIIiwKICAgICAgICAgICAgICAgICAgICAiY291bnQiOiAyNjAsCiAgICAgICAgICAgICAgICAgICAgInBlcmNlbnRhZ2UiOiA1MiwKICAgICAgICAgICAgICAgICAgICAiZGVzY3JpcHRpb24iOiAi5aSa5pWw6K+E6K665Zac5qyi6KeS6Imy6KGo546w44CCIiwKICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgXSwKICAgICAgICAgICAgInRvcF9xdWVzdGlvbnMiOiBbCiAgICAgICAgICAgICAgICB7ImxhYmVsIjogIuWOn+Wbvuadpea6kCIsICJjb3VudCI6IDcwLCAicGVyY2VudGFnZSI6IDE0fQogICAgICAgICAgICBdLAogICAgICAgICAgICAidG9wX3N1Z2dlc3Rpb25zIjogWwogICAgICAgICAgICAgICAgeyJsYWJlbCI6ICLlj5HluIPljp/lm74iLCAiY291bnQiOiAzNCwgInBlcmNlbnRhZ2UiOiA2Ljh9CiAgICAgICAgICAgIF0sCiAgICAgICAgICAgICJjb250cm92ZXJzaWVzIjogWyLlsJHph4/nlKjmiLforqTkuLrljovnvKnmmI7mmL4iXSwKICAgICAgICAgICAgIm5vdGFibGVfZmluZGluZ3MiOiBbIuWOn+Wbvuivt+axguaYr+acgOmbhuS4reeahOmcgOaxgiJdLAogICAgICAgICAgICAiZXZpZGVuY2UiOiB7CiAgICAgICAgICAgICAgICAic2NvcGUiOiB7CiAgICAgICAgICAgICAgICAgICAgImFyY2hpdmVkIjogODAwLAogICAgICAgICAgICAgICAgICAgICJzZWxlY3RlZCI6IDUwMCwKICAgICAgICAgICAgICAgICAgICAiYW5hbHl6ZWQiOiA1MDAsCiAgICAgICAgICAgICAgICAgICAgImNvdmVyYWdlX3BlcmNlbnQiOiA2Mi41LAogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ0b3BpY3MiOiBbCiAgICAgICAgICAgICAgICAgICAgewogICAgICAgICAgICAgICAgICAgICAgICAibGFiZWwiOiAi6KeS6Imy5Y+N6aaIIiwKICAgICAgICAgICAgICAgICAgICAgICAgImNvdW50IjogMjYwLAogICAgICAgICAgICAgICAgICAgICAgICAicGVyY2VudGFnZSI6IDUyLAogICAgICAgICAgICAgICAgICAgICAgICAiZGVzY3JpcHRpb24iOiAi5aSa5pWw6K+E6K665Zac5qyi6KeS6Imy6KGo546w44CCIiwKICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICBdLAogICAgICAgICAgICB9LAogICAgICAgICAgICAiZXhhbXBsZXMiOiBbCiAgICAgICAgICAgICAgICB7CiAgICAgICAgICAgICAgICAgICAgImNvbnRlbnQiOiAiPHNjcmlwdD5hbGVydCgneCcpPC9zY3JpcHQ+IOi/meW8oOW+iOWlveeciyIsCiAgICAgICAgICAgICAgICAgICAgImxpbmtfaWQiOiAxODc5MTczMDEsCiAgICAgICAgICAgICAgICAgICAgImNvbW1lbnRfaWQiOiA5MzAxNTgxNTAsCiAgICAgICAgICAgICAgICAgICAgInNlbnRpbWVudCI6ICJwb3NpdGl2ZSIsCiAgICAgICAgICAgICAgICAgICAgImludGVudCI6ICJwcmFpc2UiLAogICAgICAgICAgICAgICAgICAgICJzdW1tYXJ5IjogIuensOi1nuWbvueJhyIsCiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIF0sCiAgICAgICAgICAgICJjb3VudGluZ19ub3RlIjogIuagt+acrOe7n+iuoeivtOaYjuOAgiIsCiAgICAgICAgfSwKICAgIH0KCgpjbGFzcyBJbnNpZ2h0Q2FyZFRlc3RzKHVuaXR0ZXN0Lklzb2xhdGVkQXN5bmNpb1Rlc3RDYXNlKToKICAgIGRlZiB0ZXN0X3RoZW1lX2FsaWFzZXNfYW5kX3B1YmxpY190aGVtZV9saXN0KHNlbGYpIC0+IE5vbmU6CiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChub3JtYWxpemVfaW5zaWdodF9jYXJkX3RoZW1lKCLotZvljZrmnIvlhYsiKSwgImN5YmVycHVuayIpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChub3JtYWxpemVfaW5zaWdodF9jYXJkX3RoZW1lKCIiLCAiZWRpdG9yaWFsIiksICJlZGl0b3JpYWwiKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwobGVuKGF2YWlsYWJsZV9pbnNpZ2h0X2NhcmRfdGhlbWVzKCkpLCA0KQogICAgICAgIHdpdGggc2VsZi5hc3NlcnRSYWlzZXNSZWdleChWYWx1ZUVycm9yLCAi5pyq55+l5rSe5a+f5Y2h54mH5Li76aKYIik6CiAgICAgICAgICAgIG5vcm1hbGl6ZV9pbnNpZ2h0X2NhcmRfdGhlbWUoInVua25vd24iKQoKICAgIGRlZiB0ZXN0X3Jlc29sdXRpb25fYWxpYXNlcyhzZWxmKSAtPiBOb25lOgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwobm9ybWFsaXplX2luc2lnaHRfY2FyZF9yZXNvbHV0aW9uKCLpq5jmuIXvvIjmjqjojZDvvIkiKSwgImhpZ2giKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwobm9ybWFsaXplX2luc2lnaHRfY2FyZF9yZXNvbHV0aW9uKCLotoXmuIUiKSwgInVsdHJhIikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKG5vcm1hbGl6ZV9pbnNpZ2h0X2NhcmRfcmVzb2x1dGlvbigiIiwgInN0YW5kYXJkIiksICJzdGFuZGFyZCIpCiAgICAgICAgd2l0aCBzZWxmLmFzc2VydFJhaXNlc1JlZ2V4KFZhbHVlRXJyb3IsICLmnKrnn6XmtJ7lr5/ljaHniYfmuIXmmbDluqYiKToKICAgICAgICAgICAgbm9ybWFsaXplX2luc2lnaHRfY2FyZF9yZXNvbHV0aW9uKCJ1bmtub3duIikKCiAgICBkZWYgdGVzdF9leHBsb3JhdG9yeV9wYXlsb2FkX2lzX2JvdW5kZWRfYW5kX2tlZXBzX3RleHRfYXNfZGF0YShzZWxmKSAtPiBOb25lOgogICAgICAgIHNuYXBzaG90ID0gZXhwbG9yYXRvcnlfc25hcHNob3QoKQogICAgICAgIHNuYXBzaG90WyJyZXBvcnQiXVsiZXhhbXBsZXMiXSAqPSAxMAoKICAgICAgICBwYXlsb2FkID0gYnVpbGRfaW5zaWdodF9jYXJkX3BheWxvYWQoCiAgICAgICAgICAgIHNuYXBzaG90LAogICAgICAgICAgICBUSEVNRVNbInRlcm1pbmFsIl0sCiAgICAgICAgICAgIGV4YW1wbGVfbGltaXQ9MywKICAgICAgICApCgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocGF5bG9hZFsibW9kZSJdLCAiZXhwbG9yYXRvcnkiKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocGF5bG9hZFsicHJpbWFyeV92YWx1ZSJdLCA1MDApCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChsZW4ocGF5bG9hZFsiZXhhbXBsZXMiXSksIDMpCiAgICAgICAgc2VsZi5hc3NlcnRJbigiPHNjcmlwdD4iLCBwYXlsb2FkWyJleGFtcGxlcyJdWzBdWyJjb250ZW50Il0pCiAgICAgICAgc2VsZi5hc3NlcnRJbigie3sgaXRlbS5jb250ZW50IHwgZSB9fSIsIElOU0lHSFRfQ0FSRF9URU1QTEFURSkKICAgICAgICBzZWxmLmFzc2VydEluKCJldmlkZW5jZSIsIHBheWxvYWQpCiAgICAgICAgc2VsZi5hc3NlcnROb3RJbigiam9iX2lkIiwgcGF5bG9hZCkKICAgICAgICBzZWxmLmFzc2VydE5vdEluKCJjb3VudGluZ19ub3RlIiwgcGF5bG9hZCkKICAgICAgICBzZWxmLmFzc2VydE5vdEluKCJ7eyBqb2JfaWQiLCBJTlNJR0hUX0NBUkRfVEVNUExBVEUpCiAgICAgICAgc2VsZi5hc3NlcnROb3RJbigie3sgY291bnRpbmdfbm90ZSIsIElOU0lHSFRfQ0FSRF9URU1QTEFURSkKICAgICAgICBqc29uLmR1bXBzKHBheWxvYWQsIGVuc3VyZV9hc2NpaT1GYWxzZSkKCiAgICBkZWYgdGVzdF9kaXJlY3RlZF9wYXlsb2FkX3VzZXNfbWF0Y2hfc3RhdGlzdGljcyhzZWxmKSAtPiBOb25lOgogICAgICAgIHNuYXBzaG90ID0gewogICAgICAgICAgICAic3RhdGUiOiAiY29tcGxldGUiLAogICAgICAgICAgICAiZmlsdGVycyI6IHt9LAogICAgICAgICAgICAicmVwb3J0IjogewogICAgICAgICAgICAgICAgImNyaXRlcmlhIjogewogICAgICAgICAgICAgICAgICAgICJ0b3BpYyI6ICLlkJDmp73ku7fmoLwiLAogICAgICAgICAgICAgICAgICAgICJrZXl3b3JkcyI6IFsi6LS1Il0sCiAgICAgICAgICAgICAgICAgICAgImVtb2ppX3Rva2VucyI6IFtdLAogICAgICAgICAgICAgICAgfSwKICAgICAgICAgICAgICAgICJ0b3RhbF9jb21tZW50cyI6IDEwMCwKICAgICAgICAgICAgICAgICJ1bmlxdWVfdXNlcnMiOiA4MCwKICAgICAgICAgICAgICAgICJ1bmlxdWVfcG9zdHMiOiAyLAogICAgICAgICAgICAgICAgImtleXdvcmRfbWF0Y2hlcyI6IDEyLAogICAgICAgICAgICAgICAgImVtb2ppX21hdGNoZXMiOiAwLAogICAgICAgICAgICAgICAgInNlbWFudGljX21hdGNoZXMiOiA4LAogICAgICAgICAgICAgICAgImRldGVybWluaXN0aWNfdW5pb24iOiAxMiwKICAgICAgICAgICAgICAgICJ1bmlvbl9tYXRjaGVzIjogMjAsCiAgICAgICAgICAgICAgICAidW5pb25fcGVyY2VudGFnZSI6IDIwLAogICAgICAgICAgICAgICAgInNlbWFudGljX2NvdmVyYWdlX3BlcmNlbnQiOiAxMDAsCiAgICAgICAgICAgICAgICAic2VtYW50aWNfY29tcGxldGUiOiBUcnVlLAogICAgICAgICAgICAgICAgImV4YW1wbGVzIjogW10sCiAgICAgICAgICAgIH0sCiAgICAgICAgfQoKICAgICAgICBwYXlsb2FkID0gYnVpbGRfaW5zaWdodF9jYXJkX3BheWxvYWQoc25hcHNob3QsIFRIRU1FU1siY29tbWFuZCJdKQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHBheWxvYWRbIm1vZGUiXSwgImRpcmVjdGVkIikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHBheWxvYWRbImhlYWRsaW5lIl0sICLlkJDmp73ku7fmoLwiKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocGF5bG9hZFsicHJpbWFyeV92YWx1ZSJdLCAyMCkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHBheWxvYWRbImNyaXRlcmlhIl1bMV1bInZhbHVlIl0sICIxIOS4qiIpCgogICAgYXN5bmMgZGVmIHRlc3RfcmVuZGVyZXJfY2FsbHNfYXN0cmJvdF9odG1sX3JlbmRlcl93aXRoX3BuZ19zZWxlY3RvcihzZWxmKSAtPiBOb25lOgogICAgICAgIHBsdWdpbiA9IEZha2VSZW5kZXJlclBsdWdpbigpCgogICAgICAgIHJlc3VsdCA9IGF3YWl0IEluc2lnaHRDYXJkUmVuZGVyZXIoKS5yZW5kZXIoCiAgICAgICAgICAgIHBsdWdpbiwKICAgICAgICAgICAgZXhwbG9yYXRvcnlfc25hcHNob3QoKSwKICAgICAgICAgICAgdGhlbWU9ImN5YmVycHVuayIsCiAgICAgICAgICAgIGV4YW1wbGVfbGltaXQ9NCwKICAgICAgICApCgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocmVzdWx0LnRoZW1lLCAiY3liZXJwdW5rIikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHJlc3VsdC5pbWFnZV91cmwsICJodHRwczovL3JlbmRlci5leGFtcGxlL2NhcmQucG5nIikKICAgICAgICBzZWxmLmFzc2VydFRydWUocGx1Z2luLmNhbGxzWzBdWyJyZXR1cm5fdXJsIl0pCiAgICAgICAgb3B0aW9ucyA9IHBsdWdpbi5jYWxsc1swXVsib3B0aW9ucyJdCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChvcHRpb25zWyJzZWxlY3RvciJdLCAiI2luc2lnaHQtY2FyZCIpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChvcHRpb25zWyJ0eXBlIl0sICJwbmciKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwob3B0aW9uc1sidmlld3BvcnRfd2lkdGgiXSwgMTI4MCkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKG9wdGlvbnNbInZpZXdwb3J0X2hlaWdodCJdLCA3MjApCiAgICAgICAgc2VsZi5hc3NlcnRUcnVlKG9wdGlvbnNbImZ1bGxfcGFnZSJdKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwob3B0aW9uc1sic2NhbGUiXSwgImRldmljZSIpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChvcHRpb25zWyJkZXZpY2Vfc2NhbGVfZmFjdG9yX2xldmVsIl0sICJoaWdoIikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKG9wdGlvbnNbIndhaXRfdW50aWwiXSwgImxvYWQiKQogICAgICAgIHNlbGYuYXNzZXJ0Tm90SW4oInZpZXdwb3J0Iiwgb3B0aW9ucykKCiAgICBhc3luYyBkZWYgdGVzdF9yZW5kZXJlcl91c2VzX3JlcXVlc3RlZF9yZXNvbHV0aW9uKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgcGx1Z2luID0gRmFrZVJlbmRlcmVyUGx1Z2luKCkKCiAgICAgICAgcmVzdWx0ID0gYXdhaXQgSW5zaWdodENhcmRSZW5kZXJlcigpLnJlbmRlcigKICAgICAgICAgICAgcGx1Z2luLAogICAgICAgICAgICBleHBsb3JhdG9yeV9zbmFwc2hvdCgpLAogICAgICAgICAgICByZXNvbHV0aW9uPSLotoXmuIUiLAogICAgICAgICkKCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChyZXN1bHQucmVzb2x1dGlvbiwgInVsdHJhIikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHBsdWdpbi5jYWxsc1swXVsib3B0aW9ucyJdWyJkZXZpY2Vfc2NhbGVfZmFjdG9yX2xldmVsIl0sICJ1bHRyYSIpCgogICAgYXN5bmMgZGVmIHRlc3RfcmVuZGVyZXJfcmVxdWlyZXNfY29tcGxldGVkX3JlcG9ydChzZWxmKSAtPiBOb25lOgogICAgICAgIHdpdGggc2VsZi5hc3NlcnRSYWlzZXNSZWdleChWYWx1ZUVycm9yLCAi5bCa5pyq5a6M5oiQIik6CiAgICAgICAgICAgIGF3YWl0IEluc2lnaHRDYXJkUmVuZGVyZXIoKS5yZW5kZXIoCiAgICAgICAgICAgICAgICBGYWtlUmVuZGVyZXJQbHVnaW4oKSwKICAgICAgICAgICAgICAgIHsic3RhdGUiOiAicnVubmluZyIsICJyZXBvcnQiOiB7fX0sCiAgICAgICAgICAgICkKCgppZiBfX25hbWVfXyA9PSAiX19tYWluX18iOgogICAgdW5pdHRlc3QubWFpbigpCg==
+from __future__ import annotations
+
+import json
+import unittest
+
+from astrbot_plugin_xhhrobot.insight_card import (
+    INSIGHT_CARD_TEMPLATE,
+    THEMES,
+    InsightCardRenderer,
+    available_insight_card_themes,
+    build_insight_card_payload,
+    normalize_insight_card_resolution,
+    normalize_insight_card_theme,
+)
+
+
+class FakeRendererPlugin:
+    def __init__(self) -> None:
+        self.calls: list[dict] = []
+
+    async def html_render(
+        self,
+        template: str,
+        data: dict,
+        *,
+        return_url: bool,
+        options: dict,
+    ) -> str:
+        self.calls.append(
+            {
+                "template": template,
+                "data": data,
+                "return_url": return_url,
+                "options": options,
+            }
+        )
+        return "https://render.example/card.png"
+
+
+def exploratory_snapshot() -> dict:
+    return {
+        "state": "complete",
+        "job_id": "job-123",
+        "filters": {"link_id": 187917301, "source": "own_post_comment"},
+        "report": {
+            "analysis_mode": "exploratory",
+            "provider_id": "provider/model",
+            "total_comments": 800,
+            "selected_comments": 500,
+            "analyzed_comments": 500,
+            "coverage_percent": 62.5,
+            "unique_users": 612,
+            "unique_posts": 1,
+            "sentiment_counts": {
+                "positive": 300,
+                "neutral": 130,
+                "negative": 50,
+                "mixed": 20,
+            },
+            "sentiment_percentages": {
+                "positive": 60,
+                "neutral": 26,
+                "negative": 10,
+                "mixed": 4,
+            },
+            "intent_counts": {"praise": 230, "question": 90, "joke": 80},
+            "summary": "整体偏正面，原图需求集中。",
+            "themes": [
+                {
+                    "label": "角色反馈",
+                    "count": 260,
+                    "percentage": 52,
+                    "description": "多数评论喜欢角色表现。",
+                }
+            ],
+            "top_questions": [
+                {"label": "原图来源", "count": 70, "percentage": 14}
+            ],
+            "top_suggestions": [
+                {"label": "发布原图", "count": 34, "percentage": 6.8}
+            ],
+            "controversies": ["少量用户认为压缩明显"],
+            "notable_findings": ["原图请求是最集中的需求"],
+            "evidence": {
+                "scope": {
+                    "archived": 800,
+                    "selected": 500,
+                    "analyzed": 500,
+                    "coverage_percent": 62.5,
+                },
+                "topics": [
+                    {
+                        "label": "角色反馈",
+                        "count": 260,
+                        "percentage": 52,
+                        "description": "多数评论喜欢角色表现。",
+                    }
+                ],
+            },
+            "examples": [
+                {
+                    "content": "<script>alert('x')</script> 这张很好看",
+                    "link_id": 187917301,
+                    "comment_id": 930158150,
+                    "sentiment": "positive",
+                    "intent": "praise",
+                    "summary": "称赞图片",
+                }
+            ],
+            "counting_note": "样本统计说明。",
+        },
+    }
+
+
+class InsightCardTests(unittest.IsolatedAsyncioTestCase):
+    def test_theme_aliases_and_public_theme_list(self) -> None:
+        self.assertEqual(normalize_insight_card_theme("赛博朋克"), "cyberpunk")
+        self.assertEqual(normalize_insight_card_theme("", "editorial"), "editorial")
+        self.assertEqual(len(available_insight_card_themes()), 4)
+        with self.assertRaisesRegex(ValueError, "未知洞察卡片主题"):
+            normalize_insight_card_theme("unknown")
+
+    def test_resolution_aliases(self) -> None:
+        self.assertEqual(normalize_insight_card_resolution("高清（推荐）"), "high")
+        self.assertEqual(normalize_insight_card_resolution("超清"), "ultra")
+        self.assertEqual(normalize_insight_card_resolution("", "standard"), "standard")
+        with self.assertRaisesRegex(ValueError, "未知洞察卡片清晰度"):
+            normalize_insight_card_resolution("unknown")
+
+    def test_exploratory_payload_is_bounded_and_keeps_text_as_data(self) -> None:
+        snapshot = exploratory_snapshot()
+        snapshot["report"]["examples"] *= 10
+
+        payload = build_insight_card_payload(
+            snapshot,
+            THEMES["terminal"],
+            example_limit=3,
+        )
+
+        self.assertEqual(payload["mode"], "exploratory")
+        self.assertEqual(payload["primary_value"], 500)
+        self.assertEqual(len(payload["examples"]), 3)
+        self.assertIn("<script>", payload["examples"][0]["content"])
+        self.assertIn("{{ item.content | e }}", INSIGHT_CARD_TEMPLATE)
+        self.assertIn("evidence", payload)
+        self.assertNotIn("job_id", payload)
+        self.assertNotIn("counting_note", payload)
+        self.assertNotIn("{{ job_id", INSIGHT_CARD_TEMPLATE)
+        self.assertNotIn("{{ counting_note", INSIGHT_CARD_TEMPLATE)
+        json.dumps(payload, ensure_ascii=False)
+
+    def test_directed_payload_uses_match_statistics(self) -> None:
+        snapshot = {
+            "state": "complete",
+            "filters": {},
+            "report": {
+                "criteria": {
+                    "topic": "吐槽价格",
+                    "keywords": ["贵"],
+                    "emoji_tokens": [],
+                },
+                "total_comments": 100,
+                "unique_users": 80,
+                "unique_posts": 2,
+                "keyword_matches": 12,
+                "emoji_matches": 0,
+                "semantic_matches": 8,
+                "deterministic_union": 12,
+                "union_matches": 20,
+                "union_percentage": 20,
+                "semantic_coverage_percent": 100,
+                "semantic_complete": True,
+                "examples": [],
+            },
+        }
+
+        payload = build_insight_card_payload(snapshot, THEMES["command"])
+
+        self.assertEqual(payload["mode"], "directed")
+        self.assertEqual(payload["headline"], "吐槽价格")
+        self.assertEqual(payload["primary_value"], 20)
+        self.assertEqual(payload["criteria"][1]["value"], "1 个")
+
+    async def test_renderer_calls_astrbot_html_render_with_png_selector(self) -> None:
+        plugin = FakeRendererPlugin()
+
+        result = await InsightCardRenderer().render(
+            plugin,
+            exploratory_snapshot(),
+            theme="cyberpunk",
+            example_limit=4,
+        )
+
+        self.assertEqual(result.theme, "cyberpunk")
+        self.assertEqual(result.image_url, "https://render.example/card.png")
+        self.assertTrue(plugin.calls[0]["return_url"])
+        options = plugin.calls[0]["options"]
+        self.assertEqual(options["selector"], "#insight-card")
+        self.assertEqual(options["type"], "png")
+        self.assertEqual(options["viewport_width"], 1280)
+        self.assertEqual(options["viewport_height"], 720)
+        self.assertTrue(options["full_page"])
+        self.assertEqual(options["scale"], "device")
+        self.assertEqual(options["device_scale_factor_level"], "high")
+        self.assertEqual(options["wait_until"], "load")
+        self.assertNotIn("viewport", options)
+
+    async def test_renderer_uses_requested_resolution(self) -> None:
+        plugin = FakeRendererPlugin()
+
+        result = await InsightCardRenderer().render(
+            plugin,
+            exploratory_snapshot(),
+            resolution="超清",
+        )
+
+        self.assertEqual(result.resolution, "ultra")
+        self.assertEqual(plugin.calls[0]["options"]["device_scale_factor_level"], "ultra")
+
+    async def test_renderer_requires_completed_report(self) -> None:
+        with self.assertRaisesRegex(ValueError, "尚未完成"):
+            await InsightCardRenderer().render(
+                FakeRendererPlugin(),
+                {"state": "running", "report": {}},
+            )
+
+
+if __name__ == "__main__":
+    unittest.main()

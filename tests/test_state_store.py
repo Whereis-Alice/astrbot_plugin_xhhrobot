@@ -1,1 +1,355 @@
-ZnJvbSBfX2Z1dHVyZV9fIGltcG9ydCBhbm5vdGF0aW9ucwoKaW1wb3J0IGFzeW5jaW8KaW1wb3J0IGNvcHkKaW1wb3J0IHVuaXR0ZXN0Cgpmcm9tIGFzdHJib3RfcGx1Z2luX3hoaHJvYm90Lm1vZGVscyBpbXBvcnQgTWVudGlvbgpmcm9tIGFzdHJib3RfcGx1Z2luX3hoaHJvYm90LnN0YXRlX3N0b3JlIGltcG9ydCBTdGF0ZVN0b3JlCgoKY2xhc3MgTWVtb3J5QmFja2VuZDoKICAgIGRlZiBfX2luaXRfXyhzZWxmKSAtPiBOb25lOgogICAgICAgIHNlbGYudmFsdWVzOiBkaWN0W3N0ciwgb2JqZWN0XSA9IHt9CgogICAgYXN5bmMgZGVmIGxvYWQoc2VsZiwga2V5OiBzdHIsIGRlZmF1bHQ6IG9iamVjdCkgLT4gb2JqZWN0OgogICAgICAgIHJldHVybiBjb3B5LmRlZXBjb3B5KHNlbGYudmFsdWVzLmdldChrZXksIGRlZmF1bHQpKQoKICAgIGFzeW5jIGRlZiBzYXZlKHNlbGYsIGtleTogc3RyLCB2YWx1ZTogb2JqZWN0KSAtPiBOb25lOgogICAgICAgIHNlbGYudmFsdWVzW2tleV0gPSBjb3B5LmRlZXBjb3B5KHZhbHVlKQoKCmNsYXNzIFN0YXRlU3RvcmVUZXN0cyh1bml0dGVzdC5Jc29sYXRlZEFzeW5jaW9UZXN0Q2FzZSk6CiAgICBhc3luYyBkZWYgYXN5bmNTZXRVcChzZWxmKSAtPiBOb25lOgogICAgICAgIHNlbGYuYmFja2VuZCA9IE1lbW9yeUJhY2tlbmQoKQogICAgICAgIHNlbGYuc3RvcmUgPSBTdGF0ZVN0b3JlKAogICAgICAgICAgICBsb2FkX3ZhbHVlPXNlbGYuYmFja2VuZC5sb2FkLCBzYXZlX3ZhbHVlPXNlbGYuYmFja2VuZC5zYXZlCiAgICAgICAgKQogICAgICAgIGF3YWl0IHNlbGYuc3RvcmUuaW5pdGlhbGl6ZSgpCiAgICAgICAgc2VsZi5tZW50aW9uID0gTWVudGlvbigKICAgICAgICAgICAgbWVzc2FnZV9pZD0xMDEsCiAgICAgICAgICAgIGNvbW1lbnRfaWQ9MjAyLAogICAgICAgICAgICByb290X2NvbW1lbnRfaWQ9MjAwLAogICAgICAgICAgICBsaW5rX2lkPTMwMywKICAgICAgICAgICAgdXNlcl9pZD00MDQsCiAgICAgICAgICAgIGNvbW1lbnRfdGV4dD0iQGJvdCDkvaDlpb0iLAogICAgICAgICkKCiAgICBhc3luYyBkZWYgdGVzdF9pbmdlc3RfZGVkdXBsaWNhdGVzX2FuZF9jb21wbGV0ZXMoc2VsZikgLT4gTm9uZToKICAgICAgICBjb3VudHMgPSBhd2FpdCBzZWxmLnN0b3JlLmluZ2VzdCgKICAgICAgICAgICAgbmV3ZXN0X21lc3NhZ2VfaWQ9MTAxLCBxdWV1ZWQ9W3NlbGYubWVudGlvbl0sIGlnbm9yZWQ9W10KICAgICAgICApCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChjb3VudHMsICgxLCAwLCBbXSkpCiAgICAgICAgY291bnRzID0gYXdhaXQgc2VsZi5zdG9yZS5pbmdlc3QoCiAgICAgICAgICAgIG5ld2VzdF9tZXNzYWdlX2lkPTEwMSwgcXVldWVkPVtzZWxmLm1lbnRpb25dLCBpZ25vcmVkPVtdCiAgICAgICAgKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoY291bnRzLCAoMCwgMCwgW10pKQoKICAgICAgICBkdWUgPSBhd2FpdCBzZWxmLnN0b3JlLmR1ZV9pdGVtcyhsaW1pdD0xMCkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGR1ZSwgW3NlbGYubWVudGlvbl0pCiAgICAgICAgYXdhaXQgc2VsZi5zdG9yZS5tYXJrX2RvbmUoMTAxLCAi5L2g5aW95ZGAIikKCiAgICAgICAgc25hcHNob3QgPSBhd2FpdCBzZWxmLnN0b3JlLnNuYXBzaG90KCkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHNuYXBzaG90WyJxdWV1ZSJdLCB7fSkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHNuYXBzaG90WyJzdGF0cyJdWyJyZXBsaWVkIl0sIDEpCiAgICAgICAgaGlzdG9yeSA9IGF3YWl0IHNlbGYuc3RvcmUuY29udmVyc2F0aW9uX2hpc3RvcnkoCiAgICAgICAgICAgIGxpbmtfaWQ9MzAzLCB1c2VyX2lkPTQwNCwgdHVybnM9MwogICAgICAgICkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGhpc3RvcnksIFt7InVzZXIiOiAiQGJvdCDkvaDlpb0iLCAiYXNzaXN0YW50IjogIuS9oOWlveWRgCJ9XSkKCiAgICBhc3luYyBkZWYgdGVzdF9zZW5kaW5nX3JlY29yZF9yZWNvdmVyc19hc191bmNlcnRhaW4oc2VsZikgLT4gTm9uZToKICAgICAgICBhd2FpdCBzZWxmLnN0b3JlLmluZ2VzdCgKICAgICAgICAgICAgbmV3ZXN0X21lc3NhZ2VfaWQ9MTAxLCBxdWV1ZWQ9W3NlbGYubWVudGlvbl0sIGlnbm9yZWQ9W10KICAgICAgICApCiAgICAgICAgYXdhaXQgc2VsZi5zdG9yZS5tYXJrX3NlbmRpbmcoMTAxKQoKICAgICAgICByZWNvdmVyZWQgPSBTdGF0ZVN0b3JlKAogICAgICAgICAgICBsb2FkX3ZhbHVlPXNlbGYuYmFja2VuZC5sb2FkLCBzYXZlX3ZhbHVlPXNlbGYuYmFja2VuZC5zYXZlCiAgICAgICAgKQogICAgICAgIGF3YWl0IHJlY292ZXJlZC5pbml0aWFsaXplKCkKICAgICAgICBzbmFwc2hvdCA9IGF3YWl0IHJlY292ZXJlZC5zbmFwc2hvdCgpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzbmFwc2hvdFsicXVldWUiXSwge30pCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzbmFwc2hvdFsiZGVhZCJdWyIxMDEiXVsicmVhc29uIl0sICJ1bmNlcnRhaW5fZGVsaXZlcnkiKQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGF3YWl0IHJlY292ZXJlZC5yZXRyeV9kZWFkKGluY2x1ZGVfdW5jZXJ0YWluPUZhbHNlKSwgMCkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGF3YWl0IHJlY292ZXJlZC5yZXRyeV9kZWFkKGluY2x1ZGVfdW5jZXJ0YWluPVRydWUpLCAxKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwobGVuKGF3YWl0IHJlY292ZXJlZC5kdWVfaXRlbXMobGltaXQ9MTApKSwgMSkKCiAgICBhc3luYyBkZWYgdGVzdF9kaXNwYXRjaF9hbmRfZGVsaXZlcnlfY2xhaW1zX2FyZV9hdG9taWMoc2VsZikgLT4gTm9uZToKICAgICAgICBhd2FpdCBzZWxmLnN0b3JlLmluZ2VzdCgKICAgICAgICAgICAgbmV3ZXN0X21lc3NhZ2VfaWQ9MTAxLCBxdWV1ZWQ9W3NlbGYubWVudGlvbl0sIGlnbm9yZWQ9W10KICAgICAgICApCgogICAgICAgIGNsYWltcyA9IGF3YWl0IGFzeW5jaW8uZ2F0aGVyKAogICAgICAgICAgICBzZWxmLnN0b3JlLm1hcmtfZGlzcGF0Y2hlZCgxMDEpLAogICAgICAgICAgICBzZWxmLnN0b3JlLm1hcmtfZGlzcGF0Y2hlZCgxMDEpLAogICAgICAgICkKCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzdW0oY2xhaW1zKSwgMSkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGF3YWl0IHNlbGYuc3RvcmUuaXRlbV9zdGF0dXMoMTAxKSwgImRpc3BhdGNoZWQiKQogICAgICAgIHNlbGYuYXNzZXJ0VHJ1ZShhd2FpdCBzZWxmLnN0b3JlLm1hcmtfc2VuZGluZygxMDEpKQogICAgICAgIHNlbGYuYXNzZXJ0RmFsc2UoYXdhaXQgc2VsZi5zdG9yZS5tYXJrX3NlbmRpbmcoMTAxKSkKCiAgICBhc3luYyBkZWYgdGVzdF9yZXRyeV9leGhhdXN0aW9uX21vdmVzX3RvX2RlYWRfcXVldWUoc2VsZikgLT4gTm9uZToKICAgICAgICBhd2FpdCBzZWxmLnN0b3JlLmluZ2VzdCgKICAgICAgICAgICAgbmV3ZXN0X21lc3NhZ2VfaWQ9MTAxLCBxdWV1ZWQ9W3NlbGYubWVudGlvbl0sIGlnbm9yZWQ9W10KICAgICAgICApCiAgICAgICAgcGVuZGluZyA9IGF3YWl0IHNlbGYuc3RvcmUubWFya19yZXRyeSgKICAgICAgICAgICAgMTAxLCAiZmFpbHVyZSIsIG1heF9hdHRlbXB0cz0xLCBkZWxheV9zZWNvbmRzPTAKICAgICAgICApCiAgICAgICAgc2VsZi5hc3NlcnRGYWxzZShwZW5kaW5nKQogICAgICAgIHNuYXBzaG90ID0gYXdhaXQgc2VsZi5zdG9yZS5zbmFwc2hvdCgpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzbmFwc2hvdFsiZGVhZCJdWyIxMDEiXVsicmVhc29uIl0sICJyZXRyeV9leGhhdXN0ZWQiKQoKICAgIGFzeW5jIGRlZiB0ZXN0X292ZXJsYXBwaW5nX2NvbW1lbnRfbm90aWZpY2F0aW9uX2lzX3Byb21vdGVkX3RvX21lbnRpb24oCiAgICAgICAgc2VsZiwKICAgICkgLT4gTm9uZToKICAgICAgICBvcmRpbmFyeSA9IE1lbnRpb24oCiAgICAgICAgICAgIG1lc3NhZ2VfaWQ9MTAyLAogICAgICAgICAgICBjb21tZW50X2lkPXNlbGYubWVudGlvbi5jb21tZW50X2lkLAogICAgICAgICAgICByb290X2NvbW1lbnRfaWQ9c2VsZi5tZW50aW9uLnJvb3RfY29tbWVudF9pZCwKICAgICAgICAgICAgbGlua19pZD1zZWxmLm1lbnRpb24ubGlua19pZCwKICAgICAgICAgICAgdXNlcl9pZD1zZWxmLm1lbnRpb24udXNlcl9pZCwKICAgICAgICAgICAgY29tbWVudF90ZXh0PSLmma7pgJror4TorrrlhaXlj6MiLAogICAgICAgICAgICBzb3VyY2U9Im93bl9wb3N0X2NvbW1lbnQiLAogICAgICAgICkKICAgICAgICBhd2FpdCBzZWxmLnN0b3JlLmluZ2VzdCgKICAgICAgICAgICAgbmV3ZXN0X21lc3NhZ2VfaWQ9MTAyLAogICAgICAgICAgICBxdWV1ZWQ9W29yZGluYXJ5XSwKICAgICAgICAgICAgaWdub3JlZD1bXSwKICAgICAgICAgICAgc291cmNlPSJvd25fcG9zdF9jb21tZW50IiwKICAgICAgICApCiAgICAgICAgY291bnRzID0gYXdhaXQgc2VsZi5zdG9yZS5pbmdlc3QoCiAgICAgICAgICAgIG5ld2VzdF9tZXNzYWdlX2lkPTEwMSwKICAgICAgICAgICAgcXVldWVkPVtzZWxmLm1lbnRpb25dLAogICAgICAgICAgICBpZ25vcmVkPVtdLAogICAgICAgICAgICBzb3VyY2U9Im1lbnRpb24iLAogICAgICAgICkKCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChjb3VudHMsICgwLCAwLCBbXSkpCiAgICAgICAgZHVlID0gYXdhaXQgc2VsZi5zdG9yZS5kdWVfaXRlbXMobGltaXQ9MTApCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChsZW4oZHVlKSwgMSkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGR1ZVswXS5tZXNzYWdlX2lkLCAxMDIpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChkdWVbMF0uc291cmNlLCAibWVudGlvbiIpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChkdWVbMF0uY29tbWVudF90ZXh0LCBzZWxmLm1lbnRpb24uY29tbWVudF90ZXh0KQoKICAgIGFzeW5jIGRlZiB0ZXN0X3JlcGxpZWRfdGFyZ2V0X2Jsb2Nrc19kdXBsaWNhdGVfbWVzc2FnZV9pZChzZWxmKSAtPiBOb25lOgogICAgICAgIGF3YWl0IHNlbGYuc3RvcmUuaW5nZXN0KAogICAgICAgICAgICBuZXdlc3RfbWVzc2FnZV9pZD0xMDEsIHF1ZXVlZD1bc2VsZi5tZW50aW9uXSwgaWdub3JlZD1bXQogICAgICAgICkKICAgICAgICBhd2FpdCBzZWxmLnN0b3JlLm1hcmtfZG9uZSgxMDEsICLlt7Llm57lpI0iKQogICAgICAgIGR1cGxpY2F0ZSA9IE1lbnRpb24oCiAgICAgICAgICAgIG1lc3NhZ2VfaWQ9OTk5LAogICAgICAgICAgICBjb21tZW50X2lkPXNlbGYubWVudGlvbi5jb21tZW50X2lkLAogICAgICAgICAgICByb290X2NvbW1lbnRfaWQ9c2VsZi5tZW50aW9uLnJvb3RfY29tbWVudF9pZCwKICAgICAgICAgICAgbGlua19pZD1zZWxmLm1lbnRpb24ubGlua19pZCwKICAgICAgICAgICAgdXNlcl9pZD1zZWxmLm1lbnRpb24udXNlcl9pZCwKICAgICAgICAgICAgY29tbWVudF90ZXh0PSLlkIzkuIDmnaHor4TorrrnmoTlj6bkuIDmnaHpgJrnn6UiLAogICAgICAgICAgICBzb3VyY2U9Im93bl9wb3N0X2NvbW1lbnQiLAogICAgICAgICkKCiAgICAgICAgY291bnRzID0gYXdhaXQgc2VsZi5zdG9yZS5pbmdlc3QoCiAgICAgICAgICAgIG5ld2VzdF9tZXNzYWdlX2lkPTk5OSwKICAgICAgICAgICAgcXVldWVkPVtkdXBsaWNhdGVdLAogICAgICAgICAgICBpZ25vcmVkPVtdLAogICAgICAgICAgICBzb3VyY2U9Im93bl9wb3N0X2NvbW1lbnQiLAogICAgICAgICkKCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChjb3VudHMsICgwLCAwLCBbXSkpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChhd2FpdCBzZWxmLnN0b3JlLmR1ZV9pdGVtcyhsaW1pdD0xMCksIFtdKQoKICAgIGFzeW5jIGRlZiB0ZXN0X293bl9wb3N0X29ic2VydmF0aW9uX2FwcGxpZXNfbGltaXRfdG9fcXVldWVkX21lbnRpb24oc2VsZikgLT4gTm9uZToKICAgICAgICBhd2FpdCBzZWxmLnN0b3JlLnNlZWRfb3duX3Bvc3RfcmVwbHlfY291bnRzKHtzZWxmLm1lbnRpb24ubGlua19pZDogMX0pCiAgICAgICAgYXdhaXQgc2VsZi5zdG9yZS5pbmdlc3QoCiAgICAgICAgICAgIG5ld2VzdF9tZXNzYWdlX2lkPXNlbGYubWVudGlvbi5tZXNzYWdlX2lkLAogICAgICAgICAgICBxdWV1ZWQ9W3NlbGYubWVudGlvbl0sCiAgICAgICAgICAgIGlnbm9yZWQ9W10sCiAgICAgICAgICAgIHNvdXJjZT0ibWVudGlvbiIsCiAgICAgICAgICAgIG1heF9vd25fcG9zdF9yZXBsaWVzX3Blcl9wb3N0PTEsCiAgICAgICAgKQogICAgICAgIG9yZGluYXJ5ID0gTWVudGlvbigKICAgICAgICAgICAgbWVzc2FnZV9pZD0xMDIsCiAgICAgICAgICAgIGNvbW1lbnRfaWQ9c2VsZi5tZW50aW9uLmNvbW1lbnRfaWQsCiAgICAgICAgICAgIHJvb3RfY29tbWVudF9pZD1zZWxmLm1lbnRpb24ucm9vdF9jb21tZW50X2lkLAogICAgICAgICAgICBsaW5rX2lkPXNlbGYubWVudGlvbi5saW5rX2lkLAogICAgICAgICAgICB1c2VyX2lkPXNlbGYubWVudGlvbi51c2VyX2lkLAogICAgICAgICAgICBjb21tZW50X3RleHQ9IuWQjOS4gOivhOiuuueahOiHquW3seW4luWtkOmAmuefpSIsCiAgICAgICAgICAgIHNvdXJjZT0ib3duX3Bvc3RfY29tbWVudCIsCiAgICAgICAgKQoKICAgICAgICBxdWV1ZWQsIGlnbm9yZWQsIHNraXBwZWQgPSBhd2FpdCBzZWxmLnN0b3JlLmluZ2VzdCgKICAgICAgICAgICAgbmV3ZXN0X21lc3NhZ2VfaWQ9MTAyLAogICAgICAgICAgICBxdWV1ZWQ9W29yZGluYXJ5XSwKICAgICAgICAgICAgaWdub3JlZD1bXSwKICAgICAgICAgICAgc291cmNlPSJvd25fcG9zdF9jb21tZW50IiwKICAgICAgICAgICAgbWF4X293bl9wb3N0X3JlcGxpZXNfcGVyX3Bvc3Q9MSwKICAgICAgICApCgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoKHF1ZXVlZCwgaWdub3JlZCksICgwLCAwKSkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKFtpdGVtLm1lc3NhZ2VfaWQgZm9yIGl0ZW0gaW4gc2tpcHBlZF0sIFsxMDJdKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoYXdhaXQgc2VsZi5zdG9yZS5kdWVfaXRlbXMobGltaXQ9MTApLCBbXSkKCiAgICBhc3luYyBkZWYgdGVzdF9vd25fcG9zdF9yZXBseV9saW1pdF9yZXNlcnZlc19hbmRfcGVyc2lzdHNfY2FwYWNpdHkoc2VsZikgLT4gTm9uZToKICAgICAgICBjb21tZW50cyA9IFsKICAgICAgICAgICAgTWVudGlvbigKICAgICAgICAgICAgICAgIG1lc3NhZ2VfaWQ9MjAwICsgaW5kZXgsCiAgICAgICAgICAgICAgICBjb21tZW50X2lkPTMwMCArIGluZGV4LAogICAgICAgICAgICAgICAgcm9vdF9jb21tZW50X2lkPTMwMCArIGluZGV4LAogICAgICAgICAgICAgICAgbGlua19pZD01MDAsCiAgICAgICAgICAgICAgICB1c2VyX2lkPTYwMCArIGluZGV4LAogICAgICAgICAgICAgICAgY29tbWVudF90ZXh0PWYi6K+E6K66IHtpbmRleH0iLAogICAgICAgICAgICAgICAgc291cmNlPSJvd25fcG9zdF9jb21tZW50IiwKICAgICAgICAgICAgKQogICAgICAgICAgICBmb3IgaW5kZXggaW4gcmFuZ2UoMykKICAgICAgICBdCgogICAgICAgIHF1ZXVlZCwgaWdub3JlZCwgc2tpcHBlZCA9IGF3YWl0IHNlbGYuc3RvcmUuaW5nZXN0KAogICAgICAgICAgICBuZXdlc3RfbWVzc2FnZV9pZD0yMDIsCiAgICAgICAgICAgIHF1ZXVlZD1jb21tZW50cywKICAgICAgICAgICAgaWdub3JlZD1bXSwKICAgICAgICAgICAgc291cmNlPSJvd25fcG9zdF9jb21tZW50IiwKICAgICAgICAgICAgbWF4X293bl9wb3N0X3JlcGxpZXNfcGVyX3Bvc3Q9MiwKICAgICAgICApCgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoKHF1ZXVlZCwgaWdub3JlZCksICgyLCAwKSkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKFtpdGVtLm1lc3NhZ2VfaWQgZm9yIGl0ZW0gaW4gc2tpcHBlZF0sIFsyMDJdKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwobGVuKGF3YWl0IHNlbGYuc3RvcmUuZHVlX2l0ZW1zKGxpbWl0PTEwKSksIDIpCiAgICAgICAgYXdhaXQgc2VsZi5zdG9yZS5tYXJrX3NlbmRpbmcoCiAgICAgICAgICAgIDIwMCwKICAgICAgICAgICAgbWF4X293bl9wb3N0X3JlcGxpZXNfcGVyX3Bvc3Q9MiwKICAgICAgICApCiAgICAgICAgYXdhaXQgc2VsZi5zdG9yZS5tYXJrX2RvbmUoMjAwLCAi5Zue5aSNIDAiKQogICAgICAgIHNuYXBzaG90ID0gYXdhaXQgc2VsZi5zdG9yZS5zbmFwc2hvdCgpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzbmFwc2hvdFsib3duX3Bvc3RfcmVwbHlfY291bnRzIl0sIHsiNTAwIjogMX0pCgogICAgICAgIGZvdXJ0aCA9IE1lbnRpb24oCiAgICAgICAgICAgIG1lc3NhZ2VfaWQ9MjAzLAogICAgICAgICAgICBjb21tZW50X2lkPTMwMywKICAgICAgICAgICAgcm9vdF9jb21tZW50X2lkPTMwMywKICAgICAgICAgICAgbGlua19pZD01MDAsCiAgICAgICAgICAgIHVzZXJfaWQ9NjAzLAogICAgICAgICAgICBjb21tZW50X3RleHQ9IuivhOiuuiAzIiwKICAgICAgICAgICAgc291cmNlPSJvd25fcG9zdF9jb21tZW50IiwKICAgICAgICApCiAgICAgICAgcXVldWVkLCBpZ25vcmVkLCBza2lwcGVkID0gYXdhaXQgc2VsZi5zdG9yZS5pbmdlc3QoCiAgICAgICAgICAgIG5ld2VzdF9tZXNzYWdlX2lkPTIwMywKICAgICAgICAgICAgcXVldWVkPVtmb3VydGhdLAogICAgICAgICAgICBpZ25vcmVkPVtdLAogICAgICAgICAgICBzb3VyY2U9Im93bl9wb3N0X2NvbW1lbnQiLAogICAgICAgICAgICBtYXhfb3duX3Bvc3RfcmVwbGllc19wZXJfcG9zdD0yLAogICAgICAgICkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKChxdWV1ZWQsIGlnbm9yZWQpLCAoMCwgMCkpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChbaXRlbS5tZXNzYWdlX2lkIGZvciBpdGVtIGluIHNraXBwZWRdLCBbMjAzXSkKCiAgICBhc3luYyBkZWYgdGVzdF9saW1pdF9lbmZvcmNlbWVudF9jYW5jZWxzX2V4Y2Vzc19idXRfcHJlc2VydmVzX3NlbmRpbmcoc2VsZikgLT4gTm9uZToKICAgICAgICBjb21tZW50cyA9IFsKICAgICAgICAgICAgTWVudGlvbigKICAgICAgICAgICAgICAgIG1lc3NhZ2VfaWQ9MzAwICsgaW5kZXgsCiAgICAgICAgICAgICAgICBjb21tZW50X2lkPTQwMCArIGluZGV4LAogICAgICAgICAgICAgICAgcm9vdF9jb21tZW50X2lkPTQwMCArIGluZGV4LAogICAgICAgICAgICAgICAgbGlua19pZD03MDAsCiAgICAgICAgICAgICAgICB1c2VyX2lkPTgwMCArIGluZGV4LAogICAgICAgICAgICAgICAgY29tbWVudF90ZXh0PWYi56ev5Y6LIHtpbmRleH0iLAogICAgICAgICAgICAgICAgc291cmNlPSJvd25fcG9zdF9jb21tZW50IiwKICAgICAgICAgICAgKQogICAgICAgICAgICBmb3IgaW5kZXggaW4gcmFuZ2UoMykKICAgICAgICBdCiAgICAgICAgYXdhaXQgc2VsZi5zdG9yZS5pbmdlc3QoCiAgICAgICAgICAgIG5ld2VzdF9tZXNzYWdlX2lkPTMwMiwKICAgICAgICAgICAgcXVldWVkPWNvbW1lbnRzLAogICAgICAgICAgICBpZ25vcmVkPVtdLAogICAgICAgICAgICBzb3VyY2U9Im93bl9wb3N0X2NvbW1lbnQiLAogICAgICAgICkKICAgICAgICBhd2FpdCBzZWxmLnN0b3JlLm1hcmtfc2VuZGluZygzMDApCiAgICAgICAgc2tpcHBlZCA9IGF3YWl0IHNlbGYuc3RvcmUuZW5mb3JjZV9vd25fcG9zdF9yZXBseV9saW1pdCgxKQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHtpdGVtLm1lc3NhZ2VfaWQgZm9yIGl0ZW0gaW4gc2tpcHBlZH0sIHszMDEsIDMwMn0pCiAgICAgICAgc25hcHNob3QgPSBhd2FpdCBzZWxmLnN0b3JlLnNuYXBzaG90KCkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHNldChzbmFwc2hvdFsicXVldWUiXSksIHsiMzAwIn0pCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzbmFwc2hvdFsicXVldWUiXVsiMzAwIl1bInN0YXR1cyJdLCAic2VuZGluZyIpCgogICAgYXN5bmMgZGVmIHRlc3RfY2FuY2VsX3F1ZXVlX2Nhbl90YXJnZXRfb25lX3Bvc3RfYW5kX3ByZXNlcnZlc19zZW5kaW5nKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgZmlyc3QgPSBNZW50aW9uKAogICAgICAgICAgICBtZXNzYWdlX2lkPTQwMSwKICAgICAgICAgICAgY29tbWVudF9pZD01MDEsCiAgICAgICAgICAgIHJvb3RfY29tbWVudF9pZD01MDEsCiAgICAgICAgICAgIGxpbmtfaWQ9ODAxLAogICAgICAgICAgICB1c2VyX2lkPTkwMSwKICAgICAgICAgICAgY29tbWVudF90ZXh0PSLluJblrZDkuIDlvoXlpITnkIYiLAogICAgICAgICAgICBzb3VyY2U9Im93bl9wb3N0X2NvbW1lbnQiLAogICAgICAgICkKICAgICAgICBzZW5kaW5nID0gTWVudGlvbigKICAgICAgICAgICAgbWVzc2FnZV9pZD00MDIsCiAgICAgICAgICAgIGNvbW1lbnRfaWQ9NTAyLAogICAgICAgICAgICByb290X2NvbW1lbnRfaWQ9NTAyLAogICAgICAgICAgICBsaW5rX2lkPTgwMSwKICAgICAgICAgICAgdXNlcl9pZD05MDIsCiAgICAgICAgICAgIGNvbW1lbnRfdGV4dD0i5biW5a2Q5LiA5Y+R6YCB5LitIiwKICAgICAgICAgICAgc291cmNlPSJvd25fcG9zdF9jb21tZW50IiwKICAgICAgICApCiAgICAgICAgb3RoZXIgPSBNZW50aW9uKAogICAgICAgICAgICBtZXNzYWdlX2lkPTQwMywKICAgICAgICAgICAgY29tbWVudF9pZD01MDMsCiAgICAgICAgICAgIHJvb3RfY29tbWVudF9pZD01MDMsCiAgICAgICAgICAgIGxpbmtfaWQ9ODAyLAogICAgICAgICAgICB1c2VyX2lkPTkwMywKICAgICAgICAgICAgY29tbWVudF90ZXh0PSLluJblrZDkuowiLAogICAgICAgICAgICBzb3VyY2U9Im93bl9wb3N0X2NvbW1lbnQiLAogICAgICAgICkKICAgICAgICBhd2FpdCBzZWxmLnN0b3JlLmluZ2VzdCgKICAgICAgICAgICAgbmV3ZXN0X21lc3NhZ2VfaWQ9NDAzLAogICAgICAgICAgICBxdWV1ZWQ9W2ZpcnN0LCBzZW5kaW5nLCBvdGhlcl0sCiAgICAgICAgICAgIGlnbm9yZWQ9W10sCiAgICAgICAgICAgIHNvdXJjZT0ib3duX3Bvc3RfY29tbWVudCIsCiAgICAgICAgKQogICAgICAgIGF3YWl0IHNlbGYuc3RvcmUubWFya19zZW5kaW5nKDQwMikKCiAgICAgICAgY2FuY2VsbGVkLCByZXN1bHQgPSBhd2FpdCBzZWxmLnN0b3JlLmNhbmNlbF9xdWV1ZShsaW5rX2lkPTgwMSkKCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChbaXRlbS5tZXNzYWdlX2lkIGZvciBpdGVtIGluIGNhbmNlbGxlZF0sIFs0MDFdKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocmVzdWx0WyJjYW5jZWxsZWRfdG90YWwiXSwgMSkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHJlc3VsdFsic2VuZGluZ19wcmVzZXJ2ZWQiXSwgMSkKICAgICAgICBzbmFwc2hvdCA9IGF3YWl0IHNlbGYuc3RvcmUuc25hcHNob3QoKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoc2V0KHNuYXBzaG90WyJxdWV1ZSJdKSwgeyI0MDIiLCAiNDAzIn0pCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzbmFwc2hvdFsibGFzdF9jb21tZW50X21lc3NhZ2VfaWQiXSwgNDAzKQoKICAgIGFzeW5jIGRlZiB0ZXN0X29sZF9zdGF0ZV9zdGFydHNfY29tbWVudF9zdHJlYW1fdW5pbml0aWFsaXplZChzZWxmKSAtPiBOb25lOgogICAgICAgIHNlbGYuYmFja2VuZC52YWx1ZXNbInJ1bnRpbWVfc3RhdGVfdjEiXSA9IHsKICAgICAgICAgICAgInZlcnNpb24iOiAyLAogICAgICAgICAgICAiaW5pdGlhbGl6ZWQiOiBUcnVlLAogICAgICAgICAgICAibGFzdF9tZXNzYWdlX2lkIjogODgsCiAgICAgICAgfQogICAgICAgIG1pZ3JhdGVkID0gU3RhdGVTdG9yZSgKICAgICAgICAgICAgbG9hZF92YWx1ZT1zZWxmLmJhY2tlbmQubG9hZCwgc2F2ZV92YWx1ZT1zZWxmLmJhY2tlbmQuc2F2ZQogICAgICAgICkKICAgICAgICBhd2FpdCBtaWdyYXRlZC5pbml0aWFsaXplKCkKCiAgICAgICAgc25hcHNob3QgPSBhd2FpdCBtaWdyYXRlZC5zbmFwc2hvdCgpCiAgICAgICAgc2VsZi5hc3NlcnRUcnVlKHNuYXBzaG90WyJpbml0aWFsaXplZCJdKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoc25hcHNob3RbImxhc3RfbWVzc2FnZV9pZCJdLCA4OCkKICAgICAgICBzZWxmLmFzc2VydEZhbHNlKHNuYXBzaG90WyJjb21tZW50c19pbml0aWFsaXplZCJdKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoc25hcHNob3RbImxhc3RfY29tbWVudF9tZXNzYWdlX2lkIl0sIDApCgogICAgYXN5bmMgZGVmIHRlc3RfYnJvd3NlX3NlbmRpbmdfcmVjb3JkX3JlY292ZXJzX2FzX3VuY2VydGFpbihzZWxmKSAtPiBOb25lOgogICAgICAgIGF3YWl0IHNlbGYuc3RvcmUucmVjb3JkX2Jyb3dzZSgKICAgICAgICAgICAgbGlua19pZD01MDEsCiAgICAgICAgICAgIHRpdGxlPSLlj5HpgIHkuK3nmoTluJblrZAiLAogICAgICAgICAgICBhdXRob3JfaWQ9IjEyMyIsCiAgICAgICAgICAgIHN0YXR1cz0ic2VuZGluZyIsCiAgICAgICAgICAgIGNvbW1lbnRfdGV4dD0i5Y+v6IO95bey57uP5Y+R5Ye655qE6K+E6K66IiwKICAgICAgICApCgogICAgICAgIHJlY292ZXJlZCA9IFN0YXRlU3RvcmUoCiAgICAgICAgICAgIGxvYWRfdmFsdWU9c2VsZi5iYWNrZW5kLmxvYWQsIHNhdmVfdmFsdWU9c2VsZi5iYWNrZW5kLnNhdmUKICAgICAgICApCiAgICAgICAgYXdhaXQgcmVjb3ZlcmVkLmluaXRpYWxpemUoKQogICAgICAgIHNuYXBzaG90ID0gYXdhaXQgcmVjb3ZlcmVkLnNuYXBzaG90KCkKCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbCgKICAgICAgICAgICAgc25hcHNob3RbImF1dG9fYnJvd3NlIl1bInJlY29yZHMiXVsiNTAxIl1bInN0YXR1cyJdLCAidW5jZXJ0YWluIgogICAgICAgICkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHNuYXBzaG90WyJhdXRvX2Jyb3dzZSJdWyJzdGF0cyJdWyJ1bmNlcnRhaW4iXSwgMSkKCgppZiBfX25hbWVfXyA9PSAiX19tYWluX18iOgogICAgdW5pdHRlc3QubWFpbigpCg==
+from __future__ import annotations
+
+import asyncio
+import copy
+import unittest
+
+from astrbot_plugin_xhhrobot.models import Mention
+from astrbot_plugin_xhhrobot.state_store import StateStore
+
+
+class MemoryBackend:
+    def __init__(self) -> None:
+        self.values: dict[str, object] = {}
+
+    async def load(self, key: str, default: object) -> object:
+        return copy.deepcopy(self.values.get(key, default))
+
+    async def save(self, key: str, value: object) -> None:
+        self.values[key] = copy.deepcopy(value)
+
+
+class StateStoreTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.backend = MemoryBackend()
+        self.store = StateStore(
+            load_value=self.backend.load, save_value=self.backend.save
+        )
+        await self.store.initialize()
+        self.mention = Mention(
+            message_id=101,
+            comment_id=202,
+            root_comment_id=200,
+            link_id=303,
+            user_id=404,
+            comment_text="@bot 你好",
+        )
+
+    async def test_ingest_deduplicates_and_completes(self) -> None:
+        counts = await self.store.ingest(
+            newest_message_id=101, queued=[self.mention], ignored=[]
+        )
+        self.assertEqual(counts, (1, 0, []))
+        counts = await self.store.ingest(
+            newest_message_id=101, queued=[self.mention], ignored=[]
+        )
+        self.assertEqual(counts, (0, 0, []))
+
+        due = await self.store.due_items(limit=10)
+        self.assertEqual(due, [self.mention])
+        await self.store.mark_done(101, "你好呀")
+
+        snapshot = await self.store.snapshot()
+        self.assertEqual(snapshot["queue"], {})
+        self.assertEqual(snapshot["stats"]["replied"], 1)
+        history = await self.store.conversation_history(
+            link_id=303, user_id=404, turns=3
+        )
+        self.assertEqual(history, [{"user": "@bot 你好", "assistant": "你好呀"}])
+
+    async def test_sending_record_recovers_as_uncertain(self) -> None:
+        await self.store.ingest(
+            newest_message_id=101, queued=[self.mention], ignored=[]
+        )
+        await self.store.mark_sending(101)
+
+        recovered = StateStore(
+            load_value=self.backend.load, save_value=self.backend.save
+        )
+        await recovered.initialize()
+        snapshot = await recovered.snapshot()
+        self.assertEqual(snapshot["queue"], {})
+        self.assertEqual(snapshot["dead"]["101"]["reason"], "uncertain_delivery")
+
+        self.assertEqual(await recovered.retry_dead(include_uncertain=False), 0)
+        self.assertEqual(await recovered.retry_dead(include_uncertain=True), 1)
+        self.assertEqual(len(await recovered.due_items(limit=10)), 1)
+
+    async def test_dispatch_and_delivery_claims_are_atomic(self) -> None:
+        await self.store.ingest(
+            newest_message_id=101, queued=[self.mention], ignored=[]
+        )
+
+        claims = await asyncio.gather(
+            self.store.mark_dispatched(101),
+            self.store.mark_dispatched(101),
+        )
+
+        self.assertEqual(sum(claims), 1)
+        self.assertEqual(await self.store.item_status(101), "dispatched")
+        self.assertTrue(await self.store.mark_sending(101))
+        self.assertFalse(await self.store.mark_sending(101))
+
+    async def test_retry_exhaustion_moves_to_dead_queue(self) -> None:
+        await self.store.ingest(
+            newest_message_id=101, queued=[self.mention], ignored=[]
+        )
+        pending = await self.store.mark_retry(
+            101, "failure", max_attempts=1, delay_seconds=0
+        )
+        self.assertFalse(pending)
+        snapshot = await self.store.snapshot()
+        self.assertEqual(snapshot["dead"]["101"]["reason"], "retry_exhausted")
+
+    async def test_overlapping_comment_notification_is_promoted_to_mention(
+        self,
+    ) -> None:
+        ordinary = Mention(
+            message_id=102,
+            comment_id=self.mention.comment_id,
+            root_comment_id=self.mention.root_comment_id,
+            link_id=self.mention.link_id,
+            user_id=self.mention.user_id,
+            comment_text="普通评论入口",
+            source="own_post_comment",
+        )
+        await self.store.ingest(
+            newest_message_id=102,
+            queued=[ordinary],
+            ignored=[],
+            source="own_post_comment",
+        )
+        counts = await self.store.ingest(
+            newest_message_id=101,
+            queued=[self.mention],
+            ignored=[],
+            source="mention",
+        )
+
+        self.assertEqual(counts, (0, 0, []))
+        due = await self.store.due_items(limit=10)
+        self.assertEqual(len(due), 1)
+        self.assertEqual(due[0].message_id, 102)
+        self.assertEqual(due[0].source, "mention")
+        self.assertEqual(due[0].comment_text, self.mention.comment_text)
+
+    async def test_replied_target_blocks_duplicate_message_id(self) -> None:
+        await self.store.ingest(
+            newest_message_id=101, queued=[self.mention], ignored=[]
+        )
+        await self.store.mark_done(101, "已回复")
+        duplicate = Mention(
+            message_id=999,
+            comment_id=self.mention.comment_id,
+            root_comment_id=self.mention.root_comment_id,
+            link_id=self.mention.link_id,
+            user_id=self.mention.user_id,
+            comment_text="同一条评论的另一条通知",
+            source="own_post_comment",
+        )
+
+        counts = await self.store.ingest(
+            newest_message_id=999,
+            queued=[duplicate],
+            ignored=[],
+            source="own_post_comment",
+        )
+
+        self.assertEqual(counts, (0, 0, []))
+        self.assertEqual(await self.store.due_items(limit=10), [])
+
+    async def test_own_post_observation_applies_limit_to_queued_mention(self) -> None:
+        await self.store.seed_own_post_reply_counts({self.mention.link_id: 1})
+        await self.store.ingest(
+            newest_message_id=self.mention.message_id,
+            queued=[self.mention],
+            ignored=[],
+            source="mention",
+            max_own_post_replies_per_post=1,
+        )
+        ordinary = Mention(
+            message_id=102,
+            comment_id=self.mention.comment_id,
+            root_comment_id=self.mention.root_comment_id,
+            link_id=self.mention.link_id,
+            user_id=self.mention.user_id,
+            comment_text="同一评论的自己帖子通知",
+            source="own_post_comment",
+        )
+
+        queued, ignored, skipped = await self.store.ingest(
+            newest_message_id=102,
+            queued=[ordinary],
+            ignored=[],
+            source="own_post_comment",
+            max_own_post_replies_per_post=1,
+        )
+
+        self.assertEqual((queued, ignored), (0, 0))
+        self.assertEqual([item.message_id for item in skipped], [102])
+        self.assertEqual(await self.store.due_items(limit=10), [])
+
+    async def test_own_post_reply_limit_reserves_and_persists_capacity(self) -> None:
+        comments = [
+            Mention(
+                message_id=200 + index,
+                comment_id=300 + index,
+                root_comment_id=300 + index,
+                link_id=500,
+                user_id=600 + index,
+                comment_text=f"评论 {index}",
+                source="own_post_comment",
+            )
+            for index in range(3)
+        ]
+
+        queued, ignored, skipped = await self.store.ingest(
+            newest_message_id=202,
+            queued=comments,
+            ignored=[],
+            source="own_post_comment",
+            max_own_post_replies_per_post=2,
+        )
+
+        self.assertEqual((queued, ignored), (2, 0))
+        self.assertEqual([item.message_id for item in skipped], [202])
+        self.assertEqual(len(await self.store.due_items(limit=10)), 2)
+        await self.store.mark_sending(
+            200,
+            max_own_post_replies_per_post=2,
+        )
+        await self.store.mark_done(200, "回复 0")
+        snapshot = await self.store.snapshot()
+        self.assertEqual(snapshot["own_post_reply_counts"], {"500": 1})
+
+        fourth = Mention(
+            message_id=203,
+            comment_id=303,
+            root_comment_id=303,
+            link_id=500,
+            user_id=603,
+            comment_text="评论 3",
+            source="own_post_comment",
+        )
+        queued, ignored, skipped = await self.store.ingest(
+            newest_message_id=203,
+            queued=[fourth],
+            ignored=[],
+            source="own_post_comment",
+            max_own_post_replies_per_post=2,
+        )
+        self.assertEqual((queued, ignored), (0, 0))
+        self.assertEqual([item.message_id for item in skipped], [203])
+
+    async def test_limit_enforcement_cancels_excess_but_preserves_sending(self) -> None:
+        comments = [
+            Mention(
+                message_id=300 + index,
+                comment_id=400 + index,
+                root_comment_id=400 + index,
+                link_id=700,
+                user_id=800 + index,
+                comment_text=f"积压 {index}",
+                source="own_post_comment",
+            )
+            for index in range(3)
+        ]
+        await self.store.ingest(
+            newest_message_id=302,
+            queued=comments,
+            ignored=[],
+            source="own_post_comment",
+        )
+        await self.store.mark_sending(300)
+        skipped = await self.store.enforce_own_post_reply_limit(1)
+
+        self.assertEqual({item.message_id for item in skipped}, {301, 302})
+        snapshot = await self.store.snapshot()
+        self.assertEqual(set(snapshot["queue"]), {"300"})
+        self.assertEqual(snapshot["queue"]["300"]["status"], "sending")
+
+    async def test_cancel_queue_can_target_one_post_and_preserves_sending(self) -> None:
+        first = Mention(
+            message_id=401,
+            comment_id=501,
+            root_comment_id=501,
+            link_id=801,
+            user_id=901,
+            comment_text="帖子一待处理",
+            source="own_post_comment",
+        )
+        sending = Mention(
+            message_id=402,
+            comment_id=502,
+            root_comment_id=502,
+            link_id=801,
+            user_id=902,
+            comment_text="帖子一发送中",
+            source="own_post_comment",
+        )
+        other = Mention(
+            message_id=403,
+            comment_id=503,
+            root_comment_id=503,
+            link_id=802,
+            user_id=903,
+            comment_text="帖子二",
+            source="own_post_comment",
+        )
+        await self.store.ingest(
+            newest_message_id=403,
+            queued=[first, sending, other],
+            ignored=[],
+            source="own_post_comment",
+        )
+        await self.store.mark_sending(402)
+
+        cancelled, result = await self.store.cancel_queue(link_id=801)
+
+        self.assertEqual([item.message_id for item in cancelled], [401])
+        self.assertEqual(result["cancelled_total"], 1)
+        self.assertEqual(result["sending_preserved"], 1)
+        snapshot = await self.store.snapshot()
+        self.assertEqual(set(snapshot["queue"]), {"402", "403"})
+        self.assertEqual(snapshot["last_comment_message_id"], 403)
+
+    async def test_old_state_starts_comment_stream_uninitialized(self) -> None:
+        self.backend.values["runtime_state_v1"] = {
+            "version": 2,
+            "initialized": True,
+            "last_message_id": 88,
+        }
+        migrated = StateStore(
+            load_value=self.backend.load, save_value=self.backend.save
+        )
+        await migrated.initialize()
+
+        snapshot = await migrated.snapshot()
+        self.assertTrue(snapshot["initialized"])
+        self.assertEqual(snapshot["last_message_id"], 88)
+        self.assertFalse(snapshot["comments_initialized"])
+        self.assertEqual(snapshot["last_comment_message_id"], 0)
+
+    async def test_browse_sending_record_recovers_as_uncertain(self) -> None:
+        await self.store.record_browse(
+            link_id=501,
+            title="发送中的帖子",
+            author_id="123",
+            status="sending",
+            comment_text="可能已经发出的评论",
+        )
+
+        recovered = StateStore(
+            load_value=self.backend.load, save_value=self.backend.save
+        )
+        await recovered.initialize()
+        snapshot = await recovered.snapshot()
+
+        self.assertEqual(
+            snapshot["auto_browse"]["records"]["501"]["status"], "uncertain"
+        )
+        self.assertEqual(snapshot["auto_browse"]["stats"]["uncertain"], 1)
+
+
+if __name__ == "__main__":
+    unittest.main()

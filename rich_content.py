@@ -1,1 +1,419 @@
-ZnJvbSBfX2Z1dHVyZV9fIGltcG9ydCBhbm5vdGF0aW9ucwoKaW1wb3J0IGh0bWwKaW1wb3J0IGlwYWRkcmVzcwppbXBvcnQganNvbgppbXBvcnQgcmUKZnJvbSBjb2xsZWN0aW9ucy5hYmMgaW1wb3J0IE1hcHBpbmcsIFNlcXVlbmNlCmZyb20gaHRtbC5wYXJzZXIgaW1wb3J0IEhUTUxQYXJzZXIKZnJvbSB0eXBpbmcgaW1wb3J0IEFueQpmcm9tIHVybGxpYi5wYXJzZSBpbXBvcnQgdXJscGFyc2UKCgpjbGFzcyBSaWNoQ29udGVudEVycm9yKFZhbHVlRXJyb3IpOgogICAgcGFzcwoKCl9BTExPV0VEX1RBR1MgPSBmcm96ZW5zZXQoCiAgICB7CiAgICAgICAgImEiLAogICAgICAgICJiIiwKICAgICAgICAiYmxvY2txdW90ZSIsCiAgICAgICAgImJyIiwKICAgICAgICAiY29kZSIsCiAgICAgICAgImRlbCIsCiAgICAgICAgImVtIiwKICAgICAgICAiaDEiLAogICAgICAgICJoMiIsCiAgICAgICAgImgzIiwKICAgICAgICAiaDQiLAogICAgICAgICJpIiwKICAgICAgICAibGkiLAogICAgICAgICJvbCIsCiAgICAgICAgInAiLAogICAgICAgICJwcmUiLAogICAgICAgICJzIiwKICAgICAgICAic3Ryb25nIiwKICAgICAgICAidSIsCiAgICAgICAgInVsIiwKICAgIH0KKQpfVk9JRF9UQUdTID0gZnJvemVuc2V0KHsiYnIifSkKX1NLSVBQRURfVEFHUyA9IGZyb3plbnNldCh7InNjcmlwdCIsICJzdHlsZSIsICJpZnJhbWUiLCAib2JqZWN0IiwgImVtYmVkIn0pCl9CTE9DS19UQUdTID0gZnJvemVuc2V0KAogICAgeyJibG9ja3F1b3RlIiwgImgxIiwgImgyIiwgImgzIiwgImg0IiwgImxpIiwgIm9sIiwgInAiLCAicHJlIiwgInVsIn0KKQpfT1VUQk9VTkRfVFlQRVMgPSBmcm96ZW5zZXQoeyJ0ZXh0IiwgImh0bWwiLCAiaW1hZ2UifSkKX1BMQUlOX1RFWFRfQlJFQUtfUkUgPSByZS5jb21waWxlKHIiPFxzKmJyXHMqLz9ccyo+IiwgcmUuSUdOT1JFQ0FTRSkKX1BMQUlOX1RFWFRfQkxPQ0tfUkUgPSByZS5jb21waWxlKAogICAgciI8Lz9ccyooPzpwfGRpdilcYltePl0qPiIsCiAgICByZS5JR05PUkVDQVNFLAopCl9QTEFJTl9URVhUX0VTQ0FQRURfQlJFQUtfUkUgPSByZS5jb21waWxlKHIiXFwoPzpyXFxufG58cikiKQoKCmNsYXNzIF9IdG1sU2FuaXRpemVyKEhUTUxQYXJzZXIpOgogICAgZGVmIF9faW5pdF9fKHNlbGYsICosIHN0cmljdDogYm9vbCkgLT4gTm9uZToKICAgICAgICBzdXBlcigpLl9faW5pdF9fKGNvbnZlcnRfY2hhcnJlZnM9VHJ1ZSkKICAgICAgICBzZWxmLnN0cmljdCA9IHN0cmljdAogICAgICAgIHNlbGYucGFydHM6IGxpc3Rbc3RyXSA9IFtdCiAgICAgICAgc2VsZi5fc3RhY2s6IGxpc3Rbc3RyXSA9IFtdCiAgICAgICAgc2VsZi5fc2tpcF9kZXB0aCA9IDAKCiAgICBkZWYgaGFuZGxlX3N0YXJ0dGFnKAogICAgICAgIHNlbGYsCiAgICAgICAgdGFnOiBzdHIsCiAgICAgICAgYXR0cnM6IGxpc3RbdHVwbGVbc3RyLCBzdHIgfCBOb25lXV0sCiAgICApIC0+IE5vbmU6CiAgICAgICAgdGFnID0gdGFnLmxvd2VyKCkKICAgICAgICBpZiB0YWcgaW4gX1NLSVBQRURfVEFHUzoKICAgICAgICAgICAgaWYgc2VsZi5zdHJpY3Q6CiAgICAgICAgICAgICAgICByYWlzZSBSaWNoQ29udGVudEVycm9yKGYi5a+M5paH5pys5LiN5YWB6K64IDx7dGFnfT4g5qCH562+44CCIikKICAgICAgICAgICAgc2VsZi5fc2tpcF9kZXB0aCArPSAxCiAgICAgICAgICAgIHJldHVybgogICAgICAgIGlmIHNlbGYuX3NraXBfZGVwdGg6CiAgICAgICAgICAgIHJldHVybgogICAgICAgIGlmIHRhZyBub3QgaW4gX0FMTE9XRURfVEFHUzoKICAgICAgICAgICAgaWYgc2VsZi5zdHJpY3Q6CiAgICAgICAgICAgICAgICByYWlzZSBSaWNoQ29udGVudEVycm9yKGYi5a+M5paH5pys5LiN5pSv5oyBIDx7dGFnfT4g5qCH562+44CCIikKICAgICAgICAgICAgcmV0dXJuCgogICAgICAgIHJlbmRlcmVkX2F0dHJzID0gc2VsZi5fcmVuZGVyX2F0dHJzKHRhZywgYXR0cnMpCiAgICAgICAgc2VsZi5wYXJ0cy5hcHBlbmQoZiI8e3RhZ317cmVuZGVyZWRfYXR0cnN9PiIpCiAgICAgICAgaWYgdGFnIG5vdCBpbiBfVk9JRF9UQUdTOgogICAgICAgICAgICBzZWxmLl9zdGFjay5hcHBlbmQodGFnKQoKICAgIGRlZiBoYW5kbGVfc3RhcnRlbmR0YWcoCiAgICAgICAgc2VsZiwKICAgICAgICB0YWc6IHN0ciwKICAgICAgICBhdHRyczogbGlzdFt0dXBsZVtzdHIsIHN0ciB8IE5vbmVdXSwKICAgICkgLT4gTm9uZToKICAgICAgICBzZWxmLmhhbmRsZV9zdGFydHRhZyh0YWcsIGF0dHJzKQogICAgICAgIGlmIHRhZy5sb3dlcigpIG5vdCBpbiBfVk9JRF9UQUdTOgogICAgICAgICAgICBzZWxmLmhhbmRsZV9lbmR0YWcodGFnKQoKICAgIGRlZiBoYW5kbGVfZW5kdGFnKHNlbGYsIHRhZzogc3RyKSAtPiBOb25lOgogICAgICAgIHRhZyA9IHRhZy5sb3dlcigpCiAgICAgICAgaWYgdGFnIGluIF9TS0lQUEVEX1RBR1M6CiAgICAgICAgICAgIGlmIHNlbGYuX3NraXBfZGVwdGg6CiAgICAgICAgICAgICAgICBzZWxmLl9za2lwX2RlcHRoIC09IDEKICAgICAgICAgICAgZWxpZiBzZWxmLnN0cmljdDoKICAgICAgICAgICAgICAgIHJhaXNlIFJpY2hDb250ZW50RXJyb3IoZiLlr4zmlofmnKzljIXlkKvmnKrljLnphY3nmoQgPC97dGFnfT4g5qCH562+44CCIikKICAgICAgICAgICAgcmV0dXJuCiAgICAgICAgaWYgc2VsZi5fc2tpcF9kZXB0aDoKICAgICAgICAgICAgcmV0dXJuCiAgICAgICAgaWYgdGFnIG5vdCBpbiBfQUxMT1dFRF9UQUdTOgogICAgICAgICAgICBpZiBzZWxmLnN0cmljdDoKICAgICAgICAgICAgICAgIHJhaXNlIFJpY2hDb250ZW50RXJyb3IoZiLlr4zmlofmnKzkuI3mlK/mjIEgPC97dGFnfT4g5qCH562+44CCIikKICAgICAgICAgICAgcmV0dXJuCiAgICAgICAgaWYgdGFnIGluIF9WT0lEX1RBR1M6CiAgICAgICAgICAgIHJldHVybgogICAgICAgIGlmIG5vdCBzZWxmLl9zdGFjayBvciBzZWxmLl9zdGFja1stMV0gIT0gdGFnOgogICAgICAgICAgICBpZiBzZWxmLnN0cmljdDoKICAgICAgICAgICAgICAgIHJhaXNlIFJpY2hDb250ZW50RXJyb3IoZiLlr4zmlofmnKzljIXlkKvmnKrljLnphY3nmoQgPC97dGFnfT4g5qCH562+44CCIikKICAgICAgICAgICAgcmV0dXJuCiAgICAgICAgc2VsZi5fc3RhY2sucG9wKCkKICAgICAgICBzZWxmLnBhcnRzLmFwcGVuZChmIjwve3RhZ30+IikKCiAgICBkZWYgaGFuZGxlX2RhdGEoc2VsZiwgZGF0YTogc3RyKSAtPiBOb25lOgogICAgICAgIGlmIG5vdCBzZWxmLl9za2lwX2RlcHRoOgogICAgICAgICAgICBzZWxmLnBhcnRzLmFwcGVuZChodG1sLmVzY2FwZShkYXRhLCBxdW90ZT1GYWxzZSkpCgogICAgZGVmIGhhbmRsZV9jb21tZW50KHNlbGYsIGRhdGE6IHN0cikgLT4gTm9uZToKICAgICAgICBkZWwgZGF0YQogICAgICAgIGlmIHNlbGYuc3RyaWN0OgogICAgICAgICAgICByYWlzZSBSaWNoQ29udGVudEVycm9yKCLlr4zmlofmnKzkuI3lhYHorrggSFRNTCDms6jph4rjgIIiKQoKICAgIGRlZiBjbG9zZV9hbmRfcmVuZGVyKHNlbGYpIC0+IHN0cjoKICAgICAgICBzZWxmLmNsb3NlKCkKICAgICAgICBpZiBzZWxmLl9za2lwX2RlcHRoIGFuZCBzZWxmLnN0cmljdDoKICAgICAgICAgICAgcmFpc2UgUmljaENvbnRlbnRFcnJvcigi5a+M5paH5pys5YyF5ZCr5pyq5YWz6Zet55qE5Y2x6Zmp5qCH562+44CCIikKICAgICAgICBpZiBzZWxmLl9zdGFjazoKICAgICAgICAgICAgaWYgc2VsZi5zdHJpY3Q6CiAgICAgICAgICAgICAgICByYWlzZSBSaWNoQ29udGVudEVycm9yKCLlr4zmlofmnKzljIXlkKvmnKrlhbPpl63nmoTmoIfnrb7jgIIiKQogICAgICAgICAgICB3aGlsZSBzZWxmLl9zdGFjazoKICAgICAgICAgICAgICAgIHNlbGYucGFydHMuYXBwZW5kKGYiPC97c2VsZi5fc3RhY2sucG9wKCl9PiIpCiAgICAgICAgcmV0dXJuICIiLmpvaW4oc2VsZi5wYXJ0cykuc3RyaXAoKQoKICAgIGRlZiBfcmVuZGVyX2F0dHJzKAogICAgICAgIHNlbGYsCiAgICAgICAgdGFnOiBzdHIsCiAgICAgICAgYXR0cnM6IGxpc3RbdHVwbGVbc3RyLCBzdHIgfCBOb25lXV0sCiAgICApIC0+IHN0cjoKICAgICAgICBpZiBub3QgYXR0cnM6CiAgICAgICAgICAgIHJldHVybiAiIgogICAgICAgIGlmIHRhZyAhPSAiYSI6CiAgICAgICAgICAgIGlmIHNlbGYuc3RyaWN0OgogICAgICAgICAgICAgICAgcmFpc2UgUmljaENvbnRlbnRFcnJvcihmIjx7dGFnfT4g5qCH562+5LiN5pSv5oyB5bGe5oCn44CCIikKICAgICAgICAgICAgcmV0dXJuICIiCgogICAgICAgIGhyZWYgPSAiIgogICAgICAgIGZvciBuYW1lLCB2YWx1ZSBpbiBhdHRyczoKICAgICAgICAgICAgbm9ybWFsaXplZF9uYW1lID0gc3RyKG5hbWUgb3IgIiIpLmxvd2VyKCkKICAgICAgICAgICAgaWYgbm9ybWFsaXplZF9uYW1lLnN0YXJ0c3dpdGgoIm9uIik6CiAgICAgICAgICAgICAgICBpZiBzZWxmLnN0cmljdDoKICAgICAgICAgICAgICAgICAgICByYWlzZSBSaWNoQ29udGVudEVycm9yKCLlr4zmlofmnKzkuI3lhYHorrjkuovku7blsZ7mgKfjgIIiKQogICAgICAgICAgICAgICAgY29udGludWUKICAgICAgICAgICAgaWYgbm9ybWFsaXplZF9uYW1lICE9ICJocmVmIjoKICAgICAgICAgICAgICAgIGlmIHNlbGYuc3RyaWN0OgogICAgICAgICAgICAgICAgICAgIHJhaXNlIFJpY2hDb250ZW50RXJyb3IoIumTvuaOpeS7heWFgeiuuCBocmVmIOWxnuaAp+OAgiIpCiAgICAgICAgICAgICAgICBjb250aW51ZQogICAgICAgICAgICB0cnk6CiAgICAgICAgICAgICAgICBocmVmID0gX25vcm1hbGl6ZV9ocmVmKHZhbHVlIG9yICIiKQogICAgICAgICAgICBleGNlcHQgUmljaENvbnRlbnRFcnJvcjoKICAgICAgICAgICAgICAgIGlmIHNlbGYuc3RyaWN0OgogICAgICAgICAgICAgICAgICAgIHJhaXNlCiAgICAgICAgICAgICAgICBocmVmID0gIiIKICAgICAgICByZXR1cm4gZicgaHJlZj0ie2h0bWwuZXNjYXBlKGhyZWYsIHF1b3RlPVRydWUpfSInIGlmIGhyZWYgZWxzZSAiIgoKCmNsYXNzIF9IdG1sVGV4dFBhcnNlcihIVE1MUGFyc2VyKToKICAgIGRlZiBfX2luaXRfXyhzZWxmKSAtPiBOb25lOgogICAgICAgIHN1cGVyKCkuX19pbml0X18oY29udmVydF9jaGFycmVmcz1UcnVlKQogICAgICAgIHNlbGYucGFydHM6IGxpc3Rbc3RyXSA9IFtdCgogICAgZGVmIGhhbmRsZV9zdGFydHRhZygKICAgICAgICBzZWxmLAogICAgICAgIHRhZzogc3RyLAogICAgICAgIGF0dHJzOiBsaXN0W3R1cGxlW3N0ciwgc3RyIHwgTm9uZV1dLAogICAgKSAtPiBOb25lOgogICAgICAgIGRlbCBhdHRycwogICAgICAgIGlmIHRhZy5sb3dlcigpID09ICJiciIgb3IgdGFnLmxvd2VyKCkgaW4gX0JMT0NLX1RBR1M6CiAgICAgICAgICAgIHNlbGYuX2FwcGVuZF9icmVhaygpCgogICAgZGVmIGhhbmRsZV9lbmR0YWcoc2VsZiwgdGFnOiBzdHIpIC0+IE5vbmU6CiAgICAgICAgaWYgdGFnLmxvd2VyKCkgaW4gX0JMT0NLX1RBR1M6CiAgICAgICAgICAgIHNlbGYuX2FwcGVuZF9icmVhaygpCgogICAgZGVmIGhhbmRsZV9kYXRhKHNlbGYsIGRhdGE6IHN0cikgLT4gTm9uZToKICAgICAgICBzZWxmLnBhcnRzLmFwcGVuZChkYXRhKQoKICAgIGRlZiBfYXBwZW5kX2JyZWFrKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgaWYgc2VsZi5wYXJ0cyBhbmQgbm90IHNlbGYucGFydHNbLTFdLmVuZHN3aXRoKCJcbiIpOgogICAgICAgICAgICBzZWxmLnBhcnRzLmFwcGVuZCgiXG4iKQoKCmRlZiBzYW5pdGl6ZV9yaWNoX2h0bWwodmFsdWU6IEFueSkgLT4gc3RyOgogICAgdGV4dCA9IF9yZXF1aXJlX3RleHQodmFsdWUsICJodG1sIikKICAgIHBhcnNlciA9IF9IdG1sU2FuaXRpemVyKHN0cmljdD1UcnVlKQogICAgcGFyc2VyLmZlZWQodGV4dCkKICAgIHNhbml0aXplZCA9IHBhcnNlci5jbG9zZV9hbmRfcmVuZGVyKCkKICAgIGlmIG5vdCBodG1sX3RvX3BsYWluX3RleHQoc2FuaXRpemVkKToKICAgICAgICByYWlzZSBSaWNoQ29udGVudEVycm9yKCLlr4zmlofmnKzlhoXlrrnkuI3og73kuLrnqbrjgIIiKQogICAgcmV0dXJuIHNhbml0aXplZAoKCmRlZiBzYW5pdGl6ZV9pbmJvdW5kX2h0bWwodmFsdWU6IEFueSkgLT4gc3RyOgogICAgdGV4dCA9IHN0cih2YWx1ZSBvciAiIikKICAgIGlmIG5vdCB0ZXh0OgogICAgICAgIHJldHVybiAiIgogICAgcGFyc2VyID0gX0h0bWxTYW5pdGl6ZXIoc3RyaWN0PUZhbHNlKQogICAgcGFyc2VyLmZlZWQodGV4dCkKICAgIHJldHVybiBwYXJzZXIuY2xvc2VfYW5kX3JlbmRlcigpCgoKZGVmIGh0bWxfdG9fcGxhaW5fdGV4dCh2YWx1ZTogQW55KSAtPiBzdHI6CiAgICB0ZXh0ID0gc3RyKHZhbHVlIG9yICIiKQogICAgaWYgbm90IHRleHQ6CiAgICAgICAgcmV0dXJuICIiCiAgICBwYXJzZXIgPSBfSHRtbFRleHRQYXJzZXIoKQogICAgcGFyc2VyLmZlZWQodGV4dCkKICAgIHBhcnNlci5jbG9zZSgpCiAgICB0ZXh0ID0gIiIuam9pbihwYXJzZXIucGFydHMpCiAgICB0ZXh0ID0gdGV4dC5yZXBsYWNlKCJcclxuIiwgIlxuIikucmVwbGFjZSgiXHIiLCAiXG4iKQogICAgdGV4dCA9IHJlLnN1YihyIlteXFNcbl0rIiwgIiAiLCB0ZXh0KQogICAgdGV4dCA9IHJlLnN1YihyIiAqXG4gKiIsICJcbiIsIHRleHQpCiAgICB0ZXh0ID0gcmUuc3ViKHIiXG57Myx9IiwgIlxuXG4iLCB0ZXh0KQogICAgcmV0dXJuIHRleHQuc3RyaXAoKQoKCmRlZiBub3JtYWxpemVfcGxhaW5fdGV4dCh2YWx1ZTogQW55KSAtPiBzdHI6CiAgICAiIiJDb252ZXJ0IGNvbW1vbiBtb2RlbCBIVE1MIGxpbmUgYnJlYWtzIGluIGEgcGxhaW4gdGV4dCBmaWVsZC4iIiIKCiAgICB0ZXh0ID0gc3RyKHZhbHVlIG9yICIiKQogICAgaWYgbm90IHRleHQ6CiAgICAgICAgcmV0dXJuICIiCiAgICB0ZXh0ID0gX1BMQUlOX1RFWFRfQlJFQUtfUkUuc3ViKCJcbiIsIHRleHQpCiAgICB0ZXh0ID0gX1BMQUlOX1RFWFRfQkxPQ0tfUkUuc3ViKCJcbiIsIHRleHQpCiAgICB0ZXh0ID0gX1BMQUlOX1RFWFRfRVNDQVBFRF9CUkVBS19SRS5zdWIoIlxuIiwgdGV4dCkKICAgIHRleHQgPSB0ZXh0LnJlcGxhY2UoIlxyXG4iLCAiXG4iKS5yZXBsYWNlKCJcciIsICJcbiIpCiAgICB0ZXh0ID0gcmUuc3ViKHIiXG5bIFx0XSsiLCAiXG4iLCB0ZXh0KQogICAgdGV4dCA9IHJlLnN1YihyIlxuezMsfSIsICJcblxuIiwgdGV4dCkKICAgIHJldHVybiB0ZXh0LnN0cmlwKCkKCgpkZWYgbm9ybWFsaXplX3JpY2hfY29udGVudF9ibG9ja3MoCiAgICB2YWx1ZTogQW55LAogICAgKiwKICAgIG1heF90ZXh0X2NoYXJzOiBpbnQsCiAgICBtYXhfYmxvY2tzOiBpbnQgPSA0MCwKKSAtPiBsaXN0W2RpY3Rbc3RyLCBzdHJdXToKICAgICIiIlZhbGlkYXRlIExMTS1zdXBwbGllZCBibG9ja3Mgd2l0aG91dCBoYW5kbGluZyBpbWFnZSB1cGxvYWRzLiIiIgoKICAgIGlmIHZhbHVlIGluIChOb25lLCAiIik6CiAgICAgICAgcmV0dXJuIFtdCiAgICBpZiBub3QgaXNpbnN0YW5jZSh2YWx1ZSwgU2VxdWVuY2UpIG9yIGlzaW5zdGFuY2UodmFsdWUsIChzdHIsIGJ5dGVzLCBieXRlYXJyYXkpKToKICAgICAgICByYWlzZSBSaWNoQ29udGVudEVycm9yKCJjb250ZW50X2Jsb2NrcyDlv4XpobvmmK/lhoXlrrnlnZfmlbDnu4TjgIIiKQogICAgaWYgbGVuKHZhbHVlKSA+IG1heF9ibG9ja3M6CiAgICAgICAgcmFpc2UgUmljaENvbnRlbnRFcnJvcihmImNvbnRlbnRfYmxvY2tzIOacgOWkmuWFgeiuuCB7bWF4X2Jsb2Nrc30g6aG544CCIikKCiAgICBibG9ja3M6IGxpc3RbZGljdFtzdHIsIHN0cl1dID0gW10KICAgIHRleHRfbGVuZ3RoID0gMAogICAgZm9yIGluZGV4LCByYXcgaW4gZW51bWVyYXRlKHZhbHVlLCBzdGFydD0xKToKICAgICAgICBpZiBub3QgaXNpbnN0YW5jZShyYXcsIE1hcHBpbmcpOgogICAgICAgICAgICByYWlzZSBSaWNoQ29udGVudEVycm9yKGYi56ysIHtpbmRleH0g5Liq5YaF5a655Z2X5b+F6aG75piv5a+56LGh44CCIikKICAgICAgICBpdGVtX3R5cGUgPSBzdHIocmF3LmdldCgidHlwZSIpIG9yICIiKS5zdHJpcCgpLmxvd2VyKCkKICAgICAgICBpZiBpdGVtX3R5cGUgbm90IGluIF9PVVRCT1VORF9UWVBFUzoKICAgICAgICAgICAgcmFpc2UgUmljaENvbnRlbnRFcnJvcigKICAgICAgICAgICAgICAgIGYi56ysIHtpbmRleH0g5Liq5YaF5a655Z2XIHR5cGUg5Y+q6IO95pivIHRleHTjgIFodG1sIOaIliBpbWFnZeOAgiIKICAgICAgICAgICAgKQoKICAgICAgICBpZiBpdGVtX3R5cGUgPT0gImltYWdlIjoKICAgICAgICAgICAgX3JlamVjdF91bmtub3duX2tleXMocmF3LCB7InR5cGUiLCAidXJsIiwgImltYWdlX3VybCJ9LCBpbmRleCkKICAgICAgICAgICAgc291cmNlID0gcmF3LmdldCgidXJsIikKICAgICAgICAgICAgaWYgc291cmNlIGlzIE5vbmU6CiAgICAgICAgICAgICAgICBzb3VyY2UgPSByYXcuZ2V0KCJpbWFnZV91cmwiKQogICAgICAgICAgICBibG9ja3MuYXBwZW5kKHsidHlwZSI6ICJpbWFnZSIsICJ1cmwiOiBfcmVxdWlyZV90ZXh0KHNvdXJjZSwgIuWbvueJh+WcsOWdgCIpfSkKICAgICAgICAgICAgY29udGludWUKCiAgICAgICAgX3JlamVjdF91bmtub3duX2tleXMocmF3LCB7InR5cGUiLCAidGV4dCIsICJodG1sIiwgImNvbnRlbnQifSwgaW5kZXgpCiAgICAgICAgc291cmNlID0gcmF3LmdldCgidGV4dCIpCiAgICAgICAgaWYgc291cmNlIGlzIE5vbmU6CiAgICAgICAgICAgIHNvdXJjZSA9IHJhdy5nZXQoImh0bWwiKSBpZiBpdGVtX3R5cGUgPT0gImh0bWwiIGVsc2UgcmF3LmdldCgiY29udGVudCIpCiAgICAgICAgaWYgc291cmNlIGlzIE5vbmU6CiAgICAgICAgICAgIHNvdXJjZSA9IHJhdy5nZXQoImNvbnRlbnQiKQogICAgICAgIGlmIGl0ZW1fdHlwZSA9PSAiaHRtbCI6CiAgICAgICAgICAgIHRleHQgPSBzYW5pdGl6ZV9yaWNoX2h0bWwoc291cmNlKQogICAgICAgICAgICB2aXNpYmxlX3RleHQgPSBodG1sX3RvX3BsYWluX3RleHQodGV4dCkKICAgICAgICBlbHNlOgogICAgICAgICAgICB0ZXh0ID0gX3JlcXVpcmVfdGV4dChzb3VyY2UsICLmlofmnKwiKQogICAgICAgICAgICB2aXNpYmxlX3RleHQgPSB0ZXh0LnN0cmlwKCkKICAgICAgICAgICAgaWYgbm90IHZpc2libGVfdGV4dDoKICAgICAgICAgICAgICAgIHJhaXNlIFJpY2hDb250ZW50RXJyb3IoZiLnrKwge2luZGV4fSDkuKrmlofmnKzlhoXlrrnlnZfkuI3og73kuLrnqbrjgIIiKQogICAgICAgIHRleHRfbGVuZ3RoICs9IGxlbih2aXNpYmxlX3RleHQpCiAgICAgICAgaWYgdGV4dF9sZW5ndGggPiBtYXhfdGV4dF9jaGFyczoKICAgICAgICAgICAgcmFpc2UgUmljaENvbnRlbnRFcnJvcihmIuWGheWuueWdl+aWh+Wtl+aAu+mVv+W6puS4jeiDvei2hei/hyB7bWF4X3RleHRfY2hhcnN9IOWtl+espuOAgiIpCiAgICAgICAgYmxvY2tzLmFwcGVuZCh7InR5cGUiOiBpdGVtX3R5cGUsICJ0ZXh0IjogdGV4dH0pCiAgICByZXR1cm4gYmxvY2tzCgoKZGVmIHBhcnNlX2luYm91bmRfY29udGVudF9ibG9ja3ModmFsdWU6IEFueSkgLT4gdHVwbGVbZGljdFtzdHIsIHN0cl0sIC4uLl06CiAgICAiIiJDb252ZXJ0IFhpYW9oZWloZSdzIHZhcmlhYmxlIHBvc3QgcGF5bG9hZCBpbnRvIHNhZmUgb3JkZXJlZCBibG9ja3MuIiIiCgogICAgaXRlbXM6IEFueSA9IHZhbHVlCiAgICBpZiBpc2luc3RhbmNlKHZhbHVlLCBzdHIpOgogICAgICAgIHRyeToKICAgICAgICAgICAgcGFyc2VkID0ganNvbi5sb2Fkcyh2YWx1ZSkKICAgICAgICBleGNlcHQgKFR5cGVFcnJvciwgVmFsdWVFcnJvciwganNvbi5KU09ORGVjb2RlRXJyb3IpOgogICAgICAgICAgICBwYXJzZWQgPSBOb25lCiAgICAgICAgaXRlbXMgPSBwYXJzZWQgaWYgcGFyc2VkIGlzIG5vdCBOb25lIGVsc2UgW3sidHlwZSI6ICJ0ZXh0IiwgInRleHQiOiB2YWx1ZX1dCiAgICBpZiBpc2luc3RhbmNlKGl0ZW1zLCBNYXBwaW5nKToKICAgICAgICBpdGVtcyA9IFtpdGVtc10KICAgIGlmIG5vdCBpc2luc3RhbmNlKGl0ZW1zLCBTZXF1ZW5jZSkgb3IgaXNpbnN0YW5jZShpdGVtcywgKHN0ciwgYnl0ZXMsIGJ5dGVhcnJheSkpOgogICAgICAgIHJldHVybiAoKQoKICAgIGJsb2NrczogbGlzdFtkaWN0W3N0ciwgc3RyXV0gPSBbXQogICAgZm9yIGl0ZW0gaW4gaXRlbXM6CiAgICAgICAgaWYgbm90IGlzaW5zdGFuY2UoaXRlbSwgTWFwcGluZyk6CiAgICAgICAgICAgIHRleHQgPSBzdHIoaXRlbSBvciAiIikuc3RyaXAoKQogICAgICAgICAgICBpZiB0ZXh0OgogICAgICAgICAgICAgICAgYmxvY2tzLmFwcGVuZCh7InR5cGUiOiAidGV4dCIsICJ0ZXh0IjogdGV4dH0pCiAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgaXRlbV90eXBlID0gc3RyKGl0ZW0uZ2V0KCJ0eXBlIikgb3IgInRleHQiKS5zdHJpcCgpLmxvd2VyKCkKICAgICAgICB1cmwgPSBzdHIoaXRlbS5nZXQoInVybCIpIG9yIGl0ZW0uZ2V0KCJzcmMiKSBvciAiIikuc3RyaXAoKQogICAgICAgIGlmIGl0ZW1fdHlwZSBpbiB7ImltZyIsICJpbWFnZSJ9IG9yICh1cmwgYW5kIG5vdCBpdGVtLmdldCgidGV4dCIpKToKICAgICAgICAgICAgaWYgdXJsOgogICAgICAgICAgICAgICAgYmxvY2tzLmFwcGVuZCh7InR5cGUiOiAiaW1hZ2UiLCAidXJsIjogX25vcm1hbGl6ZV9wcm90b2NvbF91cmwodXJsKX0pCiAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgdGV4dCA9IGl0ZW0uZ2V0KCJ0ZXh0IikKICAgICAgICBpZiB0ZXh0IGlzIE5vbmU6CiAgICAgICAgICAgIHRleHQgPSBpdGVtLmdldCgiY29udGVudCIpCiAgICAgICAgaWYgdGV4dCBpcyBOb25lOgogICAgICAgICAgICB0ZXh0ID0gaXRlbS5nZXQoImh0bWwiKQogICAgICAgIHRleHQgPSBzdHIodGV4dCBvciAiIikuc3RyaXAoKQogICAgICAgIGlmIG5vdCB0ZXh0OgogICAgICAgICAgICBjb250aW51ZQogICAgICAgIGlmIGl0ZW1fdHlwZSA9PSAiaHRtbCIgb3IgcmUuc2VhcmNoKHIiPFtBLVphLXohL11bXj5dKj4iLCB0ZXh0KToKICAgICAgICAgICAgc2FuaXRpemVkID0gc2FuaXRpemVfaW5ib3VuZF9odG1sKHRleHQpCiAgICAgICAgICAgIGlmIHNhbml0aXplZDoKICAgICAgICAgICAgICAgIGJsb2Nrcy5hcHBlbmQoeyJ0eXBlIjogImh0bWwiLCAidGV4dCI6IHNhbml0aXplZH0pCiAgICAgICAgZWxzZToKICAgICAgICAgICAgYmxvY2tzLmFwcGVuZCh7InR5cGUiOiAidGV4dCIsICJ0ZXh0IjogdGV4dH0pCiAgICByZXR1cm4gdHVwbGUoYmxvY2tzKQoKCmRlZiBjb250ZW50X2Jsb2Nrc19wbGFpbl90ZXh0KGJsb2NrczogU2VxdWVuY2VbTWFwcGluZ1tzdHIsIEFueV1dKSAtPiBzdHI6CiAgICBwYXJ0czogbGlzdFtzdHJdID0gW10KICAgIGZvciBibG9jayBpbiBibG9ja3M6CiAgICAgICAgaXRlbV90eXBlID0gc3RyKGJsb2NrLmdldCgidHlwZSIpIG9yICIiKS5sb3dlcigpCiAgICAgICAgaWYgaXRlbV90eXBlID09ICJpbWFnZSI6CiAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgdGV4dCA9IHN0cihibG9jay5nZXQoInRleHQiKSBvciAiIikKICAgICAgICBpZiBpdGVtX3R5cGUgPT0gImh0bWwiOgogICAgICAgICAgICB0ZXh0ID0gaHRtbF90b19wbGFpbl90ZXh0KHRleHQpCiAgICAgICAgaWYgdGV4dC5zdHJpcCgpOgogICAgICAgICAgICBwYXJ0cy5hcHBlbmQodGV4dC5zdHJpcCgpKQogICAgcmV0dXJuICJcbiIuam9pbihwYXJ0cykuc3RyaXAoKQoKCmRlZiBjb250ZW50X2Jsb2Nrc19pbWFnZV9zb3VyY2VzKGJsb2NrczogU2VxdWVuY2VbTWFwcGluZ1tzdHIsIEFueV1dKSAtPiBsaXN0W3N0cl06CiAgICByZXR1cm4gWwogICAgICAgIHN0cihibG9jay5nZXQoInVybCIpIG9yICIiKS5zdHJpcCgpCiAgICAgICAgZm9yIGJsb2NrIGluIGJsb2NrcwogICAgICAgIGlmIHN0cihibG9jay5nZXQoInR5cGUiKSBvciAiIikubG93ZXIoKSA9PSAiaW1hZ2UiCiAgICAgICAgYW5kIHN0cihibG9jay5nZXQoInVybCIpIG9yICIiKS5zdHJpcCgpCiAgICBdCgoKZGVmIHBsYXRmb3JtX2h0bWxfZm9yX2Jsb2NrKGJsb2NrOiBNYXBwaW5nW3N0ciwgQW55XSkgLT4gc3RyOgogICAgaXRlbV90eXBlID0gc3RyKGJsb2NrLmdldCgidHlwZSIpIG9yICIiKS5sb3dlcigpCiAgICB0ZXh0ID0gc3RyKGJsb2NrLmdldCgidGV4dCIpIG9yICIiKQogICAgaWYgaXRlbV90eXBlID09ICJodG1sIjoKICAgICAgICByZXR1cm4gc2FuaXRpemVfcmljaF9odG1sKHRleHQpCiAgICBpZiBpdGVtX3R5cGUgPT0gInRleHQiOgogICAgICAgIHJldHVybiBodG1sLmVzY2FwZSh0ZXh0KQogICAgcmFpc2UgUmljaENvbnRlbnRFcnJvcigi5Y+q5pyJ5paH5pys5YaF5a655Z2X5Y+v5Lul6L2s5o2i5Li65biW5a2Q5q2j5paH44CCIikKCgpkZWYgX25vcm1hbGl6ZV9ocmVmKHZhbHVlOiBzdHIpIC0+IHN0cjoKICAgIGhyZWYgPSBzdHIodmFsdWUgb3IgIiIpLnN0cmlwKCkKICAgIGlmIG5vdCBocmVmIG9yIGxlbihocmVmKSA+IDIwNDg6CiAgICAgICAgcmFpc2UgUmljaENvbnRlbnRFcnJvcigi6ZO+5o6l5Zyw5Z2A5peg5pWI5oiW6L+H6ZW/44CCIikKICAgIHBhcnNlZCA9IHVybHBhcnNlKGhyZWYpCiAgICBpZiBwYXJzZWQuc2NoZW1lLmxvd2VyKCkgbm90IGluIHsiaHR0cCIsICJodHRwcyJ9IG9yIG5vdCBwYXJzZWQuaG9zdG5hbWU6CiAgICAgICAgcmFpc2UgUmljaENvbnRlbnRFcnJvcigi6ZO+5o6l5Y+q5YWB6K645YWs5byAIEhUVFAoUykg5Zyw5Z2A44CCIikKICAgIGlmIHBhcnNlZC51c2VybmFtZSBvciBwYXJzZWQucGFzc3dvcmQ6CiAgICAgICAgcmFpc2UgUmljaENvbnRlbnRFcnJvcigi6ZO+5o6l5Zyw5Z2A5LiN6IO95YyF5ZCr55So5oi35ZCN5oiW5a+G56CB44CCIikKICAgIGhvc3RuYW1lID0gcGFyc2VkLmhvc3RuYW1lLmNhc2Vmb2xkKCkucnN0cmlwKCIuIikKICAgIGlmIGhvc3RuYW1lID09ICJsb2NhbGhvc3QiIG9yIGhvc3RuYW1lLmVuZHN3aXRoKCgiLmxvY2FsaG9zdCIsICIubG9jYWwiLCAiLmludGVybmFsIikpOgogICAgICAgIHJhaXNlIFJpY2hDb250ZW50RXJyb3IoIumTvuaOpeS4jeiDveaMh+WQkeacrOacuuaIluWGhemDqOe9kee7nOS4u+acuuOAgiIpCiAgICB0cnk6CiAgICAgICAgYWRkcmVzcyA9IGlwYWRkcmVzcy5pcF9hZGRyZXNzKGhvc3RuYW1lKQogICAgZXhjZXB0IFZhbHVlRXJyb3I6CiAgICAgICAgcmV0dXJuIGhyZWYKICAgIGlmIG5vdCBhZGRyZXNzLmlzX2dsb2JhbDoKICAgICAgICByYWlzZSBSaWNoQ29udGVudEVycm9yKCLpk77mjqXkuI3og73mjIflkJHnp4HmnInjgIHlm57njq/miJbkv53nlZkgSVAg5Zyw5Z2A44CCIikKICAgIHJldHVybiBocmVmCgoKZGVmIF9ub3JtYWxpemVfcHJvdG9jb2xfdXJsKHZhbHVlOiBzdHIpIC0+IHN0cjoKICAgIHJldHVybiAiaHR0cHM6IiArIHZhbHVlIGlmIHZhbHVlLnN0YXJ0c3dpdGgoIi8vIikgZWxzZSB2YWx1ZQoKCmRlZiBfcmVqZWN0X3Vua25vd25fa2V5cygKICAgIHZhbHVlOiBNYXBwaW5nW3N0ciwgQW55XSwKICAgIGFsbG93ZWQ6IHNldFtzdHJdLAogICAgaW5kZXg6IGludCwKKSAtPiBOb25lOgogICAgdW5rbm93biA9IHtzdHIoa2V5KSBmb3Iga2V5IGluIHZhbHVlfSAtIGFsbG93ZWQKICAgIGlmIHVua25vd246CiAgICAgICAgbmFtZXMgPSAi44CBIi5qb2luKHNvcnRlZCh1bmtub3duKSkKICAgICAgICByYWlzZSBSaWNoQ29udGVudEVycm9yKGYi56ysIHtpbmRleH0g5Liq5YaF5a655Z2X5YyF5ZCr5LiN5pSv5oyB55qE5a2X5q6177yae25hbWVzfeOAgiIpCgoKZGVmIF9yZXF1aXJlX3RleHQodmFsdWU6IEFueSwgZmllbGRfbmFtZTogc3RyKSAtPiBzdHI6CiAgICBpZiBub3QgaXNpbnN0YW5jZSh2YWx1ZSwgc3RyKToKICAgICAgICByYWlzZSBSaWNoQ29udGVudEVycm9yKGYie2ZpZWxkX25hbWV9IOW/hemhu+aYr+mdnuepuuWtl+espuS4suOAgiIpCiAgICBpZiBub3QgdmFsdWUuc3RyaXAoKToKICAgICAgICByYWlzZSBSaWNoQ29udGVudEVycm9yKGYie2ZpZWxkX25hbWV9IOS4jeiDveS4uuepuuOAgiIpCiAgICByZXR1cm4gdmFsdWUK
+from __future__ import annotations
+
+import html
+import ipaddress
+import json
+import re
+from collections.abc import Mapping, Sequence
+from html.parser import HTMLParser
+from typing import Any
+from urllib.parse import urlparse
+
+
+class RichContentError(ValueError):
+    pass
+
+
+_ALLOWED_TAGS = frozenset(
+    {
+        "a",
+        "b",
+        "blockquote",
+        "br",
+        "code",
+        "del",
+        "em",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "i",
+        "li",
+        "ol",
+        "p",
+        "pre",
+        "s",
+        "strong",
+        "u",
+        "ul",
+    }
+)
+_VOID_TAGS = frozenset({"br"})
+_SKIPPED_TAGS = frozenset({"script", "style", "iframe", "object", "embed"})
+_BLOCK_TAGS = frozenset(
+    {"blockquote", "h1", "h2", "h3", "h4", "li", "ol", "p", "pre", "ul"}
+)
+_OUTBOUND_TYPES = frozenset({"text", "html", "image"})
+_PLAIN_TEXT_BREAK_RE = re.compile(r"<\s*br\s*/?\s*>", re.IGNORECASE)
+_PLAIN_TEXT_BLOCK_RE = re.compile(
+    r"</?\s*(?:p|div)\b[^>]*>",
+    re.IGNORECASE,
+)
+_PLAIN_TEXT_ESCAPED_BREAK_RE = re.compile(r"\\(?:r\\n|n|r)")
+
+
+class _HtmlSanitizer(HTMLParser):
+    def __init__(self, *, strict: bool) -> None:
+        super().__init__(convert_charrefs=True)
+        self.strict = strict
+        self.parts: list[str] = []
+        self._stack: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
+        tag = tag.lower()
+        if tag in _SKIPPED_TAGS:
+            if self.strict:
+                raise RichContentError(f"富文本不允许 <{tag}> 标签。")
+            self._skip_depth += 1
+            return
+        if self._skip_depth:
+            return
+        if tag not in _ALLOWED_TAGS:
+            if self.strict:
+                raise RichContentError(f"富文本不支持 <{tag}> 标签。")
+            return
+
+        rendered_attrs = self._render_attrs(tag, attrs)
+        self.parts.append(f"<{tag}{rendered_attrs}>")
+        if tag not in _VOID_TAGS:
+            self._stack.append(tag)
+
+    def handle_startendtag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
+        self.handle_starttag(tag, attrs)
+        if tag.lower() not in _VOID_TAGS:
+            self.handle_endtag(tag)
+
+    def handle_endtag(self, tag: str) -> None:
+        tag = tag.lower()
+        if tag in _SKIPPED_TAGS:
+            if self._skip_depth:
+                self._skip_depth -= 1
+            elif self.strict:
+                raise RichContentError(f"富文本包含未匹配的 </{tag}> 标签。")
+            return
+        if self._skip_depth:
+            return
+        if tag not in _ALLOWED_TAGS:
+            if self.strict:
+                raise RichContentError(f"富文本不支持 </{tag}> 标签。")
+            return
+        if tag in _VOID_TAGS:
+            return
+        if not self._stack or self._stack[-1] != tag:
+            if self.strict:
+                raise RichContentError(f"富文本包含未匹配的 </{tag}> 标签。")
+            return
+        self._stack.pop()
+        self.parts.append(f"</{tag}>")
+
+    def handle_data(self, data: str) -> None:
+        if not self._skip_depth:
+            self.parts.append(html.escape(data, quote=False))
+
+    def handle_comment(self, data: str) -> None:
+        del data
+        if self.strict:
+            raise RichContentError("富文本不允许 HTML 注释。")
+
+    def close_and_render(self) -> str:
+        self.close()
+        if self._skip_depth and self.strict:
+            raise RichContentError("富文本包含未关闭的危险标签。")
+        if self._stack:
+            if self.strict:
+                raise RichContentError("富文本包含未关闭的标签。")
+            while self._stack:
+                self.parts.append(f"</{self._stack.pop()}>")
+        return "".join(self.parts).strip()
+
+    def _render_attrs(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> str:
+        if not attrs:
+            return ""
+        if tag != "a":
+            if self.strict:
+                raise RichContentError(f"<{tag}> 标签不支持属性。")
+            return ""
+
+        href = ""
+        for name, value in attrs:
+            normalized_name = str(name or "").lower()
+            if normalized_name.startswith("on"):
+                if self.strict:
+                    raise RichContentError("富文本不允许事件属性。")
+                continue
+            if normalized_name != "href":
+                if self.strict:
+                    raise RichContentError("链接仅允许 href 属性。")
+                continue
+            try:
+                href = _normalize_href(value or "")
+            except RichContentError:
+                if self.strict:
+                    raise
+                href = ""
+        return f' href="{html.escape(href, quote=True)}"' if href else ""
+
+
+class _HtmlTextParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.parts: list[str] = []
+
+    def handle_starttag(
+        self,
+        tag: str,
+        attrs: list[tuple[str, str | None]],
+    ) -> None:
+        del attrs
+        if tag.lower() == "br" or tag.lower() in _BLOCK_TAGS:
+            self._append_break()
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in _BLOCK_TAGS:
+            self._append_break()
+
+    def handle_data(self, data: str) -> None:
+        self.parts.append(data)
+
+    def _append_break(self) -> None:
+        if self.parts and not self.parts[-1].endswith("\n"):
+            self.parts.append("\n")
+
+
+def sanitize_rich_html(value: Any) -> str:
+    text = _require_text(value, "html")
+    parser = _HtmlSanitizer(strict=True)
+    parser.feed(text)
+    sanitized = parser.close_and_render()
+    if not html_to_plain_text(sanitized):
+        raise RichContentError("富文本内容不能为空。")
+    return sanitized
+
+
+def sanitize_inbound_html(value: Any) -> str:
+    text = str(value or "")
+    if not text:
+        return ""
+    parser = _HtmlSanitizer(strict=False)
+    parser.feed(text)
+    return parser.close_and_render()
+
+
+def html_to_plain_text(value: Any) -> str:
+    text = str(value or "")
+    if not text:
+        return ""
+    parser = _HtmlTextParser()
+    parser.feed(text)
+    parser.close()
+    text = "".join(parser.parts)
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"[^\S\n]+", " ", text)
+    text = re.sub(r" *\n *", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def normalize_plain_text(value: Any) -> str:
+    """Convert common model HTML line breaks in a plain text field."""
+
+    text = str(value or "")
+    if not text:
+        return ""
+    text = _PLAIN_TEXT_BREAK_RE.sub("\n", text)
+    text = _PLAIN_TEXT_BLOCK_RE.sub("\n", text)
+    text = _PLAIN_TEXT_ESCAPED_BREAK_RE.sub("\n", text)
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = re.sub(r"\n[ \t]+", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
+def normalize_rich_content_blocks(
+    value: Any,
+    *,
+    max_text_chars: int,
+    max_blocks: int = 40,
+) -> list[dict[str, str]]:
+    """Validate LLM-supplied blocks without handling image uploads."""
+
+    if value in (None, ""):
+        return []
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes, bytearray)):
+        raise RichContentError("content_blocks 必须是内容块数组。")
+    if len(value) > max_blocks:
+        raise RichContentError(f"content_blocks 最多允许 {max_blocks} 项。")
+
+    blocks: list[dict[str, str]] = []
+    text_length = 0
+    for index, raw in enumerate(value, start=1):
+        if not isinstance(raw, Mapping):
+            raise RichContentError(f"第 {index} 个内容块必须是对象。")
+        item_type = str(raw.get("type") or "").strip().lower()
+        if item_type not in _OUTBOUND_TYPES:
+            raise RichContentError(
+                f"第 {index} 个内容块 type 只能是 text、html 或 image。"
+            )
+
+        if item_type == "image":
+            _reject_unknown_keys(raw, {"type", "url", "image_url"}, index)
+            source = raw.get("url")
+            if source is None:
+                source = raw.get("image_url")
+            blocks.append({"type": "image", "url": _require_text(source, "图片地址")})
+            continue
+
+        _reject_unknown_keys(raw, {"type", "text", "html", "content"}, index)
+        source = raw.get("text")
+        if source is None:
+            source = raw.get("html") if item_type == "html" else raw.get("content")
+        if source is None:
+            source = raw.get("content")
+        if item_type == "html":
+            text = sanitize_rich_html(source)
+            visible_text = html_to_plain_text(text)
+        else:
+            text = _require_text(source, "文本")
+            visible_text = text.strip()
+            if not visible_text:
+                raise RichContentError(f"第 {index} 个文本内容块不能为空。")
+        text_length += len(visible_text)
+        if text_length > max_text_chars:
+            raise RichContentError(f"内容块文字总长度不能超过 {max_text_chars} 字符。")
+        blocks.append({"type": item_type, "text": text})
+    return blocks
+
+
+def parse_inbound_content_blocks(value: Any) -> tuple[dict[str, str], ...]:
+    """Convert Xiaoheihe's variable post payload into safe ordered blocks."""
+
+    items: Any = value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            parsed = None
+        items = parsed if parsed is not None else [{"type": "text", "text": value}]
+    if isinstance(items, Mapping):
+        items = [items]
+    if not isinstance(items, Sequence) or isinstance(items, (str, bytes, bytearray)):
+        return ()
+
+    blocks: list[dict[str, str]] = []
+    for item in items:
+        if not isinstance(item, Mapping):
+            text = str(item or "").strip()
+            if text:
+                blocks.append({"type": "text", "text": text})
+            continue
+        item_type = str(item.get("type") or "text").strip().lower()
+        url = str(item.get("url") or item.get("src") or "").strip()
+        if item_type in {"img", "image"} or (url and not item.get("text")):
+            if url:
+                blocks.append({"type": "image", "url": _normalize_protocol_url(url)})
+            continue
+        text = item.get("text")
+        if text is None:
+            text = item.get("content")
+        if text is None:
+            text = item.get("html")
+        text = str(text or "").strip()
+        if not text:
+            continue
+        if item_type == "html" or re.search(r"<[A-Za-z!/][^>]*>", text):
+            sanitized = sanitize_inbound_html(text)
+            if sanitized:
+                blocks.append({"type": "html", "text": sanitized})
+        else:
+            blocks.append({"type": "text", "text": text})
+    return tuple(blocks)
+
+
+def content_blocks_plain_text(blocks: Sequence[Mapping[str, Any]]) -> str:
+    parts: list[str] = []
+    for block in blocks:
+        item_type = str(block.get("type") or "").lower()
+        if item_type == "image":
+            continue
+        text = str(block.get("text") or "")
+        if item_type == "html":
+            text = html_to_plain_text(text)
+        if text.strip():
+            parts.append(text.strip())
+    return "\n".join(parts).strip()
+
+
+def content_blocks_image_sources(blocks: Sequence[Mapping[str, Any]]) -> list[str]:
+    return [
+        str(block.get("url") or "").strip()
+        for block in blocks
+        if str(block.get("type") or "").lower() == "image"
+        and str(block.get("url") or "").strip()
+    ]
+
+
+def platform_html_for_block(block: Mapping[str, Any]) -> str:
+    item_type = str(block.get("type") or "").lower()
+    text = str(block.get("text") or "")
+    if item_type == "html":
+        return sanitize_rich_html(text)
+    if item_type == "text":
+        return html.escape(text)
+    raise RichContentError("只有文本内容块可以转换为帖子正文。")
+
+
+def _normalize_href(value: str) -> str:
+    href = str(value or "").strip()
+    if not href or len(href) > 2048:
+        raise RichContentError("链接地址无效或过长。")
+    parsed = urlparse(href)
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
+        raise RichContentError("链接只允许公开 HTTP(S) 地址。")
+    if parsed.username or parsed.password:
+        raise RichContentError("链接地址不能包含用户名或密码。")
+    hostname = parsed.hostname.casefold().rstrip(".")
+    if hostname == "localhost" or hostname.endswith((".localhost", ".local", ".internal")):
+        raise RichContentError("链接不能指向本机或内部网络主机。")
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        return href
+    if not address.is_global:
+        raise RichContentError("链接不能指向私有、回环或保留 IP 地址。")
+    return href
+
+
+def _normalize_protocol_url(value: str) -> str:
+    return "https:" + value if value.startswith("//") else value
+
+
+def _reject_unknown_keys(
+    value: Mapping[str, Any],
+    allowed: set[str],
+    index: int,
+) -> None:
+    unknown = {str(key) for key in value} - allowed
+    if unknown:
+        names = "、".join(sorted(unknown))
+        raise RichContentError(f"第 {index} 个内容块包含不支持的字段：{names}。")
+
+
+def _require_text(value: Any, field_name: str) -> str:
+    if not isinstance(value, str):
+        raise RichContentError(f"{field_name} 必须是非空字符串。")
+    if not value.strip():
+        raise RichContentError(f"{field_name} 不能为空。")
+    return value

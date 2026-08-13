@@ -1,1 +1,323 @@
-ZnJvbSBfX2Z1dHVyZV9fIGltcG9ydCBhbm5vdGF0aW9ucwoKaW1wb3J0IHRlbXBmaWxlCmltcG9ydCB1bml0dGVzdApmcm9tIHBhdGhsaWIgaW1wb3J0IFBhdGgKCmZyb20gYXN0cmJvdF9wbHVnaW5feGhocm9ib3QuY29tbWVudF9hcmNoaXZlIGltcG9ydCBDb21tZW50QXJjaGl2ZSwgZXh0cmFjdF9jb21tZW50X2lkCmZyb20gYXN0cmJvdF9wbHVnaW5feGhocm9ib3QubW9kZWxzIGltcG9ydCBNZW50aW9uCgoKY2xhc3MgQ29tbWVudEFyY2hpdmVUZXN0cyh1bml0dGVzdC5Jc29sYXRlZEFzeW5jaW9UZXN0Q2FzZSk6CiAgICBhc3luYyBkZWYgYXN5bmNTZXRVcChzZWxmKSAtPiBOb25lOgogICAgICAgIHNlbGYudGVtcF9kaXIgPSB0ZW1wZmlsZS5UZW1wb3JhcnlEaXJlY3RvcnkoKQogICAgICAgIHNlbGYuYXJjaGl2ZSA9IENvbW1lbnRBcmNoaXZlKAogICAgICAgICAgICBQYXRoKHNlbGYudGVtcF9kaXIubmFtZSkgLyAiY29tbWVudHMuc3FsaXRlMyIsCiAgICAgICAgICAgIHJldGVudGlvbl9kYXlzPTAsCiAgICAgICAgICAgIG1heF9yZWNvcmRzPTEwXzAwMCwKICAgICAgICAgICAgcXVlcnlfbWF4X3Jlc3VsdHM9MywKICAgICAgICApCiAgICAgICAgYXdhaXQgc2VsZi5hcmNoaXZlLmluaXRpYWxpemUoKQoKICAgIGFzeW5jIGRlZiBhc3luY1RlYXJEb3duKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgc2VsZi50ZW1wX2Rpci5jbGVhbnVwKCkKCiAgICBAc3RhdGljbWV0aG9kCiAgICBkZWYgbWVudGlvbigKICAgICAgICBtZXNzYWdlX2lkOiBpbnQsCiAgICAgICAgY29tbWVudF9pZDogaW50LAogICAgICAgICosCiAgICAgICAgdGV4dDogc3RyLAogICAgICAgIGxpbmtfaWQ6IGludCA9IDEwLAogICAgICAgIHJvb3RfaWQ6IGludCB8IE5vbmUgPSBOb25lLAogICAgICAgIHVzZXJfaWQ6IGludCA9IDEsCiAgICAgICAgc291cmNlOiBzdHIgPSAibWVudGlvbiIsCiAgICApIC0+IE1lbnRpb246CiAgICAgICAgcmV0dXJuIE1lbnRpb24oCiAgICAgICAgICAgIG1lc3NhZ2VfaWQ9bWVzc2FnZV9pZCwKICAgICAgICAgICAgY29tbWVudF9pZD1jb21tZW50X2lkLAogICAgICAgICAgICByb290X2NvbW1lbnRfaWQ9cm9vdF9pZCBvciBjb21tZW50X2lkLAogICAgICAgICAgICBsaW5rX2lkPWxpbmtfaWQsCiAgICAgICAgICAgIHVzZXJfaWQ9dXNlcl9pZCwKICAgICAgICAgICAgY29tbWVudF90ZXh0PXRleHQsCiAgICAgICAgICAgIHNvdXJjZT1zb3VyY2UsCiAgICAgICAgKQoKICAgIGFzeW5jIGRlZiB0ZXN0X2RlZHVwbGljYXRlc19jb21tZW50c19idXRfcHJlc2VydmVzX3Jhd19vYnNlcnZhdGlvbnMoc2VsZikgLT4gTm9uZToKICAgICAgICBkdXBsaWNhdGVfYSA9IHNlbGYubWVudGlvbigxLCAxMDAsIHRleHQ9Iui9rOS6uuWmuyIsIHJvb3RfaWQ9MTAwKQogICAgICAgIGR1cGxpY2F0ZV9iID0gc2VsZi5tZW50aW9uKDIsIDEwMCwgdGV4dD0i6L2s5Lq65aa7Iiwgcm9vdF9pZD0xMDApCiAgICAgICAgZXhhY3QgPSBzZWxmLm1lbnRpb24oMywgMjAwLCB0ZXh0PSLovazkurrlprsiLCByb290X2lkPTIwMCwgdXNlcl9pZD0yKQogICAgICAgIHZhcmlhbnQgPSBzZWxmLm1lbnRpb24oCiAgICAgICAgICAgIDQsCiAgICAgICAgICAgIDMwMCwKICAgICAgICAgICAgdGV4dD0iQEFUUkkg6L2s5Lq65aa7W2N1YmVf5Zac5qyiXSIsCiAgICAgICAgICAgIGxpbmtfaWQ9MjAsCiAgICAgICAgICAgIHJvb3RfaWQ9MzAwLAogICAgICAgICkKICAgICAgICB1bnJlbGF0ZWQgPSBzZWxmLm1lbnRpb24oNSwgNDAwLCB0ZXh0PSLlhbbku5bor4TorroiLCBsaW5rX2lkPTIwKQoKICAgICAgICBhd2FpdCBzZWxmLmFyY2hpdmUucmVjb3JkX3JlY2VpdmVkKAogICAgICAgICAgICBbCiAgICAgICAgICAgICAgICAoZHVwbGljYXRlX2EsICJxdWV1ZWQiLCAiIiksCiAgICAgICAgICAgICAgICAoZHVwbGljYXRlX2IsICJxdWV1ZWQiLCAiIiksCiAgICAgICAgICAgICAgICAoZXhhY3QsICJyZXBsaWVkIiwgIiIpLAogICAgICAgICAgICAgICAgKHZhcmlhbnQsICJpZ25vcmVkIiwgIiIpLAogICAgICAgICAgICAgICAgKHVucmVsYXRlZCwgInF1ZXVlZCIsICIiKSwKICAgICAgICAgICAgXQogICAgICAgICkKICAgICAgICBhd2FpdCBzZWxmLmFyY2hpdmUudXBkYXRlX3JlY2VpdmVkX3N0YXR1cyhkdXBsaWNhdGVfYSwgInJlcGxpZWQiKQogICAgICAgIGF3YWl0IHNlbGYuYXJjaGl2ZS5yZWNvcmRfYm90X2NvbW1lbnQoCiAgICAgICAgICAgIGtpbmQ9ImF1dG9fcmVwbHkiLAogICAgICAgICAgICBjb250ZW50PSLovazkurrlprvvvIzmiJHnnIvliLDkuoYiLAogICAgICAgICAgICBsaW5rX2lkPTEwLAogICAgICAgICAgICB0YXJnZXRfY29tbWVudF9pZD0xMDAsCiAgICAgICAgICAgIGV2ZW50X2tleT0iYXV0b19yZXBseToxMDoxMDAiLAogICAgICAgICkKICAgICAgICBhd2FpdCBzZWxmLmFyY2hpdmUucmVjb3JkX2JvdF9jb21tZW50KAogICAgICAgICAgICBraW5kPSJsbG1fdG9vbCIsCiAgICAgICAgICAgIGNvbnRlbnQ9Iui9rOS6uuWmuyIsCiAgICAgICAgICAgIGxpbmtfaWQ9MjAsCiAgICAgICAgKQoKICAgICAgICBzdGF0cyA9IGF3YWl0IHNlbGYuYXJjaGl2ZS5zdGF0aXN0aWNzKGtleXdvcmQ9Iui9rOS6uuWmuyIpCgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoc3RhdHNbInJlY2VpdmVkIl1bInJhd19vYnNlcnZhdGlvbnMiXSwgNCkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHN0YXRzWyJyZWNlaXZlZCJdWyJ1bmlxdWVfY29tbWVudHMiXSwgMykKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHN0YXRzWyJyZWNlaXZlZCJdWyJkdXBsaWNhdGVfb2JzZXJ2YXRpb25zIl0sIDEpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzdGF0c1sicmVjZWl2ZWQiXVsiZXhhY3RfdGV4dF9tYXRjaGVzIl0sIDIpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzdGF0c1sicmVjZWl2ZWQiXVsidGV4dF92YXJpYW50X21hdGNoZXMiXSwgMSkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHN0YXRzWyJyZWNlaXZlZCJdWyJ1bmlxdWVfdXNlcnMiXSwgMikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHN0YXRzWyJyZWNlaXZlZCJdWyJ1bmlxdWVfcG9zdHMiXSwgMikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHN0YXRzWyJyZWNlaXZlZCJdWyJ1bmlxdWVfcm9vdF90aHJlYWRzIl0sIDMpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzdGF0c1siYm90Il1bImNvbW1lbnRfcmVjb3JkcyJdLCAyKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoc3RhdHNbImJvdCJdWyJjb25maXJtZWRfc2VudCJdLCAyKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoc3RhdHNbImJvdCJdWyJkZWxpdmVyeV91bmNlcnRhaW4iXSwgMCkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHN0YXRzWyJib3QiXVsia2luZF9jb3VudHMiXVsiYXV0b19yZXBseSJdLCAxKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoc3RhdHNbImJvdCJdWyJraW5kX2NvdW50cyJdWyJsbG1fdG9vbCJdLCAxKQoKICAgICAgICBvdmVydmlldyA9IGF3YWl0IHNlbGYuYXJjaGl2ZS5vdmVydmlldygpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChvdmVydmlld1sicmVjZWl2ZWRfb2JzZXJ2YXRpb25zIl0sIDUpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChvdmVydmlld1sicmVjZWl2ZWRfY29tbWVudHMiXSwgNCkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKG92ZXJ2aWV3WyJib3RfY29tbWVudHMiXSwgMikKCiAgICBhc3luYyBkZWYgdGVzdF9zb3VyY2VfZmlsdGVyX2NvdW50c19vbmx5X21hdGNoaW5nX29ic2VydmF0aW9ucyhzZWxmKSAtPiBOb25lOgogICAgICAgIG1lbnRpb24gPSBzZWxmLm1lbnRpb24oMTAsIDUwMCwgdGV4dD0i5ZCM5LiA5p2h6K+E6K66IikKICAgICAgICBjb21tZW50X3N0cmVhbSA9IHNlbGYubWVudGlvbigKICAgICAgICAgICAgMTEsCiAgICAgICAgICAgIDUwMCwKICAgICAgICAgICAgdGV4dD0i5ZCM5LiA5p2h6K+E6K66IiwKICAgICAgICAgICAgc291cmNlPSJvd25fcG9zdF9jb21tZW50IiwKICAgICAgICApCiAgICAgICAgYXdhaXQgc2VsZi5hcmNoaXZlLnJlY29yZF9yZWNlaXZlZCgKICAgICAgICAgICAgWyhtZW50aW9uLCAicXVldWVkIiwgIiIpLCAoY29tbWVudF9zdHJlYW0sICJxdWV1ZWQiLCAiIildCiAgICAgICAgKQoKICAgICAgICBhbGxfc3RhdHMgPSBhd2FpdCBzZWxmLmFyY2hpdmUuc3RhdGlzdGljcygpCiAgICAgICAgbWVudGlvbl9zdGF0cyA9IGF3YWl0IHNlbGYuYXJjaGl2ZS5zdGF0aXN0aWNzKHNvdXJjZT0ibWVudGlvbiIpCiAgICAgICAgY29tbWVudF9zdGF0cyA9IGF3YWl0IHNlbGYuYXJjaGl2ZS5zdGF0aXN0aWNzKHNvdXJjZT0ib3duX3Bvc3RfY29tbWVudCIpCgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoYWxsX3N0YXRzWyJyZWNlaXZlZCJdWyJyYXdfb2JzZXJ2YXRpb25zIl0sIDIpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChhbGxfc3RhdHNbInJlY2VpdmVkIl1bInVuaXF1ZV9jb21tZW50cyJdLCAxKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwobWVudGlvbl9zdGF0c1sicmVjZWl2ZWQiXVsicmF3X29ic2VydmF0aW9ucyJdLCAxKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoY29tbWVudF9zdGF0c1sicmVjZWl2ZWQiXVsicmF3X29ic2VydmF0aW9ucyJdLCAxKQoKICAgIGFzeW5jIGRlZiB0ZXN0X3NlYXJjaF9yZXR1cm5zX2lkc19zdGF0dXNfYW5kX2VuZm9yY2VzX3F1ZXJ5X2xpbWl0KHNlbGYpIC0+IE5vbmU6CiAgICAgICAgcmVjb3JkcyA9IFsKICAgICAgICAgICAgKAogICAgICAgICAgICAgICAgc2VsZi5tZW50aW9uKAogICAgICAgICAgICAgICAgICAgIG1lc3NhZ2VfaWQ9aW5kZXgsCiAgICAgICAgICAgICAgICAgICAgY29tbWVudF9pZD0xXzAwMCArIGluZGV4LAogICAgICAgICAgICAgICAgICAgIHRleHQ9ZiLor4Torroge2luZGV4fSIsCiAgICAgICAgICAgICAgICAgICAgbGlua19pZD05OSwKICAgICAgICAgICAgICAgICAgICB1c2VyX2lkPTc3LAogICAgICAgICAgICAgICAgICAgIHNvdXJjZT0ib3duX3Bvc3RfY29tbWVudCIsCiAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgInF1ZXVlZCIsCiAgICAgICAgICAgICAgICAiIiwKICAgICAgICAgICAgKQogICAgICAgICAgICBmb3IgaW5kZXggaW4gcmFuZ2UoMSwgNikKICAgICAgICBdCiAgICAgICAgYXdhaXQgc2VsZi5hcmNoaXZlLnJlY29yZF9yZWNlaXZlZChyZWNvcmRzKQoKICAgICAgICByZXN1bHQgPSBhd2FpdCBzZWxmLmFyY2hpdmUuc2VhcmNoKAogICAgICAgICAgICBkaXJlY3Rpb249InJlY2VpdmVkIiwKICAgICAgICAgICAgbGlua19pZD05OSwKICAgICAgICAgICAgc291cmNlPSJvd25fcG9zdF9jb21tZW50IiwKICAgICAgICAgICAgbGltaXQ9OTksCiAgICAgICAgKQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHJlc3VsdFsibWF0Y2hlZF9jb3VudCJdLCA1KQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocmVzdWx0WyJyZXR1cm5lZF9jb3VudCJdLCAzKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocmVzdWx0WyJyZWNvcmRzIl1bMF1bImNvbW1lbnRfaWQiXSwgMTAwNSkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHJlc3VsdFsicmVjb3JkcyJdWzBdWyJtZXNzYWdlX2lkcyJdLCBbNV0pCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChyZXN1bHRbInJlY29yZHMiXVswXVsic3RhdHVzIl0sICJxdWV1ZWQiKQoKICAgICAgICBzZWNvbmRfcGFnZSA9IGF3YWl0IHNlbGYuYXJjaGl2ZS5zZWFyY2goCiAgICAgICAgICAgIGRpcmVjdGlvbj0icmVjZWl2ZWQiLAogICAgICAgICAgICBsaW5rX2lkPTk5LAogICAgICAgICAgICBzb3VyY2U9Im93bl9wb3N0X2NvbW1lbnQiLAogICAgICAgICAgICBsaW1pdD0yLAogICAgICAgICAgICBvZmZzZXQ9MiwKICAgICAgICApCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzZWNvbmRfcGFnZVsibWF0Y2hlZF9jb3VudCJdLCA1KQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoc2Vjb25kX3BhZ2VbInJldHVybmVkX2NvdW50Il0sIDIpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzZWNvbmRfcGFnZVsib2Zmc2V0Il0sIDIpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzZWNvbmRfcGFnZVsicmVjb3JkcyJdWzBdWyJjb21tZW50X2lkIl0sIDEwMDMpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChzZWNvbmRfcGFnZVsicmVjb3JkcyJdWzFdWyJjb21tZW50X2lkIl0sIDEwMDIpCgogICAgYXN5bmMgZGVmIHRlc3RfYm90X2V2ZW50X2tleV91cGRhdGVzX3VuY2VydGFpbl9yZWNvcmRfd2l0aG91dF9kdXBsaWNhdGlvbigKICAgICAgICBzZWxmLAogICAgKSAtPiBOb25lOgogICAgICAgIGF3YWl0IHNlbGYuYXJjaGl2ZS5yZWNvcmRfYm90X2NvbW1lbnQoCiAgICAgICAgICAgIGtpbmQ9ImF1dG9fYnJvd3NlIiwKICAgICAgICAgICAgY29udGVudD0i5YeG5aSH5Y+R6YCB55qE6K+E6K66IiwKICAgICAgICAgICAgbGlua19pZD0xMjMsCiAgICAgICAgICAgIHN0YXR1cz0idW5jZXJ0YWluIiwKICAgICAgICAgICAgZXZlbnRfa2V5PSJhdXRvX2Jyb3dzZToxMjMiLAogICAgICAgICkKICAgICAgICBhd2FpdCBzZWxmLmFyY2hpdmUucmVjb3JkX2JvdF9jb21tZW50KAogICAgICAgICAgICBraW5kPSJhdXRvX2Jyb3dzZSIsCiAgICAgICAgICAgIGNvbnRlbnQ9IuWHhuWkh+WPkemAgeeahOivhOiuuiIsCiAgICAgICAgICAgIGxpbmtfaWQ9MTIzLAogICAgICAgICAgICBzdGF0dXM9InNlbnQiLAogICAgICAgICAgICBjb21tZW50X2lkPTQ1NiwKICAgICAgICAgICAgZXZlbnRfa2V5PSJhdXRvX2Jyb3dzZToxMjMiLAogICAgICAgICkKCiAgICAgICAgcmVzdWx0ID0gYXdhaXQgc2VsZi5hcmNoaXZlLnNlYXJjaChkaXJlY3Rpb249ImJvdCIpCgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocmVzdWx0WyJtYXRjaGVkX2NvdW50Il0sIDEpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChyZXN1bHRbInJlY29yZHMiXVswXVsic3RhdHVzIl0sICJzZW50IikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHJlc3VsdFsicmVjb3JkcyJdWzBdWyJjb21tZW50X2lkIl0sIDQ1NikKCiAgICBhc3luYyBkZWYgdGVzdF9yZWNvdmVyc19wZXJfcG9zdF9jb3VudHNfZm9yX293bl9wb3N0X2F1dG9fcmVwbGllcyhzZWxmKSAtPiBOb25lOgogICAgICAgIG93bl9maXJzdCA9IHNlbGYubWVudGlvbigKICAgICAgICAgICAgMzEsCiAgICAgICAgICAgIDYwMSwKICAgICAgICAgICAgdGV4dD0i6Ieq5bex5biW5a2Q6K+E6K665LiAIiwKICAgICAgICAgICAgbGlua19pZD0zMDEsCiAgICAgICAgICAgIHNvdXJjZT0ib3duX3Bvc3RfY29tbWVudCIsCiAgICAgICAgKQogICAgICAgIG93bl9zZWNvbmQgPSBzZWxmLm1lbnRpb24oCiAgICAgICAgICAgIDMyLAogICAgICAgICAgICA2MDIsCiAgICAgICAgICAgIHRleHQ9IuiHquW3seW4luWtkOivhOiuuuS6jCIsCiAgICAgICAgICAgIGxpbmtfaWQ9MzAxLAogICAgICAgICAgICBzb3VyY2U9Im93bl9wb3N0X2NvbW1lbnQiLAogICAgICAgICkKICAgICAgICBleHRlcm5hbCA9IHNlbGYubWVudGlvbigKICAgICAgICAgICAgMzMsCiAgICAgICAgICAgIDYwMywKICAgICAgICAgICAgdGV4dD0i5YW25LuW5biW5a2Q5piO56Gu5o+Q5Y+KIiwKICAgICAgICAgICAgbGlua19pZD0zMDIsCiAgICAgICAgICAgIHNvdXJjZT0ibWVudGlvbiIsCiAgICAgICAgKQogICAgICAgIGF3YWl0IHNlbGYuYXJjaGl2ZS5yZWNvcmRfcmVjZWl2ZWQoCiAgICAgICAgICAgIFsKICAgICAgICAgICAgICAgIChvd25fZmlyc3QsICJyZXBsaWVkIiwgIiIpLAogICAgICAgICAgICAgICAgKG93bl9zZWNvbmQsICJ1bmNlcnRhaW4iLCAiIiksCiAgICAgICAgICAgICAgICAoZXh0ZXJuYWwsICJyZXBsaWVkIiwgIiIpLAogICAgICAgICAgICBdCiAgICAgICAgKQogICAgICAgIGZvciBtZW50aW9uLCBzdGF0dXMgaW4gKAogICAgICAgICAgICAob3duX2ZpcnN0LCAic2VudCIpLAogICAgICAgICAgICAob3duX3NlY29uZCwgInVuY2VydGFpbiIpLAogICAgICAgICAgICAoZXh0ZXJuYWwsICJzZW50IiksCiAgICAgICAgKToKICAgICAgICAgICAgYXdhaXQgc2VsZi5hcmNoaXZlLnJlY29yZF9ib3RfY29tbWVudCgKICAgICAgICAgICAgICAgIGtpbmQ9ImF1dG9fcmVwbHkiLAogICAgICAgICAgICAgICAgY29udGVudD0iQm90IOWbnuWkjSIsCiAgICAgICAgICAgICAgICBsaW5rX2lkPW1lbnRpb24ubGlua19pZCwKICAgICAgICAgICAgICAgIHN0YXR1cz1zdGF0dXMsCiAgICAgICAgICAgICAgICB0YXJnZXRfY29tbWVudF9pZD1tZW50aW9uLmNvbW1lbnRfaWQsCiAgICAgICAgICAgICAgICBldmVudF9rZXk9ZiJhdXRvX3JlcGx5OnttZW50aW9uLmxpbmtfaWR9OnttZW50aW9uLmNvbW1lbnRfaWR9IiwKICAgICAgICAgICAgKQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGF3YWl0IHNlbGYuYXJjaGl2ZS5vd25fcG9zdF9yZXBseV9jb3VudHMoKSwgezMwMTogMn0pCgogICAgYXN5bmMgZGVmIHRlc3RfcmVjb3JkX2NhcF9saW1pdHNfb2JzZXJ2YXRpb25zX2FuZF9yZW1vdmVzX29ycGhhbnMoc2VsZikgLT4gTm9uZToKICAgICAgICBjYXBwZWQgPSBDb21tZW50QXJjaGl2ZSgKICAgICAgICAgICAgUGF0aChzZWxmLnRlbXBfZGlyLm5hbWUpIC8gImNhcHBlZC5zcWxpdGUzIiwKICAgICAgICAgICAgcmV0ZW50aW9uX2RheXM9MCwKICAgICAgICAgICAgbWF4X3JlY29yZHM9MV8wMDAsCiAgICAgICAgICAgIHF1ZXJ5X21heF9yZXN1bHRzPTUsCiAgICAgICAgKQogICAgICAgIGF3YWl0IGNhcHBlZC5pbml0aWFsaXplKCkKICAgICAgICBhd2FpdCBjYXBwZWQucmVjb3JkX3JlY2VpdmVkKAogICAgICAgICAgICBbCiAgICAgICAgICAgICAgICAoCiAgICAgICAgICAgICAgICAgICAgc2VsZi5tZW50aW9uKAogICAgICAgICAgICAgICAgICAgICAgICBtZXNzYWdlX2lkPWluZGV4ICsgMSwKICAgICAgICAgICAgICAgICAgICAgICAgY29tbWVudF9pZD0xMF8wMDAgKyBpbmRleCwKICAgICAgICAgICAgICAgICAgICAgICAgdGV4dD1mIuWuuemHj+ivhOiuuiB7aW5kZXh9IiwKICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICJxdWV1ZWQiLAogICAgICAgICAgICAgICAgICAgICIiLAogICAgICAgICAgICAgICAgKQogICAgICAgICAgICAgICAgZm9yIGluZGV4IGluIHJhbmdlKDFfMDA1KQogICAgICAgICAgICBdCiAgICAgICAgKQoKICAgICAgICBvdmVydmlldyA9IGF3YWl0IGNhcHBlZC5vdmVydmlldygpCiAgICAgICAgZGVsZXRlZCA9IGF3YWl0IGNhcHBlZC5zZWFyY2goa2V5d29yZD0i5a656YeP6K+E6K66IDAiLCBkaXJlY3Rpb249InJlY2VpdmVkIikKICAgICAgICByZXRhaW5lZCA9IGF3YWl0IGNhcHBlZC5zZWFyY2goa2V5d29yZD0i5a656YeP6K+E6K66IDEwMDQiLCBkaXJlY3Rpb249InJlY2VpdmVkIikKCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChvdmVydmlld1sicmVjZWl2ZWRfb2JzZXJ2YXRpb25zIl0sIDFfMDAwKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwob3ZlcnZpZXdbInJlY2VpdmVkX2NvbW1lbnRzIl0sIDFfMDAwKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoZGVsZXRlZFsibWF0Y2hlZF9jb3VudCJdLCAwKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocmV0YWluZWRbIm1hdGNoZWRfY291bnQiXSwgMSkKCiAgICBhc3luYyBkZWYgdGVzdF9pbnZhbGlkX3RpbWVfcmFuZ2VfaXNfcmVqZWN0ZWQoc2VsZikgLT4gTm9uZToKICAgICAgICB3aXRoIHNlbGYuYXNzZXJ0UmFpc2VzUmVnZXgoVmFsdWVFcnJvciwgInN0YXJ0X3RpbWUiKToKICAgICAgICAgICAgYXdhaXQgc2VsZi5hcmNoaXZlLnN0YXRpc3RpY3MoCiAgICAgICAgICAgICAgICBzdGFydF90aW1lPSIyMDI2LTA3LTI3VDAwOjAwOjAwKzA4OjAwIiwKICAgICAgICAgICAgICAgIGVuZF90aW1lPSIyMDI2LTA3LTI2VDAwOjAwOjAwKzA4OjAwIiwKICAgICAgICAgICAgKQoKICAgIGFzeW5jIGRlZiB0ZXN0X2luc2lnaHRfcmVjb3Jkc19hbmRfc2VtYW50aWNfY2FjaGVfYXJlX3BlcnNpc3RlbnQoc2VsZikgLT4gTm9uZToKICAgICAgICBtZW50aW9uID0gc2VsZi5tZW50aW9uKAogICAgICAgICAgICA3MSwKICAgICAgICAgICAgNzAxLAogICAgICAgICAgICB0ZXh0PSLlvojllpzmrKLov5nkuKrluJblrZBbY3ViZV/llpzmrKJdIiwKICAgICAgICAgICAgbGlua19pZD05MDEsCiAgICAgICAgICAgIHVzZXJfaWQ9ODAxLAogICAgICAgICAgICBzb3VyY2U9Im93bl9wb3N0X2NvbW1lbnQiLAogICAgICAgICkKICAgICAgICBhd2FpdCBzZWxmLmFyY2hpdmUucmVjb3JkX3JlY2VpdmVkKFsobWVudGlvbiwgInJlcGxpZWQiLCAiIildKQoKICAgICAgICByZWNvcmRzID0gYXdhaXQgc2VsZi5hcmNoaXZlLmluc2lnaHRfcmVjb3JkcygKICAgICAgICAgICAgbGlua19pZD05MDEsCiAgICAgICAgICAgIHNvdXJjZT0ib3duX3Bvc3RfY29tbWVudCIsCiAgICAgICAgKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwobGVuKHJlY29yZHMpLCAxKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocmVjb3Jkc1swXVsiY29tbWVudF9rZXkiXSwgImNvbW1lbnQ6OTAxOjcwMSIpCgogICAgICAgIGF3YWl0IHNlbGYuYXJjaGl2ZS5zYXZlX3NlbWFudGljX2NhY2hlKAogICAgICAgICAgICBhbmFseXNpc19rZXk9ImFuYWx5c2lzLWtleSIsCiAgICAgICAgICAgIHByb3ZpZGVyX2lkPSJwcm92aWRlciIsCiAgICAgICAgICAgIHJlY29yZHM9WwogICAgICAgICAgICAgICAgewogICAgICAgICAgICAgICAgICAgICJjb21tZW50X2tleSI6IHJlY29yZHNbMF1bImNvbW1lbnRfa2V5Il0sCiAgICAgICAgICAgICAgICAgICAgImNvbnRlbnRfaGFzaCI6ICJoYXNoIiwKICAgICAgICAgICAgICAgICAgICAibWF0Y2hlZCI6IFRydWUsCiAgICAgICAgICAgICAgICAgICAgImNvbmZpZGVuY2UiOiAwLjksCiAgICAgICAgICAgICAgICAgICAgInJlYXNvbiI6ICLmmI7noa7llpzmrKIiLAogICAgICAgICAgICAgICAgfQogICAgICAgICAgICBdLAogICAgICAgICkKICAgICAgICBjYWNoZSA9IGF3YWl0IHNlbGYuYXJjaGl2ZS5zZW1hbnRpY19jYWNoZSgiYW5hbHlzaXMta2V5IikKICAgICAgICBvdmVydmlldyA9IGF3YWl0IHNlbGYuYXJjaGl2ZS5vdmVydmlldygpCgogICAgICAgIHNlbGYuYXNzZXJ0VHJ1ZShjYWNoZVsiY29tbWVudDo5MDE6NzAxIl1bIm1hdGNoZWQiXSkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGNhY2hlWyJjb21tZW50OjkwMTo3MDEiXVsicHJvdmlkZXJfaWQiXSwgInByb3ZpZGVyIikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKG92ZXJ2aWV3WyJzZW1hbnRpY19jYWNoZV9yZWNvcmRzIl0sIDEpCgogICAgZGVmIHRlc3RfZXh0cmFjdF9jb21tZW50X2lkX3JlYWRzX25lc3RlZF9yZXNwb25zZShzZWxmKSAtPiBOb25lOgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoCiAgICAgICAgICAgIGV4dHJhY3RfY29tbWVudF9pZCh7InN0YXR1cyI6ICJvayIsICJyZXN1bHQiOiB7ImNvbW1lbnRfaWQiOiAiOTg3In19KSwKICAgICAgICAgICAgOTg3LAogICAgICAgICkKCgppZiBfX25hbWVfXyA9PSAiX19tYWluX18iOgogICAgdW5pdHRlc3QubWFpbigpCg==
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+
+from astrbot_plugin_xhhrobot.comment_archive import CommentArchive, extract_comment_id
+from astrbot_plugin_xhhrobot.models import Mention
+
+
+class CommentArchiveTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.archive = CommentArchive(
+            Path(self.temp_dir.name) / "comments.sqlite3",
+            retention_days=0,
+            max_records=10_000,
+            query_max_results=3,
+        )
+        await self.archive.initialize()
+
+    async def asyncTearDown(self) -> None:
+        self.temp_dir.cleanup()
+
+    @staticmethod
+    def mention(
+        message_id: int,
+        comment_id: int,
+        *,
+        text: str,
+        link_id: int = 10,
+        root_id: int | None = None,
+        user_id: int = 1,
+        source: str = "mention",
+    ) -> Mention:
+        return Mention(
+            message_id=message_id,
+            comment_id=comment_id,
+            root_comment_id=root_id or comment_id,
+            link_id=link_id,
+            user_id=user_id,
+            comment_text=text,
+            source=source,
+        )
+
+    async def test_deduplicates_comments_but_preserves_raw_observations(self) -> None:
+        duplicate_a = self.mention(1, 100, text="转人妻", root_id=100)
+        duplicate_b = self.mention(2, 100, text="转人妻", root_id=100)
+        exact = self.mention(3, 200, text="转人妻", root_id=200, user_id=2)
+        variant = self.mention(
+            4,
+            300,
+            text="@ATRI 转人妻[cube_喜欢]",
+            link_id=20,
+            root_id=300,
+        )
+        unrelated = self.mention(5, 400, text="其他评论", link_id=20)
+
+        await self.archive.record_received(
+            [
+                (duplicate_a, "queued", ""),
+                (duplicate_b, "queued", ""),
+                (exact, "replied", ""),
+                (variant, "ignored", ""),
+                (unrelated, "queued", ""),
+            ]
+        )
+        await self.archive.update_received_status(duplicate_a, "replied")
+        await self.archive.record_bot_comment(
+            kind="auto_reply",
+            content="转人妻，我看到了",
+            link_id=10,
+            target_comment_id=100,
+            event_key="auto_reply:10:100",
+        )
+        await self.archive.record_bot_comment(
+            kind="llm_tool",
+            content="转人妻",
+            link_id=20,
+        )
+
+        stats = await self.archive.statistics(keyword="转人妻")
+
+        self.assertEqual(stats["received"]["raw_observations"], 4)
+        self.assertEqual(stats["received"]["unique_comments"], 3)
+        self.assertEqual(stats["received"]["duplicate_observations"], 1)
+        self.assertEqual(stats["received"]["exact_text_matches"], 2)
+        self.assertEqual(stats["received"]["text_variant_matches"], 1)
+        self.assertEqual(stats["received"]["unique_users"], 2)
+        self.assertEqual(stats["received"]["unique_posts"], 2)
+        self.assertEqual(stats["received"]["unique_root_threads"], 3)
+        self.assertEqual(stats["bot"]["comment_records"], 2)
+        self.assertEqual(stats["bot"]["confirmed_sent"], 2)
+        self.assertEqual(stats["bot"]["delivery_uncertain"], 0)
+        self.assertEqual(stats["bot"]["kind_counts"]["auto_reply"], 1)
+        self.assertEqual(stats["bot"]["kind_counts"]["llm_tool"], 1)
+
+        overview = await self.archive.overview()
+        self.assertEqual(overview["received_observations"], 5)
+        self.assertEqual(overview["received_comments"], 4)
+        self.assertEqual(overview["bot_comments"], 2)
+
+    async def test_source_filter_counts_only_matching_observations(self) -> None:
+        mention = self.mention(10, 500, text="同一条评论")
+        comment_stream = self.mention(
+            11,
+            500,
+            text="同一条评论",
+            source="own_post_comment",
+        )
+        await self.archive.record_received(
+            [(mention, "queued", ""), (comment_stream, "queued", "")]
+        )
+
+        all_stats = await self.archive.statistics()
+        mention_stats = await self.archive.statistics(source="mention")
+        comment_stats = await self.archive.statistics(source="own_post_comment")
+
+        self.assertEqual(all_stats["received"]["raw_observations"], 2)
+        self.assertEqual(all_stats["received"]["unique_comments"], 1)
+        self.assertEqual(mention_stats["received"]["raw_observations"], 1)
+        self.assertEqual(comment_stats["received"]["raw_observations"], 1)
+
+    async def test_search_returns_ids_status_and_enforces_query_limit(self) -> None:
+        records = [
+            (
+                self.mention(
+                    message_id=index,
+                    comment_id=1_000 + index,
+                    text=f"评论 {index}",
+                    link_id=99,
+                    user_id=77,
+                    source="own_post_comment",
+                ),
+                "queued",
+                "",
+            )
+            for index in range(1, 6)
+        ]
+        await self.archive.record_received(records)
+
+        result = await self.archive.search(
+            direction="received",
+            link_id=99,
+            source="own_post_comment",
+            limit=99,
+        )
+
+        self.assertEqual(result["matched_count"], 5)
+        self.assertEqual(result["returned_count"], 3)
+        self.assertEqual(result["records"][0]["comment_id"], 1005)
+        self.assertEqual(result["records"][0]["message_ids"], [5])
+        self.assertEqual(result["records"][0]["status"], "queued")
+
+        second_page = await self.archive.search(
+            direction="received",
+            link_id=99,
+            source="own_post_comment",
+            limit=2,
+            offset=2,
+        )
+        self.assertEqual(second_page["matched_count"], 5)
+        self.assertEqual(second_page["returned_count"], 2)
+        self.assertEqual(second_page["offset"], 2)
+        self.assertEqual(second_page["records"][0]["comment_id"], 1003)
+        self.assertEqual(second_page["records"][1]["comment_id"], 1002)
+
+    async def test_bot_event_key_updates_uncertain_record_without_duplication(
+        self,
+    ) -> None:
+        await self.archive.record_bot_comment(
+            kind="auto_browse",
+            content="准备发送的评论",
+            link_id=123,
+            status="uncertain",
+            event_key="auto_browse:123",
+        )
+        await self.archive.record_bot_comment(
+            kind="auto_browse",
+            content="准备发送的评论",
+            link_id=123,
+            status="sent",
+            comment_id=456,
+            event_key="auto_browse:123",
+        )
+
+        result = await self.archive.search(direction="bot")
+
+        self.assertEqual(result["matched_count"], 1)
+        self.assertEqual(result["records"][0]["status"], "sent")
+        self.assertEqual(result["records"][0]["comment_id"], 456)
+
+    async def test_recovers_per_post_counts_for_own_post_auto_replies(self) -> None:
+        own_first = self.mention(
+            31,
+            601,
+            text="自己帖子评论一",
+            link_id=301,
+            source="own_post_comment",
+        )
+        own_second = self.mention(
+            32,
+            602,
+            text="自己帖子评论二",
+            link_id=301,
+            source="own_post_comment",
+        )
+        external = self.mention(
+            33,
+            603,
+            text="其他帖子明确提及",
+            link_id=302,
+            source="mention",
+        )
+        await self.archive.record_received(
+            [
+                (own_first, "replied", ""),
+                (own_second, "uncertain", ""),
+                (external, "replied", ""),
+            ]
+        )
+        for mention, status in (
+            (own_first, "sent"),
+            (own_second, "uncertain"),
+            (external, "sent"),
+        ):
+            await self.archive.record_bot_comment(
+                kind="auto_reply",
+                content="Bot 回复",
+                link_id=mention.link_id,
+                status=status,
+                target_comment_id=mention.comment_id,
+                event_key=f"auto_reply:{mention.link_id}:{mention.comment_id}",
+            )
+
+        self.assertEqual(await self.archive.own_post_reply_counts(), {301: 2})
+
+    async def test_record_cap_limits_observations_and_removes_orphans(self) -> None:
+        capped = CommentArchive(
+            Path(self.temp_dir.name) / "capped.sqlite3",
+            retention_days=0,
+            max_records=1_000,
+            query_max_results=5,
+        )
+        await capped.initialize()
+        await capped.record_received(
+            [
+                (
+                    self.mention(
+                        message_id=index + 1,
+                        comment_id=10_000 + index,
+                        text=f"容量评论 {index}",
+                    ),
+                    "queued",
+                    "",
+                )
+                for index in range(1_005)
+            ]
+        )
+
+        overview = await capped.overview()
+        deleted = await capped.search(keyword="容量评论 0", direction="received")
+        retained = await capped.search(keyword="容量评论 1004", direction="received")
+
+        self.assertEqual(overview["received_observations"], 1_000)
+        self.assertEqual(overview["received_comments"], 1_000)
+        self.assertEqual(deleted["matched_count"], 0)
+        self.assertEqual(retained["matched_count"], 1)
+
+    async def test_invalid_time_range_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "start_time"):
+            await self.archive.statistics(
+                start_time="2026-07-27T00:00:00+08:00",
+                end_time="2026-07-26T00:00:00+08:00",
+            )
+
+    async def test_insight_records_and_semantic_cache_are_persistent(self) -> None:
+        mention = self.mention(
+            71,
+            701,
+            text="很喜欢这个帖子[cube_喜欢]",
+            link_id=901,
+            user_id=801,
+            source="own_post_comment",
+        )
+        await self.archive.record_received([(mention, "replied", "")])
+
+        records = await self.archive.insight_records(
+            link_id=901,
+            source="own_post_comment",
+        )
+        self.assertEqual(len(records), 1)
+        self.assertEqual(records[0]["comment_key"], "comment:901:701")
+
+        await self.archive.save_semantic_cache(
+            analysis_key="analysis-key",
+            provider_id="provider",
+            records=[
+                {
+                    "comment_key": records[0]["comment_key"],
+                    "content_hash": "hash",
+                    "matched": True,
+                    "confidence": 0.9,
+                    "reason": "明确喜欢",
+                }
+            ],
+        )
+        cache = await self.archive.semantic_cache("analysis-key")
+        overview = await self.archive.overview()
+
+        self.assertTrue(cache["comment:901:701"]["matched"])
+        self.assertEqual(cache["comment:901:701"]["provider_id"], "provider")
+        self.assertEqual(overview["semantic_cache_records"], 1)
+
+    def test_extract_comment_id_reads_nested_response(self) -> None:
+        self.assertEqual(
+            extract_comment_id({"status": "ok", "result": {"comment_id": "987"}}),
+            987,
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()

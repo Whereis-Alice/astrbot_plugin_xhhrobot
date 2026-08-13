@@ -1,1 +1,200 @@
-ZnJvbSBfX2Z1dHVyZV9fIGltcG9ydCBhbm5vdGF0aW9ucwoKaW1wb3J0IGFzeW5jaW8KaW1wb3J0IGNvcHkKaW1wb3J0IHRpbWUKaW1wb3J0IHVuaXR0ZXN0Cgpmcm9tIGFzdHJib3RfcGx1Z2luX3hoaHJvYm90LmF1dG9fYnJvd3NlIGltcG9ydCAoCiAgICBDb21tZW50RGVjaXNpb24sCiAgICBwYXJzZV9jb21tZW50X2RlY2lzaW9uLAogICAgcGFyc2Vfc2VsZWN0aW9uLAopCmZyb20gYXN0cmJvdF9wbHVnaW5feGhocm9ib3QubWFpbiBpbXBvcnQgWGhoUm9ib3RQbHVnaW4KZnJvbSBhc3RyYm90X3BsdWdpbl94aGhyb2JvdC5tb2RlbHMgaW1wb3J0IEF1dGhJbmZvLCBGZWVkUG9zdCwgUG9zdENvbnRleHQKZnJvbSBhc3RyYm90X3BsdWdpbl94aGhyb2JvdC5zdGF0ZV9zdG9yZSBpbXBvcnQgU3RhdGVTdG9yZQoKCmNsYXNzIE1lbW9yeUJhY2tlbmQ6CiAgICBkZWYgX19pbml0X18oc2VsZikgLT4gTm9uZToKICAgICAgICBzZWxmLnZhbHVlczogZGljdFtzdHIsIG9iamVjdF0gPSB7fQoKICAgIGFzeW5jIGRlZiBsb2FkKHNlbGYsIGtleTogc3RyLCBkZWZhdWx0OiBvYmplY3QpIC0+IG9iamVjdDoKICAgICAgICByZXR1cm4gY29weS5kZWVwY29weShzZWxmLnZhbHVlcy5nZXQoa2V5LCBkZWZhdWx0KSkKCiAgICBhc3luYyBkZWYgc2F2ZShzZWxmLCBrZXk6IHN0ciwgdmFsdWU6IG9iamVjdCkgLT4gTm9uZToKICAgICAgICBzZWxmLnZhbHVlc1trZXldID0gY29weS5kZWVwY29weSh2YWx1ZSkKCgpjbGFzcyBCcm93c2VDbGllbnQ6CiAgICBkZWYgX19pbml0X18oc2VsZiwgKiwgYmxvY2tfc2VuZDogYm9vbCA9IEZhbHNlKSAtPiBOb25lOgogICAgICAgIHNlbGYuZmVlZF9jYWxscyA9IDAKICAgICAgICBzZWxmLmNvbW1lbnRzOiBsaXN0W2RpY3Rbc3RyLCBvYmplY3RdXSA9IFtdCiAgICAgICAgc2VsZi5zZW5kX3N0YXJ0ZWQgPSBhc3luY2lvLkV2ZW50KCkKICAgICAgICBzZWxmLmJsb2NrX3NlbmQgPSBibG9ja19zZW5kCiAgICAgICAgc2VsZi5wb3N0cyA9IFsKICAgICAgICAgICAgRmVlZFBvc3QoCiAgICAgICAgICAgICAgICBsaW5rX2lkPTUwMSwKICAgICAgICAgICAgICAgIHRpdGxlPSLlgLzlvpforqjorrrnmoTluJblrZAiLAogICAgICAgICAgICAgICAgZGVzY3JpcHRpb249IuS4gOauteacieWunumZheWGheWuueeahOaRmOimgSIsCiAgICAgICAgICAgICAgICBhdXRob3JfaWQ9IjEyMyIsCiAgICAgICAgICAgICAgICBhdXRob3JfbmFtZT0i5L2c6ICFIiwKICAgICAgICAgICAgKQogICAgICAgIF0KCiAgICBhc3luYyBkZWYgZmV0Y2hfZmVlZF9wb3N0cyhzZWxmLCAqKmt3YXJnczogb2JqZWN0KSAtPiBsaXN0W0ZlZWRQb3N0XToKICAgICAgICBzZWxmLmZlZWRfY2FsbHMgKz0gMQogICAgICAgIHJldHVybiBsaXN0KHNlbGYucG9zdHMpCgogICAgYXN5bmMgZGVmIGZldGNoX3Bvc3RfY29udGV4dCgKICAgICAgICBzZWxmLAogICAgICAgIGxpbmtfaWQ6IGludCwKICAgICAgICAqKmt3YXJnczogb2JqZWN0LAogICAgKSAtPiBQb3N0Q29udGV4dDoKICAgICAgICBkZWwga3dhcmdzCiAgICAgICAgcmV0dXJuIFBvc3RDb250ZXh0KAogICAgICAgICAgICB0aXRsZT0i5YC85b6X6K6o6K6655qE5biW5a2QIiwKICAgICAgICAgICAgYXV0aG9yX2lkPSIxMjMiLAogICAgICAgICAgICBhdXRob3JfbmFtZT0i5L2c6ICFIiwKICAgICAgICAgICAgdGV4dF9wYXJ0cz0oIui/memHjOaYr+S4gOautei2s+Wkn+mVv+OAgeWPr+S7peW9ouaIkOWFt+S9k+ingueCueeahOW4luWtkOato+aWh+OAgiIsKSwKICAgICAgICApCgogICAgYXN5bmMgZGVmIGNyZWF0ZV9jb21tZW50KHNlbGYsICoqa3dhcmdzOiBvYmplY3QpIC0+IE5vbmU6CiAgICAgICAgc2VsZi5jb21tZW50cy5hcHBlbmQoZGljdChrd2FyZ3MpKQogICAgICAgIHNlbGYuc2VuZF9zdGFydGVkLnNldCgpCiAgICAgICAgaWYgc2VsZi5ibG9ja19zZW5kOgogICAgICAgICAgICBhd2FpdCBhc3luY2lvLkV2ZW50KCkud2FpdCgpCgoKY2xhc3MgQXV0b0Jyb3dzZVRlc3RzKHVuaXR0ZXN0Lklzb2xhdGVkQXN5bmNpb1Rlc3RDYXNlKToKICAgIGFzeW5jIGRlZiBtYWtlX3BsdWdpbigKICAgICAgICBzZWxmLAogICAgICAgICosCiAgICAgICAgZHJ5X3J1bjogYm9vbCA9IEZhbHNlLAogICAgICAgIGJsb2NrX3NlbmQ6IGJvb2wgPSBGYWxzZSwKICAgICAgICBkYWlseV9saW1pdDogaW50ID0gMywKICAgICkgLT4gdHVwbGVbWGhoUm9ib3RQbHVnaW4sIEJyb3dzZUNsaWVudCwgU3RhdGVTdG9yZV06CiAgICAgICAgYmFja2VuZCA9IE1lbW9yeUJhY2tlbmQoKQogICAgICAgIHN0b3JlID0gU3RhdGVTdG9yZShsb2FkX3ZhbHVlPWJhY2tlbmQubG9hZCwgc2F2ZV92YWx1ZT1iYWNrZW5kLnNhdmUpCiAgICAgICAgYXdhaXQgc3RvcmUuaW5pdGlhbGl6ZSgpCiAgICAgICAgY2xpZW50ID0gQnJvd3NlQ2xpZW50KGJsb2NrX3NlbmQ9YmxvY2tfc2VuZCkKICAgICAgICBwbHVnaW4gPSBvYmplY3QuX19uZXdfXyhYaGhSb2JvdFBsdWdpbikKICAgICAgICBwbHVnaW4uY29uZmlnID0gewogICAgICAgICAgICAiYWkiOiB7ImluY2x1ZGVfcG9zdF9pbWFnZXMiOiBGYWxzZX0sCiAgICAgICAgICAgICJhdXRvX2Jyb3dzZSI6IHsKICAgICAgICAgICAgICAgICJkcnlfcnVuIjogZHJ5X3J1biwKICAgICAgICAgICAgICAgICJjYW5kaWRhdGVfbGltaXQiOiAxMCwKICAgICAgICAgICAgICAgICJtYXhfZXZhbHVhdGlvbnNfcGVyX3J1biI6IDMsCiAgICAgICAgICAgICAgICAibWF4X2NvbW1lbnRzX3Blcl9ydW4iOiAxLAogICAgICAgICAgICAgICAgIm1heF9jb21tZW50c19wZXJfMjRoIjogZGFpbHlfbGltaXQsCiAgICAgICAgICAgICAgICAibWluX3Bvc3RfY2hhcnMiOiAxMCwKICAgICAgICAgICAgICAgICJtYXhfcG9zdF9jaGFycyI6IDIwMDAwLAogICAgICAgICAgICAgICAgIm1pbl9jb21tZW50X2NoYXJzIjogOCwKICAgICAgICAgICAgICAgICJtYXhfY29tbWVudF9jaGFycyI6IDMwMCwKICAgICAgICAgICAgICAgICJub3RpZnlfb25fY29tbWVudCI6IEZhbHNlLAogICAgICAgICAgICB9LAogICAgICAgIH0KICAgICAgICBwbHVnaW4uc3RvcmUgPSBzdG9yZQogICAgICAgIHBsdWdpbi5jbGllbnQgPSBjbGllbnQKICAgICAgICBwbHVnaW4uYXV0aCA9IEF1dGhJbmZvKGNvb2tpZT0iY29va2llPXZhbHVlIiwgaGV5Ym94X2lkPSI5OTkiKQogICAgICAgIHBsdWdpbi5fYXV0aF9pbnZhbGlkID0gRmFsc2UKICAgICAgICBwbHVnaW4uX2N5Y2xlX2xvY2sgPSBhc3luY2lvLkxvY2soKQogICAgICAgIHBsdWdpbi5fc3RvcF9ldmVudCA9IGFzeW5jaW8uRXZlbnQoKQoKICAgICAgICBhc3luYyBkZWYgc2VsZWN0X3Bvc3QoY2FuZGlkYXRlczogbGlzdFtGZWVkUG9zdF0pIC0+IHR1cGxlW2ludCwgc3RyXToKICAgICAgICAgICAgcmV0dXJuIGNhbmRpZGF0ZXNbMF0ubGlua19pZCwgIuespuWQiOS6uuiuvuWFtOi2oyIKCiAgICAgICAgYXN5bmMgZGVmIGRlY2lkZV9jb21tZW50KCphcmdzOiBvYmplY3QsICoqa3dhcmdzOiBvYmplY3QpIC0+IENvbW1lbnREZWNpc2lvbjoKICAgICAgICAgICAgcmV0dXJuIENvbW1lbnREZWNpc2lvbigKICAgICAgICAgICAgICAgIGFjdGlvbj0iY29tbWVudCIsCiAgICAgICAgICAgICAgICBjb21tZW50PSLov5nkuKrliIflhaXngrnlvojlhbfkvZPvvIzmraPmlofph4znmoTlj5boiI3kuZ/lgLzlvpfnu6fnu63ogYrjgIIiLAogICAgICAgICAgICAgICAgcmVhc29uPSLlj6/ku6Xpkojlr7nmraPmlofkuqTmtYEiLAogICAgICAgICAgICApCgogICAgICAgIHBsdWdpbi5fc2VsZWN0X2Jyb3dzZV9wb3N0ID0gc2VsZWN0X3Bvc3QgICMgdHlwZTogaWdub3JlW21ldGhvZC1hc3NpZ25dCiAgICAgICAgcGx1Z2luLl9kZWNpZGVfYnJvd3NlX2NvbW1lbnQgPSBkZWNpZGVfY29tbWVudCAgIyB0eXBlOiBpZ25vcmVbbWV0aG9kLWFzc2lnbl0KICAgICAgICByZXR1cm4gcGx1Z2luLCBjbGllbnQsIHN0b3JlCgogICAgYXN5bmMgZGVmIHRlc3Rfc2VsZWN0c19wb3N0X2FuZF9wdWJsaXNoZXNfY29tbWVudChzZWxmKSAtPiBOb25lOgogICAgICAgIHBsdWdpbiwgY2xpZW50LCBzdG9yZSA9IGF3YWl0IHNlbGYubWFrZV9wbHVnaW4oKQoKICAgICAgICByZXN1bHQgPSBhd2FpdCBwbHVnaW4uX3J1bl9hdXRvX2Jyb3dzZSgpCgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocmVzdWx0LmNvbW1lbnRlZCwgMSkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGxlbihjbGllbnQuY29tbWVudHMpLCAxKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoY2xpZW50LmNvbW1lbnRzWzBdWyJsaW5rX2lkIl0sIDUwMSkKICAgICAgICBzbmFwc2hvdCA9IGF3YWl0IHN0b3JlLnNuYXBzaG90KCkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKAogICAgICAgICAgICBzbmFwc2hvdFsiYXV0b19icm93c2UiXVsicmVjb3JkcyJdWyI1MDEiXVsic3RhdHVzIl0sICJjb21tZW50ZWQiCiAgICAgICAgKQoKICAgIGFzeW5jIGRlZiB0ZXN0X3ByZXZpZXdfZ2VuZXJhdGVzX2J1dF9uZXZlcl9zZW5kcyhzZWxmKSAtPiBOb25lOgogICAgICAgIHBsdWdpbiwgY2xpZW50LCBzdG9yZSA9IGF3YWl0IHNlbGYubWFrZV9wbHVnaW4oZHJ5X3J1bj1UcnVlKQoKICAgICAgICByZXN1bHQgPSBhd2FpdCBwbHVnaW4uX3J1bl9hdXRvX2Jyb3dzZSgpCgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwocmVzdWx0LmRyeV9ydW4sIDEpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChjbGllbnQuY29tbWVudHMsIFtdKQogICAgICAgIHNuYXBzaG90ID0gYXdhaXQgc3RvcmUuc25hcHNob3QoKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoc25hcHNob3RbImF1dG9fYnJvd3NlIl1bInJlY29yZHMiXVsiNTAxIl1bInN0YXR1cyJdLCAiZHJ5X3J1biIpCgogICAgYXN5bmMgZGVmIHRlc3RfZGFpbHlfbGltaXRfYmxvY2tzX2JlZm9yZV9mZWVkX2ZldGNoKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgcGx1Z2luLCBjbGllbnQsIHN0b3JlID0gYXdhaXQgc2VsZi5tYWtlX3BsdWdpbihkYWlseV9saW1pdD0xKQogICAgICAgIGF3YWl0IHN0b3JlLnJlY29yZF9icm93c2UoCiAgICAgICAgICAgIGxpbmtfaWQ9NDAwLAogICAgICAgICAgICB0aXRsZT0i5bey6K+E6K66IiwKICAgICAgICAgICAgYXV0aG9yX2lkPSIxMTEiLAogICAgICAgICAgICBzdGF0dXM9ImNvbW1lbnRlZCIsCiAgICAgICAgICAgIGNvbW1lbnRfdGV4dD0i5LmL5YmN55qE6K+E6K66IiwKICAgICAgICAgICAgbm93PXRpbWUudGltZSgpLAogICAgICAgICkKCiAgICAgICAgcmVzdWx0ID0gYXdhaXQgcGx1Z2luLl9ydW5fYXV0b19icm93c2UoKQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHJlc3VsdC5jb21tZW50ZWQsIDApCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChjbGllbnQuZmVlZF9jYWxscywgMCkKICAgICAgICBzZWxmLmFzc2VydEluKCLpop3luqblt7Lmu6EiLCByZXN1bHQubm90ZXNbMF0pCgogICAgYXN5bmMgZGVmIHRlc3RfZGFpbHlfbGltaXRfYWxsb3dzX2xhcmdlX2NvbmZpZ3VyZWRfdmFsdWUoc2VsZikgLT4gTm9uZToKICAgICAgICBwbHVnaW4sIGNsaWVudCwgc3RvcmUgPSBhd2FpdCBzZWxmLm1ha2VfcGx1Z2luKGRhaWx5X2xpbWl0PTEwMDApCiAgICAgICAgbm93ID0gdGltZS50aW1lKCkKICAgICAgICBmb3IgbGlua19pZCBpbiByYW5nZSg0MDAsIDQ1MSk6CiAgICAgICAgICAgIGF3YWl0IHN0b3JlLnJlY29yZF9icm93c2UoCiAgICAgICAgICAgICAgICBsaW5rX2lkPWxpbmtfaWQsCiAgICAgICAgICAgICAgICB0aXRsZT1mIuW3suivhOiuuiB7bGlua19pZH0iLAogICAgICAgICAgICAgICAgYXV0aG9yX2lkPXN0cihsaW5rX2lkKSwKICAgICAgICAgICAgICAgIHN0YXR1cz0iY29tbWVudGVkIiwKICAgICAgICAgICAgICAgIGNvbW1lbnRfdGV4dD0i5LmL5YmN55qE6K+E6K66IiwKICAgICAgICAgICAgICAgIG5vdz1ub3csCiAgICAgICAgICAgICkKCiAgICAgICAgcmVzdWx0ID0gYXdhaXQgcGx1Z2luLl9ydW5fYXV0b19icm93c2UoKQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHJlc3VsdC5jb21tZW50ZWQsIDEpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChsZW4oY2xpZW50LmNvbW1lbnRzKSwgMSkKCiAgICBhc3luYyBkZWYgdGVzdF9jYW5jZWxsYXRpb25fZHVyaW5nX3NlbmRfcmVjb3Jkc191bmNlcnRhaW4oc2VsZikgLT4gTm9uZToKICAgICAgICBwbHVnaW4sIGNsaWVudCwgc3RvcmUgPSBhd2FpdCBzZWxmLm1ha2VfcGx1Z2luKGJsb2NrX3NlbmQ9VHJ1ZSkKICAgICAgICB0YXNrID0gYXN5bmNpby5jcmVhdGVfdGFzayhwbHVnaW4uX3J1bl9hdXRvX2Jyb3dzZSgpKQogICAgICAgIGF3YWl0IGNsaWVudC5zZW5kX3N0YXJ0ZWQud2FpdCgpCgogICAgICAgIHRhc2suY2FuY2VsKCkKICAgICAgICB3aXRoIHNlbGYuYXNzZXJ0UmFpc2VzKGFzeW5jaW8uQ2FuY2VsbGVkRXJyb3IpOgogICAgICAgICAgICBhd2FpdCB0YXNrCgogICAgICAgIHNuYXBzaG90ID0gYXdhaXQgc3RvcmUuc25hcHNob3QoKQogICAgICAgIHJlY29yZCA9IHNuYXBzaG90WyJhdXRvX2Jyb3dzZSJdWyJyZWNvcmRzIl1bIjUwMSJdCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChyZWNvcmRbInN0YXR1cyJdLCAidW5jZXJ0YWluIikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHNuYXBzaG90WyJhdXRvX2Jyb3dzZSJdWyJzdGF0cyJdWyJ1bmNlcnRhaW4iXSwgMSkKCiAgICBkZWYgdGVzdF9tb2RlbF9qc29uX3BhcnNlcnNfcmVqZWN0X291dF9vZl9jb250cmFjdF92YWx1ZXMoc2VsZikgLT4gTm9uZToKICAgICAgICB3aXRoIHNlbGYuYXNzZXJ0UmFpc2VzKFZhbHVlRXJyb3IpOgogICAgICAgICAgICBwYXJzZV9zZWxlY3Rpb24oJ3sibGlua19pZCI6OTk5LCJyZWFzb24iOiLotornlYwifScsIHs1MDF9KQogICAgICAgIHdpdGggc2VsZi5hc3NlcnRSYWlzZXMoVmFsdWVFcnJvcik6CiAgICAgICAgICAgIHBhcnNlX2NvbW1lbnRfZGVjaXNpb24oJ3siYWN0aW9uIjoicHVibGlzaCIsImNvbW1lbnQiOiLlhoXlrrkifScpCiAgICAgICAgd2l0aCBzZWxmLmFzc2VydFJhaXNlcyhWYWx1ZUVycm9yKToKICAgICAgICAgICAgcGFyc2VfY29tbWVudF9kZWNpc2lvbigneyJhY3Rpb24iOiJjb21tZW50IiwiY29tbWVudCI6IiJ9JykKCgppZiBfX25hbWVfXyA9PSAiX19tYWluX18iOgogICAgdW5pdHRlc3QubWFpbigpCg==
+from __future__ import annotations
+
+import asyncio
+import copy
+import time
+import unittest
+
+from astrbot_plugin_xhhrobot.auto_browse import (
+    CommentDecision,
+    parse_comment_decision,
+    parse_selection,
+)
+from astrbot_plugin_xhhrobot.main import XhhRobotPlugin
+from astrbot_plugin_xhhrobot.models import AuthInfo, FeedPost, PostContext
+from astrbot_plugin_xhhrobot.state_store import StateStore
+
+
+class MemoryBackend:
+    def __init__(self) -> None:
+        self.values: dict[str, object] = {}
+
+    async def load(self, key: str, default: object) -> object:
+        return copy.deepcopy(self.values.get(key, default))
+
+    async def save(self, key: str, value: object) -> None:
+        self.values[key] = copy.deepcopy(value)
+
+
+class BrowseClient:
+    def __init__(self, *, block_send: bool = False) -> None:
+        self.feed_calls = 0
+        self.comments: list[dict[str, object]] = []
+        self.send_started = asyncio.Event()
+        self.block_send = block_send
+        self.posts = [
+            FeedPost(
+                link_id=501,
+                title="值得讨论的帖子",
+                description="一段有实际内容的摘要",
+                author_id="123",
+                author_name="作者",
+            )
+        ]
+
+    async def fetch_feed_posts(self, **kwargs: object) -> list[FeedPost]:
+        self.feed_calls += 1
+        return list(self.posts)
+
+    async def fetch_post_context(
+        self,
+        link_id: int,
+        **kwargs: object,
+    ) -> PostContext:
+        del kwargs
+        return PostContext(
+            title="值得讨论的帖子",
+            author_id="123",
+            author_name="作者",
+            text_parts=("这里是一段足够长、可以形成具体观点的帖子正文。",),
+        )
+
+    async def create_comment(self, **kwargs: object) -> None:
+        self.comments.append(dict(kwargs))
+        self.send_started.set()
+        if self.block_send:
+            await asyncio.Event().wait()
+
+
+class AutoBrowseTests(unittest.IsolatedAsyncioTestCase):
+    async def make_plugin(
+        self,
+        *,
+        dry_run: bool = False,
+        block_send: bool = False,
+        daily_limit: int = 3,
+    ) -> tuple[XhhRobotPlugin, BrowseClient, StateStore]:
+        backend = MemoryBackend()
+        store = StateStore(load_value=backend.load, save_value=backend.save)
+        await store.initialize()
+        client = BrowseClient(block_send=block_send)
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "ai": {"include_post_images": False},
+            "auto_browse": {
+                "dry_run": dry_run,
+                "candidate_limit": 10,
+                "max_evaluations_per_run": 3,
+                "max_comments_per_run": 1,
+                "max_comments_per_24h": daily_limit,
+                "min_post_chars": 10,
+                "max_post_chars": 20000,
+                "min_comment_chars": 8,
+                "max_comment_chars": 300,
+                "notify_on_comment": False,
+            },
+        }
+        plugin.store = store
+        plugin.client = client
+        plugin.auth = AuthInfo(cookie="cookie=value", heybox_id="999")
+        plugin._auth_invalid = False
+        plugin._cycle_lock = asyncio.Lock()
+        plugin._stop_event = asyncio.Event()
+
+        async def select_post(candidates: list[FeedPost]) -> tuple[int, str]:
+            return candidates[0].link_id, "符合人设兴趣"
+
+        async def decide_comment(*args: object, **kwargs: object) -> CommentDecision:
+            return CommentDecision(
+                action="comment",
+                comment="这个切入点很具体，正文里的取舍也值得继续聊。",
+                reason="可以针对正文交流",
+            )
+
+        plugin._select_browse_post = select_post  # type: ignore[method-assign]
+        plugin._decide_browse_comment = decide_comment  # type: ignore[method-assign]
+        return plugin, client, store
+
+    async def test_selects_post_and_publishes_comment(self) -> None:
+        plugin, client, store = await self.make_plugin()
+
+        result = await plugin._run_auto_browse()
+
+        self.assertEqual(result.commented, 1)
+        self.assertEqual(len(client.comments), 1)
+        self.assertEqual(client.comments[0]["link_id"], 501)
+        snapshot = await store.snapshot()
+        self.assertEqual(
+            snapshot["auto_browse"]["records"]["501"]["status"], "commented"
+        )
+
+    async def test_preview_generates_but_never_sends(self) -> None:
+        plugin, client, store = await self.make_plugin(dry_run=True)
+
+        result = await plugin._run_auto_browse()
+
+        self.assertEqual(result.dry_run, 1)
+        self.assertEqual(client.comments, [])
+        snapshot = await store.snapshot()
+        self.assertEqual(snapshot["auto_browse"]["records"]["501"]["status"], "dry_run")
+
+    async def test_daily_limit_blocks_before_feed_fetch(self) -> None:
+        plugin, client, store = await self.make_plugin(daily_limit=1)
+        await store.record_browse(
+            link_id=400,
+            title="已评论",
+            author_id="111",
+            status="commented",
+            comment_text="之前的评论",
+            now=time.time(),
+        )
+
+        result = await plugin._run_auto_browse()
+
+        self.assertEqual(result.commented, 0)
+        self.assertEqual(client.feed_calls, 0)
+        self.assertIn("额度已满", result.notes[0])
+
+    async def test_daily_limit_allows_large_configured_value(self) -> None:
+        plugin, client, store = await self.make_plugin(daily_limit=1000)
+        now = time.time()
+        for link_id in range(400, 451):
+            await store.record_browse(
+                link_id=link_id,
+                title=f"已评论 {link_id}",
+                author_id=str(link_id),
+                status="commented",
+                comment_text="之前的评论",
+                now=now,
+            )
+
+        result = await plugin._run_auto_browse()
+
+        self.assertEqual(result.commented, 1)
+        self.assertEqual(len(client.comments), 1)
+
+    async def test_cancellation_during_send_records_uncertain(self) -> None:
+        plugin, client, store = await self.make_plugin(block_send=True)
+        task = asyncio.create_task(plugin._run_auto_browse())
+        await client.send_started.wait()
+
+        task.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await task
+
+        snapshot = await store.snapshot()
+        record = snapshot["auto_browse"]["records"]["501"]
+        self.assertEqual(record["status"], "uncertain")
+        self.assertEqual(snapshot["auto_browse"]["stats"]["uncertain"], 1)
+
+    def test_model_json_parsers_reject_out_of_contract_values(self) -> None:
+        with self.assertRaises(ValueError):
+            parse_selection('{"link_id":999,"reason":"越界"}', {501})
+        with self.assertRaises(ValueError):
+            parse_comment_decision('{"action":"publish","comment":"内容"}')
+        with self.assertRaises(ValueError):
+            parse_comment_decision('{"action":"comment","comment":""}')
+
+
+if __name__ == "__main__":
+    unittest.main()

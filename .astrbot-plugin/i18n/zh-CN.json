@@ -1,1 +1,11 @@
-ewogICJtZXRhZGF0YSI6IHsKICAgICJkaXNwbGF5X25hbWUiOiAi5bCP6buR55uSYm90IgogIH0sCiAgInBhZ2VzIjogewogICAgImRhc2hib2FyZCI6IHsKICAgICAgInRpdGxlIjogIuWwj+m7keebkmJvdCIsCiAgICAgICJkZXNjIjogIueZu+W9leOAgei/kOihjOeKtuaAgeS4jua2iOaBr+aVsOaNruW6kyIKICAgIH0KICB9Cn0K
+{
+  "metadata": {
+    "display_name": "小黑盒bot"
+  },
+  "pages": {
+    "dashboard": {
+      "title": "小黑盒bot",
+      "desc": "登录、运行状态与消息数据库"
+    }
+  }
+}

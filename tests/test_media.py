@@ -1,1 +1,251 @@
-ZnJvbSBfX2Z1dHVyZV9fIGltcG9ydCBhbm5vdGF0aW9ucwoKaW1wb3J0IGJhc2U2NAppbXBvcnQgdGVtcGZpbGUKaW1wb3J0IHVuaXR0ZXN0CmZyb20gaW8gaW1wb3J0IEJ5dGVzSU8KZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCmZyb20gdW5pdHRlc3QubW9jayBpbXBvcnQgQXN5bmNNb2NrLCBwYXRjaAoKZnJvbSBQSUwgaW1wb3J0IEltYWdlIGFzIFBpbGxvd0ltYWdlCgpmcm9tIGFzdHJib3RfcGx1Z2luX3hoaHJvYm90Lm1lZGlhIGltcG9ydCAoCiAgICBJbWFnZVBheWxvYWQsCiAgICBleHRyYWN0X2ltYWdlX3VybHMsCiAgICBnaWZfdG9fcG5nX3BheWxvYWQsCiAgICBpbWFnZV9wYXlsb2FkX3RvX2RhdGFfdXJsLAogICAgbG9hZF9pbWFnZV9wYXlsb2FkLAogICAgbG9jYWxfcGF0aF9mcm9tX3NvdXJjZSwKICAgIG5vcm1hbGl6ZV9odHRwX2ltYWdlX3VybCwKICAgIHN0cmlwX3hoaF9pbWFnZV90cmFuc2Zvcm1fcXVlcnksCikKZnJvbSBhc3RyYm90X3BsdWdpbl94aGhyb2JvdC5tb2RlbHMgaW1wb3J0IEF1dGhJbmZvCmZyb20gYXN0cmJvdF9wbHVnaW5feGhocm9ib3QueGhoX2NsaWVudCBpbXBvcnQgWGhoQ2xpZW50LCBYaGhFcnJvcgoKUE5HXzFYMSA9IGJhc2U2NC5iNjRkZWNvZGUoCiAgICAiaVZCT1J3MEtHZ29BQUFBTlNVaEVVZ0FBQUFFQUFBQUJDQVFBQUFDMUhBd0NBQUFBQzBsRVFWUjQybU5rK0E4QUFRVUJBU2NZNDJZQUFBQUFTVVZPUks1Q1lJST0iCikKCgpjbGFzcyBNZWRpYVRlc3RzKHVuaXR0ZXN0Lklzb2xhdGVkQXN5bmNpb1Rlc3RDYXNlKToKICAgIGRlZiBzZXRVcChzZWxmKSAtPiBOb25lOgogICAgICAgIHNlbGYudGVtcF9kaXIgPSB0ZW1wZmlsZS5UZW1wb3JhcnlEaXJlY3RvcnkoKQogICAgICAgIHNlbGYucm9vdCA9IFBhdGgoc2VsZi50ZW1wX2Rpci5uYW1lKQogICAgICAgIHNlbGYuaW1hZ2VfcGF0aCA9IHNlbGYucm9vdCAvICJpbWFnZS5wbmciCiAgICAgICAgc2VsZi5pbWFnZV9wYXRoLndyaXRlX2J5dGVzKFBOR18xWDEpCgogICAgZGVmIHRlYXJEb3duKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgc2VsZi50ZW1wX2Rpci5jbGVhbnVwKCkKCiAgICBkZWYgY2xpZW50KHNlbGYpIC0+IFhoaENsaWVudDoKICAgICAgICByZXR1cm4gWGhoQ2xpZW50KAogICAgICAgICAgICBhcGlfYmFzZV91cmw9Imh0dHBzOi8vYXBpLmV4YW1wbGUudGVzdCIsCiAgICAgICAgICAgIHJlcGx5X2Jhc2VfdXJsPSJodHRwczovL3JlcGx5LmV4YW1wbGUudGVzdCIsCiAgICAgICAgICAgIHZlcnNpb249IjEiLAogICAgICAgICAgICB3ZWJfdmVyc2lvbj0iMSIsCiAgICAgICAgICAgIGRldmljZV9pZD0iZGV2aWNlIiwKICAgICAgICAgICAgYXV0aD1BdXRoSW5mbyhjb29raWU9ImE9YiIsIGhleWJveF9pZD0iMTIzIiksCiAgICAgICAgKQoKICAgIGRlZiB0ZXN0X2xvY2FsX2ltYWdlX2lzX3ZhbGlkYXRlZF9hbmRfcmVzdHJpY3RlZF90b19yb290cyhzZWxmKSAtPiBOb25lOgogICAgICAgIHBheWxvYWQgPSBsb2FkX2ltYWdlX3BheWxvYWQoCiAgICAgICAgICAgIHNlbGYuaW1hZ2VfcGF0aCwKICAgICAgICAgICAgbWF4X2J5dGVzPTEwMjQgKiAxMDI0LAogICAgICAgICAgICBhbGxvd2VkX3Jvb3RzPShzZWxmLnJvb3QsKSwKICAgICAgICApCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChwYXlsb2FkLm1pbWV0eXBlLCAiaW1hZ2UvcG5nIikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKChwYXlsb2FkLndpZHRoLCBwYXlsb2FkLmhlaWdodCksICgxLCAxKSkKCiAgICAgICAgb3RoZXJfcm9vdCA9IHNlbGYucm9vdCAvICJvdGhlciIKICAgICAgICBvdGhlcl9yb290Lm1rZGlyKCkKICAgICAgICB3aXRoIHNlbGYuYXNzZXJ0UmFpc2VzUmVnZXgoVmFsdWVFcnJvciwgIuWFgeiuuOS4iuS8oCIpOgogICAgICAgICAgICBsb2FkX2ltYWdlX3BheWxvYWQoCiAgICAgICAgICAgICAgICBzZWxmLmltYWdlX3BhdGgsCiAgICAgICAgICAgICAgICBtYXhfYnl0ZXM9MTAyNCAqIDEwMjQsCiAgICAgICAgICAgICAgICBhbGxvd2VkX3Jvb3RzPShvdGhlcl9yb290LCksCiAgICAgICAgICAgICkKCiAgICBkZWYgdGVzdF9iYXNlNjRfaW1hZ2VfYW5kX3dpbmRvd3NfcGF0aHNfYXJlX3N1cHBvcnRlZChzZWxmKSAtPiBOb25lOgogICAgICAgIGVuY29kZWQgPSAiYmFzZTY0Oi8vIiArIGJhc2U2NC5iNjRlbmNvZGUoUE5HXzFYMSkuZGVjb2RlKCJhc2NpaSIpCiAgICAgICAgcGF5bG9hZCA9IGxvYWRfaW1hZ2VfcGF5bG9hZChlbmNvZGVkLCBtYXhfYnl0ZXM9MTAyNCAqIDEwMjQpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChwYXlsb2FkLm1pbWV0eXBlLCAiaW1hZ2UvcG5nIikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKAogICAgICAgICAgICBsb2NhbF9wYXRoX2Zyb21fc291cmNlKHIiQzpcaW1hZ2VzXGEucG5nIiksIFBhdGgociJDOlxpbWFnZXNcYS5wbmciKQogICAgICAgICkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKAogICAgICAgICAgICBsb2NhbF9wYXRoX2Zyb21fc291cmNlKHIiXFxzZXJ2ZXJcc2hhcmVcYS5wbmciKSwKICAgICAgICAgICAgUGF0aChyIlxcc2VydmVyXHNoYXJlXGEucG5nIiksCiAgICAgICAgKQoKICAgIGRlZiB0ZXN0X3ByaXZhdGVfbmV0d29ya19pbWFnZV91cmxfaXNfcmVqZWN0ZWQoc2VsZikgLT4gTm9uZToKICAgICAgICB3aXRoIHNlbGYuYXNzZXJ0UmFpc2VzUmVnZXgoVmFsdWVFcnJvciwgIuengeaciSIpOgogICAgICAgICAgICBub3JtYWxpemVfaHR0cF9pbWFnZV91cmwoImh0dHA6Ly8xMjcuMC4wLjEvaW1hZ2UucG5nIikKCiAgICBkZWYgdGVzdF94aGhfdGh1bWJuYWlsX3F1ZXJpZXNfYXJlX3JlbW92ZWRfd2l0aG91dF9kcm9wcGluZ19zaWduYXR1cmVzKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbCgKICAgICAgICAgICAgc3RyaXBfeGhoX2ltYWdlX3RyYW5zZm9ybV9xdWVyeSgKICAgICAgICAgICAgICAgICJodHRwczovL2ltZ2hleWJveDEubWF4LWMuY29tL3dlYi9hLmpwZz8iCiAgICAgICAgICAgICAgICAiaW1hZ2VNb2dyMi9hdXRvLW9yaWVudC9pZ25vcmUtZXJyb3IvMS90aHVtYm5haWwvODUweDE0NTAlM0UiCiAgICAgICAgICAgICksCiAgICAgICAgICAgICJodHRwczovL2ltZ2hleWJveDEubWF4LWMuY29tL3dlYi9hLmpwZyIsCiAgICAgICAgKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoCiAgICAgICAgICAgIHN0cmlwX3hoaF9pbWFnZV90cmFuc2Zvcm1fcXVlcnkoCiAgICAgICAgICAgICAgICAiaHR0cHM6Ly9pbWdoZXlib3gubWF4LWMuY29tL3dlYi9hLmpwZz9zaWduPWFiYyZpbWFnZVZpZXcyLzIvdy8zMDAiCiAgICAgICAgICAgICksCiAgICAgICAgICAgICJodHRwczovL2ltZ2hleWJveC5tYXgtYy5jb20vd2ViL2EuanBnP3NpZ249YWJjIiwKICAgICAgICApCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbCgKICAgICAgICAgICAgc3RyaXBfeGhoX2ltYWdlX3RyYW5zZm9ybV9xdWVyeSgKICAgICAgICAgICAgICAgICJodHRwczovL2ltYWdlcy5leGFtcGxlL2EuanBnP2ltYWdlTW9ncjIvdGh1bWJuYWlsLzMwMHgzMDAiCiAgICAgICAgICAgICksCiAgICAgICAgICAgICJodHRwczovL2ltYWdlcy5leGFtcGxlL2EuanBnP2ltYWdlTW9ncjIvdGh1bWJuYWlsLzMwMHgzMDAiLAogICAgICAgICkKCiAgICBkZWYgdGVzdF9pbWFnZV91cmxfbGlzdHNfYW5kX25lc3RlZF9pbWdfZmllbGRzX2FyZV9zdXBwb3J0ZWQoc2VsZikgLT4gTm9uZToKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKAogICAgICAgICAgICBleHRyYWN0X2ltYWdlX3VybHMoCiAgICAgICAgICAgICAgICB7CiAgICAgICAgICAgICAgICAgICAgImNvbW1lbnRfYSI6IHsKICAgICAgICAgICAgICAgICAgICAgICAgImltZyI6ICJodHRwczovL2Nkbi5leGFtcGxlL2EuanBnO2h0dHBzOi8vY2RuLmV4YW1wbGUvYi5qcGciCiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfQogICAgICAgICAgICApLAogICAgICAgICAgICBbCiAgICAgICAgICAgICAgICAiaHR0cHM6Ly9jZG4uZXhhbXBsZS9hLmpwZyIsCiAgICAgICAgICAgICAgICAiaHR0cHM6Ly9jZG4uZXhhbXBsZS9iLmpwZyIsCiAgICAgICAgICAgIF0sCiAgICAgICAgKQoKICAgIGRlZiB0ZXN0X2dpZl9maXJzdF9mcmFtZV9pc19jb252ZXJ0ZWRfdG9fcG5nKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgZmlyc3QgPSBQaWxsb3dJbWFnZS5uZXcoIlJHQkEiLCAoMiwgMiksICgyNTUsIDAsIDAsIDI1NSkpCiAgICAgICAgc2Vjb25kID0gUGlsbG93SW1hZ2UubmV3KCJSR0JBIiwgKDIsIDIpLCAoMCwgMCwgMjU1LCAyNTUpKQogICAgICAgIGVuY29kZWQgPSBCeXRlc0lPKCkKICAgICAgICBmaXJzdC5zYXZlKAogICAgICAgICAgICBlbmNvZGVkLAogICAgICAgICAgICBmb3JtYXQ9IkdJRiIsCiAgICAgICAgICAgIHNhdmVfYWxsPVRydWUsCiAgICAgICAgICAgIGFwcGVuZF9pbWFnZXM9W3NlY29uZF0sCiAgICAgICAgICAgIGR1cmF0aW9uPTEwMCwKICAgICAgICAgICAgbG9vcD0wLAogICAgICAgICkKICAgICAgICBwYXlsb2FkID0gZ2lmX3RvX3BuZ19wYXlsb2FkKAogICAgICAgICAgICBJbWFnZVBheWxvYWQoInJlYWN0aW9uLmdpZiIsICJpbWFnZS9naWYiLCBlbmNvZGVkLmdldHZhbHVlKCksIDIsIDIpCiAgICAgICAgKQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHBheWxvYWQubWltZXR5cGUsICJpbWFnZS9wbmciKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoKHBheWxvYWQud2lkdGgsIHBheWxvYWQuaGVpZ2h0KSwgKDIsIDIpKQogICAgICAgIHdpdGggUGlsbG93SW1hZ2Uub3BlbihCeXRlc0lPKHBheWxvYWQuZGF0YSkpIGFzIGltYWdlOgogICAgICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGltYWdlLmdldHBpeGVsKCgwLCAwKSlbOjNdLCAoMjU1LCAwLCAwKSkKICAgICAgICBzZWxmLmFzc2VydFRydWUoaW1hZ2VfcGF5bG9hZF90b19kYXRhX3VybChwYXlsb2FkKS5zdGFydHN3aXRoKCJkYXRhOmltYWdlL3BuZztiYXNlNjQsIikpCgogICAgZGVmIHRlc3RfZ2lmX2ZhbGxzX2JhY2tfdG9fdHJ1bmNhdGVkX2ZyYW1lX2RlY29kZShzZWxmKSAtPiBOb25lOgogICAgICAgIGZpcnN0ID0gUGlsbG93SW1hZ2UubmV3KCJSR0JBIiwgKDIsIDIpLCAoMjU1LCAwLCAwLCAyNTUpKQogICAgICAgIGVuY29kZWQgPSBCeXRlc0lPKCkKICAgICAgICBmaXJzdC5zYXZlKGVuY29kZWQsIGZvcm1hdD0iR0lGIikKICAgICAgICBvcmlnaW5hbF9vcGVuID0gUGlsbG93SW1hZ2Uub3BlbgogICAgICAgIGNhbGxzID0gMAoKICAgICAgICBkZWYgZmFpbF9vbmNlKCphcmdzOiBvYmplY3QsICoqa3dhcmdzOiBvYmplY3QpIC0+IG9iamVjdDoKICAgICAgICAgICAgbm9ubG9jYWwgY2FsbHMKICAgICAgICAgICAgY2FsbHMgKz0gMQogICAgICAgICAgICBpZiBjYWxscyA9PSAxOgogICAgICAgICAgICAgICAgcmFpc2UgT1NFcnJvcigidHJ1bmNhdGVkIEdJRiBmcmFtZSIpCiAgICAgICAgICAgIHJldHVybiBvcmlnaW5hbF9vcGVuKCphcmdzLCAqKmt3YXJncykKCiAgICAgICAgd2l0aCBwYXRjaCgiUElMLkltYWdlLm9wZW4iLCBzaWRlX2VmZmVjdD1mYWlsX29uY2UpOgogICAgICAgICAgICBwYXlsb2FkID0gZ2lmX3RvX3BuZ19wYXlsb2FkKAogICAgICAgICAgICAgICAgSW1hZ2VQYXlsb2FkKCJ0cnVuY2F0ZWQuZ2lmIiwgImltYWdlL2dpZiIsIGVuY29kZWQuZ2V0dmFsdWUoKSwgMiwgMikKICAgICAgICAgICAgKQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHBheWxvYWQubWltZXR5cGUsICJpbWFnZS9wbmciKQogICAgICAgIHNlbGYuYXNzZXJ0R3JlYXRlckVxdWFsKGNhbGxzLCAyKQoKICAgIGFzeW5jIGRlZiB0ZXN0X2xsbV9naWZfc291cmNlX2JlY29tZXNfcG5nX2RhdGFfdXJsKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgY2xpZW50ID0gc2VsZi5jbGllbnQoKQogICAgICAgIGZpcnN0ID0gUGlsbG93SW1hZ2UubmV3KCJSR0JBIiwgKDIsIDIpLCAoMjU1LCAwLCAwLCAyNTUpKQogICAgICAgIGVuY29kZWQgPSBCeXRlc0lPKCkKICAgICAgICBmaXJzdC5zYXZlKGVuY29kZWQsIGZvcm1hdD0iR0lGIikKICAgICAgICBnaWYgPSBJbWFnZVBheWxvYWQoCiAgICAgICAgICAgICJyZWFjdGlvbi5naWYiLAogICAgICAgICAgICAiaW1hZ2UvZ2lmIiwKICAgICAgICAgICAgZW5jb2RlZC5nZXR2YWx1ZSgpLAogICAgICAgICAgICAyLAogICAgICAgICAgICAyLAogICAgICAgICkKICAgICAgICBjbGllbnQuZmV0Y2hfaW1hZ2VfcGF5bG9hZCA9IEFzeW5jTW9jayhyZXR1cm5fdmFsdWU9Z2lmKSAgIyB0eXBlOiBpZ25vcmVbbWV0aG9kLWFzc2lnbl0KCiAgICAgICAgcmVzdWx0ID0gYXdhaXQgY2xpZW50LnByZXBhcmVfbGxtX2ltYWdlX3NvdXJjZSgiaHR0cHM6Ly9jZG4uZXhhbXBsZS9yZWFjdGlvbi5naWYiKQoKICAgICAgICBzZWxmLmFzc2VydFRydWUocmVzdWx0LnN0YXJ0c3dpdGgoImRhdGE6aW1hZ2UvcG5nO2Jhc2U2NCwiKSkKICAgICAgICBjbGllbnQuZmV0Y2hfaW1hZ2VfcGF5bG9hZC5hc3NlcnRfYXdhaXRlZF9vbmNlKCkKCiAgICBhc3luYyBkZWYgdGVzdF9wcmVwYXJlX3NvdXJjZXNfdXBsb2Fkc19vcmlnaW5hbF9uZXR3b3JrX2J5dGVzX2FuZF9sb2NhbF9pbWFnZXMoCiAgICAgICAgc2VsZiwKICAgICkgLT4gTm9uZToKICAgICAgICBjbGllbnQgPSBzZWxmLmNsaWVudCgpCiAgICAgICAgY2xpZW50LmZldGNoX2ltYWdlX3BheWxvYWQgPSBBc3luY01vY2soCiAgICAgICAgICAgIHJldHVybl92YWx1ZT1JbWFnZVBheWxvYWQoInJlbW90ZS5wbmciLCAiaW1hZ2UvcG5nIiwgUE5HXzFYMSwgMSwgMSkKICAgICAgICApCiAgICAgICAgY2xpZW50LmNvcHlfaW1hZ2VfYnlfdXJsID0gQXN5bmNNb2NrKCkKICAgICAgICBjbGllbnQudXBsb2FkX2ltYWdlX3BheWxvYWRfdG9fY29zID0gQXN5bmNNb2NrKAogICAgICAgICAgICBzaWRlX2VmZmVjdD1bCiAgICAgICAgICAgICAgICAiaHR0cHM6Ly9jZG4uZXhhbXBsZS9yZW1vdGUucG5nIiwKICAgICAgICAgICAgICAgICJodHRwczovL2Nkbi5leGFtcGxlL2xvY2FsLnBuZyIsCiAgICAgICAgICAgIF0KICAgICAgICApCgogICAgICAgIHJlc3VsdCA9IGF3YWl0IGNsaWVudC5wcmVwYXJlX2ltYWdlX3NvdXJjZXMoCiAgICAgICAgICAgIFsiaHR0cHM6Ly9leGFtcGxlLmNvbS9hLnBuZyIsIHN0cihzZWxmLmltYWdlX3BhdGgpXSwKICAgICAgICAgICAgYWxsb3dlZF9sb2NhbF9yb290cz0oc2VsZi5yb290LCksCiAgICAgICAgKQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKAogICAgICAgICAgICByZXN1bHQsCiAgICAgICAgICAgIFsiaHR0cHM6Ly9jZG4uZXhhbXBsZS9yZW1vdGUucG5nIiwgImh0dHBzOi8vY2RuLmV4YW1wbGUvbG9jYWwucG5nIl0sCiAgICAgICAgKQogICAgICAgIGNsaWVudC5mZXRjaF9pbWFnZV9wYXlsb2FkLmFzc2VydF9hd2FpdGVkX29uY2Vfd2l0aCgKICAgICAgICAgICAgImh0dHBzOi8vZXhhbXBsZS5jb20vYS5wbmciLCBtYXhfYnl0ZXM9MjAgKiAxMDI0ICogMTAyNAogICAgICAgICkKICAgICAgICBjbGllbnQuY29weV9pbWFnZV9ieV91cmwuYXNzZXJ0X25vdF9hd2FpdGVkKCkKICAgICAgICB1cGxvYWRlZCA9IFtjYWxsLmFyZ3NbMF0gZm9yIGNhbGwgaW4gY2xpZW50LnVwbG9hZF9pbWFnZV9wYXlsb2FkX3RvX2Nvcy5hd2FpdF9hcmdzX2xpc3RdCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChbaXRlbS5kYXRhIGZvciBpdGVtIGluIHVwbG9hZGVkXSwgW1BOR18xWDEsIFBOR18xWDFdKQoKICAgIGFzeW5jIGRlZiB0ZXN0X3ByZXBhcmVfc291cmNlc19mYWxsc19iYWNrX3RvX3VybF9jb3B5X2FmdGVyX3JlbW90ZV91cGxvYWRfZXJyb3IoCiAgICAgICAgc2VsZiwKICAgICkgLT4gTm9uZToKICAgICAgICBjbGllbnQgPSBzZWxmLmNsaWVudCgpCiAgICAgICAgY2xpZW50LmZldGNoX2ltYWdlX3BheWxvYWQgPSBBc3luY01vY2soCiAgICAgICAgICAgIHNpZGVfZWZmZWN0PVhoaEVycm9yKCLlm77niYfkuIvovb3lpLHotKXvvIhIVFRQIDQwM++8ieOAgiIsIHJldHJ5YWJsZT1GYWxzZSkKICAgICAgICApCiAgICAgICAgY2xpZW50LmNvcHlfaW1hZ2VfYnlfdXJsID0gQXN5bmNNb2NrKHJldHVybl92YWx1ZT0iaHR0cHM6Ly9jZG4uZXhhbXBsZS9jb3BpZWQucG5nIikKCiAgICAgICAgcmVzdWx0ID0gYXdhaXQgY2xpZW50LnByZXBhcmVfaW1hZ2Vfc291cmNlcyhbImh0dHBzOi8vZXhhbXBsZS5jb20vYS5wbmciXSkKCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChyZXN1bHQsIFsiaHR0cHM6Ly9jZG4uZXhhbXBsZS9jb3BpZWQucG5nIl0pCiAgICAgICAgY2xpZW50LmNvcHlfaW1hZ2VfYnlfdXJsLmFzc2VydF9hd2FpdGVkX29uY2Vfd2l0aCgiaHR0cHM6Ly9leGFtcGxlLmNvbS9hLnBuZyIpCgogICAgYXN5bmMgZGVmIHRlc3RfY29zX3VwbG9hZF9ydW5zX2luZm9fdG9rZW5fcHV0X2FuZF9jYWxsYmFja19zZXF1ZW5jZShzZWxmKSAtPiBOb25lOgogICAgICAgIGNsaWVudCA9IHNlbGYuY2xpZW50KCkKICAgICAgICBjbGllbnQuX3JlcXVlc3RfY29zX3VwbG9hZF9pbmZvID0gQXN5bmNNb2NrKAogICAgICAgICAgICByZXR1cm5fdmFsdWU9eyJrZXlzIjogWyJiYnMvYS5wbmciXSwgImJ1Y2tldCI6ICJidWNrZXQtMTIzIn0KICAgICAgICApCiAgICAgICAgY2xpZW50Ll9yZXF1ZXN0X2Nvc191cGxvYWRfdG9rZW4gPSBBc3luY01vY2socmV0dXJuX3ZhbHVlPXsiY3JlZGVudGlhbHMiOiB7fX0pCiAgICAgICAgY2xpZW50Ll9wdXRfY29zX29iamVjdCA9IEFzeW5jTW9jaygpCiAgICAgICAgY2xpZW50Ll9maW5pc2hfY29zX3VwbG9hZCA9IEFzeW5jTW9jayhyZXR1cm5fdmFsdWU9Imh0dHBzOi8vY2RuLmV4YW1wbGUvYS5wbmciKQogICAgICAgIGltYWdlID0gSW1hZ2VQYXlsb2FkKCJhLnBuZyIsICJpbWFnZS9wbmciLCBQTkdfMVgxLCAxLCAxKQoKICAgICAgICByZXN1bHQgPSBhd2FpdCBjbGllbnQudXBsb2FkX2ltYWdlX3BheWxvYWRfdG9fY29zKGltYWdlKQoKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKHJlc3VsdCwgImh0dHBzOi8vY2RuLmV4YW1wbGUvYS5wbmciKQogICAgICAgIGNsaWVudC5fcmVxdWVzdF9jb3NfdXBsb2FkX3Rva2VuLmFzc2VydF9hd2FpdGVkX29uY2Vfd2l0aCgKICAgICAgICAgICAgYnVja2V0PSJidWNrZXQtMTIzIiwKICAgICAgICAgICAga2V5cz1bImJicy9hLnBuZyJdLAogICAgICAgICAgICBtaW1ldHlwZXM9WyJpbWFnZS9wbmciXSwKICAgICAgICApCiAgICAgICAgY2xpZW50Ll9wdXRfY29zX29iamVjdC5hc3NlcnRfYXdhaXRlZF9vbmNlKCkKICAgICAgICBjbGllbnQuX2ZpbmlzaF9jb3NfdXBsb2FkLmFzc2VydF9hd2FpdGVkX29uY2Vfd2l0aChbImJicy9hLnBuZyJdKQoKCmlmIF9fbmFtZV9fID09ICJfX21haW5fXyI6CiAgICB1bml0dGVzdC5tYWluKCkK
+from __future__ import annotations
+
+import base64
+import tempfile
+import unittest
+from io import BytesIO
+from pathlib import Path
+from unittest.mock import AsyncMock, patch
+
+from PIL import Image as PillowImage
+
+from astrbot_plugin_xhhrobot.media import (
+    ImagePayload,
+    extract_image_urls,
+    gif_to_png_payload,
+    image_payload_to_data_url,
+    load_image_payload,
+    local_path_from_source,
+    normalize_http_image_url,
+    strip_xhh_image_transform_query,
+)
+from astrbot_plugin_xhhrobot.models import AuthInfo
+from astrbot_plugin_xhhrobot.xhh_client import XhhClient, XhhError
+
+PNG_1X1 = base64.b64decode(
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+)
+
+
+class MediaTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.root = Path(self.temp_dir.name)
+        self.image_path = self.root / "image.png"
+        self.image_path.write_bytes(PNG_1X1)
+
+    def tearDown(self) -> None:
+        self.temp_dir.cleanup()
+
+    def client(self) -> XhhClient:
+        return XhhClient(
+            api_base_url="https://api.example.test",
+            reply_base_url="https://reply.example.test",
+            version="1",
+            web_version="1",
+            device_id="device",
+            auth=AuthInfo(cookie="a=b", heybox_id="123"),
+        )
+
+    def test_local_image_is_validated_and_restricted_to_roots(self) -> None:
+        payload = load_image_payload(
+            self.image_path,
+            max_bytes=1024 * 1024,
+            allowed_roots=(self.root,),
+        )
+        self.assertEqual(payload.mimetype, "image/png")
+        self.assertEqual((payload.width, payload.height), (1, 1))
+
+        other_root = self.root / "other"
+        other_root.mkdir()
+        with self.assertRaisesRegex(ValueError, "允许上传"):
+            load_image_payload(
+                self.image_path,
+                max_bytes=1024 * 1024,
+                allowed_roots=(other_root,),
+            )
+
+    def test_base64_image_and_windows_paths_are_supported(self) -> None:
+        encoded = "base64://" + base64.b64encode(PNG_1X1).decode("ascii")
+        payload = load_image_payload(encoded, max_bytes=1024 * 1024)
+        self.assertEqual(payload.mimetype, "image/png")
+        self.assertEqual(
+            local_path_from_source(r"C:\images\a.png"), Path(r"C:\images\a.png")
+        )
+        self.assertEqual(
+            local_path_from_source(r"\\server\share\a.png"),
+            Path(r"\\server\share\a.png"),
+        )
+
+    def test_private_network_image_url_is_rejected(self) -> None:
+        with self.assertRaisesRegex(ValueError, "私有"):
+            normalize_http_image_url("http://127.0.0.1/image.png")
+
+    def test_xhh_thumbnail_queries_are_removed_without_dropping_signatures(self) -> None:
+        self.assertEqual(
+            strip_xhh_image_transform_query(
+                "https://imgheybox1.max-c.com/web/a.jpg?"
+                "imageMogr2/auto-orient/ignore-error/1/thumbnail/850x1450%3E"
+            ),
+            "https://imgheybox1.max-c.com/web/a.jpg",
+        )
+        self.assertEqual(
+            strip_xhh_image_transform_query(
+                "https://imgheybox.max-c.com/web/a.jpg?sign=abc&imageView2/2/w/300"
+            ),
+            "https://imgheybox.max-c.com/web/a.jpg?sign=abc",
+        )
+        self.assertEqual(
+            strip_xhh_image_transform_query(
+                "https://images.example/a.jpg?imageMogr2/thumbnail/300x300"
+            ),
+            "https://images.example/a.jpg?imageMogr2/thumbnail/300x300",
+        )
+
+    def test_image_url_lists_and_nested_img_fields_are_supported(self) -> None:
+        self.assertEqual(
+            extract_image_urls(
+                {
+                    "comment_a": {
+                        "img": "https://cdn.example/a.jpg;https://cdn.example/b.jpg"
+                    }
+                }
+            ),
+            [
+                "https://cdn.example/a.jpg",
+                "https://cdn.example/b.jpg",
+            ],
+        )
+
+    def test_gif_first_frame_is_converted_to_png(self) -> None:
+        first = PillowImage.new("RGBA", (2, 2), (255, 0, 0, 255))
+        second = PillowImage.new("RGBA", (2, 2), (0, 0, 255, 255))
+        encoded = BytesIO()
+        first.save(
+            encoded,
+            format="GIF",
+            save_all=True,
+            append_images=[second],
+            duration=100,
+            loop=0,
+        )
+        payload = gif_to_png_payload(
+            ImagePayload("reaction.gif", "image/gif", encoded.getvalue(), 2, 2)
+        )
+
+        self.assertEqual(payload.mimetype, "image/png")
+        self.assertEqual((payload.width, payload.height), (2, 2))
+        with PillowImage.open(BytesIO(payload.data)) as image:
+            self.assertEqual(image.getpixel((0, 0))[:3], (255, 0, 0))
+        self.assertTrue(image_payload_to_data_url(payload).startswith("data:image/png;base64,"))
+
+    def test_gif_falls_back_to_truncated_frame_decode(self) -> None:
+        first = PillowImage.new("RGBA", (2, 2), (255, 0, 0, 255))
+        encoded = BytesIO()
+        first.save(encoded, format="GIF")
+        original_open = PillowImage.open
+        calls = 0
+
+        def fail_once(*args: object, **kwargs: object) -> object:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise OSError("truncated GIF frame")
+            return original_open(*args, **kwargs)
+
+        with patch("PIL.Image.open", side_effect=fail_once):
+            payload = gif_to_png_payload(
+                ImagePayload("truncated.gif", "image/gif", encoded.getvalue(), 2, 2)
+            )
+
+        self.assertEqual(payload.mimetype, "image/png")
+        self.assertGreaterEqual(calls, 2)
+
+    async def test_llm_gif_source_becomes_png_data_url(self) -> None:
+        client = self.client()
+        first = PillowImage.new("RGBA", (2, 2), (255, 0, 0, 255))
+        encoded = BytesIO()
+        first.save(encoded, format="GIF")
+        gif = ImagePayload(
+            "reaction.gif",
+            "image/gif",
+            encoded.getvalue(),
+            2,
+            2,
+        )
+        client.fetch_image_payload = AsyncMock(return_value=gif)  # type: ignore[method-assign]
+
+        result = await client.prepare_llm_image_source("https://cdn.example/reaction.gif")
+
+        self.assertTrue(result.startswith("data:image/png;base64,"))
+        client.fetch_image_payload.assert_awaited_once()
+
+    async def test_prepare_sources_uploads_original_network_bytes_and_local_images(
+        self,
+    ) -> None:
+        client = self.client()
+        client.fetch_image_payload = AsyncMock(
+            return_value=ImagePayload("remote.png", "image/png", PNG_1X1, 1, 1)
+        )
+        client.copy_image_by_url = AsyncMock()
+        client.upload_image_payload_to_cos = AsyncMock(
+            side_effect=[
+                "https://cdn.example/remote.png",
+                "https://cdn.example/local.png",
+            ]
+        )
+
+        result = await client.prepare_image_sources(
+            ["https://example.com/a.png", str(self.image_path)],
+            allowed_local_roots=(self.root,),
+        )
+
+        self.assertEqual(
+            result,
+            ["https://cdn.example/remote.png", "https://cdn.example/local.png"],
+        )
+        client.fetch_image_payload.assert_awaited_once_with(
+            "https://example.com/a.png", max_bytes=20 * 1024 * 1024
+        )
+        client.copy_image_by_url.assert_not_awaited()
+        uploaded = [call.args[0] for call in client.upload_image_payload_to_cos.await_args_list]
+        self.assertEqual([item.data for item in uploaded], [PNG_1X1, PNG_1X1])
+
+    async def test_prepare_sources_falls_back_to_url_copy_after_remote_upload_error(
+        self,
+    ) -> None:
+        client = self.client()
+        client.fetch_image_payload = AsyncMock(
+            side_effect=XhhError("图片下载失败（HTTP 403）。", retryable=False)
+        )
+        client.copy_image_by_url = AsyncMock(return_value="https://cdn.example/copied.png")
+
+        result = await client.prepare_image_sources(["https://example.com/a.png"])
+
+        self.assertEqual(result, ["https://cdn.example/copied.png"])
+        client.copy_image_by_url.assert_awaited_once_with("https://example.com/a.png")
+
+    async def test_cos_upload_runs_info_token_put_and_callback_sequence(self) -> None:
+        client = self.client()
+        client._request_cos_upload_info = AsyncMock(
+            return_value={"keys": ["bbs/a.png"], "bucket": "bucket-123"}
+        )
+        client._request_cos_upload_token = AsyncMock(return_value={"credentials": {}})
+        client._put_cos_object = AsyncMock()
+        client._finish_cos_upload = AsyncMock(return_value="https://cdn.example/a.png")
+        image = ImagePayload("a.png", "image/png", PNG_1X1, 1, 1)
+
+        result = await client.upload_image_payload_to_cos(image)
+
+        self.assertEqual(result, "https://cdn.example/a.png")
+        client._request_cos_upload_token.assert_awaited_once_with(
+            bucket="bucket-123",
+            keys=["bbs/a.png"],
+            mimetypes=["image/png"],
+        )
+        client._put_cos_object.assert_awaited_once()
+        client._finish_cos_upload.assert_awaited_once_with(["bbs/a.png"])
+
+
+if __name__ == "__main__":
+    unittest.main()

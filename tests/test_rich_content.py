@@ -1,1 +1,89 @@
-ZnJvbSBfX2Z1dHVyZV9fIGltcG9ydCBhbm5vdGF0aW9ucwoKaW1wb3J0IHVuaXR0ZXN0Cgpmcm9tIGFzdHJib3RfcGx1Z2luX3hoaHJvYm90LnJpY2hfY29udGVudCBpbXBvcnQgKAogICAgUmljaENvbnRlbnRFcnJvciwKICAgIGNvbnRlbnRfYmxvY2tzX3BsYWluX3RleHQsCiAgICBub3JtYWxpemVfcGxhaW5fdGV4dCwKICAgIG5vcm1hbGl6ZV9yaWNoX2NvbnRlbnRfYmxvY2tzLAogICAgcGFyc2VfaW5ib3VuZF9jb250ZW50X2Jsb2NrcywKICAgIHBsYXRmb3JtX2h0bWxfZm9yX2Jsb2NrLAopCgoKY2xhc3MgUmljaENvbnRlbnRUZXN0cyh1bml0dGVzdC5UZXN0Q2FzZSk6CiAgICBkZWYgdGVzdF9wbGFpbl90ZXh0X2NvbnZlcnRzX2NvbW1vbl9tb2RlbF9icmVha190YWdzKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbCgKICAgICAgICAgICAgbm9ybWFsaXplX3BsYWluX3RleHQoIuesrOS4gOihjDxicj7nrKzkuozooYw8YnIgLz7nrKzkuInooYwiKSwKICAgICAgICAgICAgIuesrOS4gOihjFxu56ys5LqM6KGMXG7nrKzkuInooYwiLAogICAgICAgICkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKG5vcm1hbGl6ZV9wbGFpbl90ZXh0KCLnrKzkuIDooYwgPHRhZz4g56ys5LqM6KGMIiksICLnrKzkuIDooYwgPHRhZz4g56ys5LqM6KGMIikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKAogICAgICAgICAgICBub3JtYWxpemVfcGxhaW5fdGV4dChyIuesrOS4gOihjFxu56ys5LqM6KGMXHJcbuesrOS4ieihjCIpLAogICAgICAgICAgICAi56ys5LiA6KGMXG7nrKzkuozooYxcbuesrOS4ieihjCIsCiAgICAgICAgKQoKICAgIGRlZiB0ZXN0X3BsYWluX3RleHRfcG9zdF9ibG9ja3Nfa2VlcF9yZWFsX25ld2xpbmVzKHNlbGYpIC0+IE5vbmU6CiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbCgKICAgICAgICAgICAgcGxhdGZvcm1faHRtbF9mb3JfYmxvY2soeyJ0eXBlIjogInRleHQiLCAidGV4dCI6ICLnrKzkuIDooYxcbuesrOS6jOihjCJ9KSwKICAgICAgICAgICAgIuesrOS4gOihjFxu56ys5LqM6KGMIiwKICAgICAgICApCgogICAgZGVmIHRlc3Rfbm9ybWFsaXplc19zYWZlX2Jsb2Nrc193aXRob3V0X2xvc2luZ19vcmRlcihzZWxmKSAtPiBOb25lOgogICAgICAgIGJsb2NrcyA9IG5vcm1hbGl6ZV9yaWNoX2NvbnRlbnRfYmxvY2tzKAogICAgICAgICAgICBbCiAgICAgICAgICAgICAgICB7InR5cGUiOiAidGV4dCIsICJ0ZXh0IjogIuesrOS4gOautVxu56ys5LqM6KGMIn0sCiAgICAgICAgICAgICAgICB7CiAgICAgICAgICAgICAgICAgICAgInR5cGUiOiAiaHRtbCIsCiAgICAgICAgICAgICAgICAgICAgImh0bWwiOiAnPHA+PHN0cm9uZz7ph43ngrk8L3N0cm9uZz4gPGEgaHJlZj0iaHR0cHM6Ly9leGFtcGxlLmNvbS94Ij7pk77mjqU8L2E+PC9wPicsCiAgICAgICAgICAgICAgICB9LAogICAgICAgICAgICAgICAgeyJ0eXBlIjogImltYWdlIiwgInVybCI6ICJodHRwczovL2ltYWdlcy5leGFtcGxlL3BpYy5wbmcifSwKICAgICAgICAgICAgXSwKICAgICAgICAgICAgbWF4X3RleHRfY2hhcnM9MTAwMCwKICAgICAgICApCgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoYmxvY2tzWzBdLCB7InR5cGUiOiAidGV4dCIsICJ0ZXh0IjogIuesrOS4gOautVxu56ys5LqM6KGMIn0pCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbCgKICAgICAgICAgICAgYmxvY2tzWzFdLAogICAgICAgICAgICB7CiAgICAgICAgICAgICAgICAidHlwZSI6ICJodG1sIiwKICAgICAgICAgICAgICAgICJ0ZXh0IjogJzxwPjxzdHJvbmc+6YeN54K5PC9zdHJvbmc+IDxhIGhyZWY9Imh0dHBzOi8vZXhhbXBsZS5jb20veCI+6ZO+5o6lPC9hPjwvcD4nLAogICAgICAgICAgICB9LAogICAgICAgICkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKAogICAgICAgICAgICBibG9ja3NbMl0sCiAgICAgICAgICAgIHsidHlwZSI6ICJpbWFnZSIsICJ1cmwiOiAiaHR0cHM6Ly9pbWFnZXMuZXhhbXBsZS9waWMucG5nIn0sCiAgICAgICAgKQogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoY29udGVudF9ibG9ja3NfcGxhaW5fdGV4dChibG9ja3MpLCAi56ys5LiA5q61XG7nrKzkuozooYxcbumHjeeCuSDpk77mjqUiKQoKICAgIGRlZiB0ZXN0X3JlamVjdHNfdW5zYWZlX29yX3Vuc3VwcG9ydGVkX2h0bWwoc2VsZikgLT4gTm9uZToKICAgICAgICB2YWx1ZXMgPSAoCiAgICAgICAgICAgICc8c2NyaXB0PmFsZXJ0KCJ4Iik8L3NjcmlwdD4nLAogICAgICAgICAgICAnPHAgb25jbGljaz0iYWxlcnQoMSkiPuWGheWuuTwvcD4nLAogICAgICAgICAgICAnPGEgaHJlZj0iamF2YXNjcmlwdDphbGVydCgxKSI+5YaF5a65PC9hPicsCiAgICAgICAgICAgICc8YSBocmVmPSJodHRwOi8vMTI3LjAuMC4xL3ByaXZhdGUiPuWGheWuuTwvYT4nLAogICAgICAgICAgICAnPGltZyBzcmM9Imh0dHBzOi8vaW1hZ2VzLmV4YW1wbGUvcGljLnBuZyI+JywKICAgICAgICApCiAgICAgICAgZm9yIHZhbHVlIGluIHZhbHVlczoKICAgICAgICAgICAgd2l0aCBzZWxmLnN1YlRlc3QodmFsdWU9dmFsdWUpOgogICAgICAgICAgICAgICAgd2l0aCBzZWxmLmFzc2VydFJhaXNlcyhSaWNoQ29udGVudEVycm9yKToKICAgICAgICAgICAgICAgICAgICBub3JtYWxpemVfcmljaF9jb250ZW50X2Jsb2NrcygKICAgICAgICAgICAgICAgICAgICAgICAgW3sidHlwZSI6ICJodG1sIiwgImh0bWwiOiB2YWx1ZX1dLAogICAgICAgICAgICAgICAgICAgICAgICBtYXhfdGV4dF9jaGFycz0xMDAwLAogICAgICAgICAgICAgICAgICAgICkKCiAgICBkZWYgdGVzdF9pbmJvdW5kX2Jsb2Nrc19rZWVwX3NhZmVfZm9ybWF0dGluZ19hbmRfcGxhaW5fdGV4dChzZWxmKSAtPiBOb25lOgogICAgICAgIGJsb2NrcyA9IHBhcnNlX2luYm91bmRfY29udGVudF9ibG9ja3MoCiAgICAgICAgICAgICdbeyJ0eXBlIjoidGV4dCIsInRleHQiOiI8cD7mraPmloc8YnI+PHN0cm9uZz7ph43ngrk8L3N0cm9uZz48c2NyaXB0PmJhZDwvc2NyaXB0PjwvcD4ifSwnCiAgICAgICAgICAgICd7InR5cGUiOiJpbWciLCJ1cmwiOiIvL2Nkbi5leGFtcGxlL2ltYWdlLnBuZyJ9XScKICAgICAgICApCgogICAgICAgIHNlbGYuYXNzZXJ0RXF1YWwoYmxvY2tzWzBdWyJ0eXBlIl0sICJodG1sIikKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGJsb2Nrc1swXVsidGV4dCJdLCAiPHA+5q2j5paHPGJyPjxzdHJvbmc+6YeN54K5PC9zdHJvbmc+PC9wPiIpCiAgICAgICAgc2VsZi5hc3NlcnRFcXVhbChibG9ja3NbMV0sIHsidHlwZSI6ICJpbWFnZSIsICJ1cmwiOiAiaHR0cHM6Ly9jZG4uZXhhbXBsZS9pbWFnZS5wbmcifSkKICAgICAgICBzZWxmLmFzc2VydEVxdWFsKGNvbnRlbnRfYmxvY2tzX3BsYWluX3RleHQoYmxvY2tzKSwgIuato+aWh1xu6YeN54K5IikKCgppZiBfX25hbWVfXyA9PSAiX19tYWluX18iOgogICAgdW5pdHRlc3QubWFpbigpCg==
+from __future__ import annotations
+
+import unittest
+
+from astrbot_plugin_xhhrobot.rich_content import (
+    RichContentError,
+    content_blocks_plain_text,
+    normalize_plain_text,
+    normalize_rich_content_blocks,
+    parse_inbound_content_blocks,
+    platform_html_for_block,
+)
+
+
+class RichContentTests(unittest.TestCase):
+    def test_plain_text_converts_common_model_break_tags(self) -> None:
+        self.assertEqual(
+            normalize_plain_text("第一行<br>第二行<br />第三行"),
+            "第一行\n第二行\n第三行",
+        )
+        self.assertEqual(normalize_plain_text("第一行 <tag> 第二行"), "第一行 <tag> 第二行")
+        self.assertEqual(
+            normalize_plain_text(r"第一行\n第二行\r\n第三行"),
+            "第一行\n第二行\n第三行",
+        )
+
+    def test_plain_text_post_blocks_keep_real_newlines(self) -> None:
+        self.assertEqual(
+            platform_html_for_block({"type": "text", "text": "第一行\n第二行"}),
+            "第一行\n第二行",
+        )
+
+    def test_normalizes_safe_blocks_without_losing_order(self) -> None:
+        blocks = normalize_rich_content_blocks(
+            [
+                {"type": "text", "text": "第一段\n第二行"},
+                {
+                    "type": "html",
+                    "html": '<p><strong>重点</strong> <a href="https://example.com/x">链接</a></p>',
+                },
+                {"type": "image", "url": "https://images.example/pic.png"},
+            ],
+            max_text_chars=1000,
+        )
+
+        self.assertEqual(blocks[0], {"type": "text", "text": "第一段\n第二行"})
+        self.assertEqual(
+            blocks[1],
+            {
+                "type": "html",
+                "text": '<p><strong>重点</strong> <a href="https://example.com/x">链接</a></p>',
+            },
+        )
+        self.assertEqual(
+            blocks[2],
+            {"type": "image", "url": "https://images.example/pic.png"},
+        )
+        self.assertEqual(content_blocks_plain_text(blocks), "第一段\n第二行\n重点 链接")
+
+    def test_rejects_unsafe_or_unsupported_html(self) -> None:
+        values = (
+            '<script>alert("x")</script>',
+            '<p onclick="alert(1)">内容</p>',
+            '<a href="javascript:alert(1)">内容</a>',
+            '<a href="http://127.0.0.1/private">内容</a>',
+            '<img src="https://images.example/pic.png">',
+        )
+        for value in values:
+            with self.subTest(value=value):
+                with self.assertRaises(RichContentError):
+                    normalize_rich_content_blocks(
+                        [{"type": "html", "html": value}],
+                        max_text_chars=1000,
+                    )
+
+    def test_inbound_blocks_keep_safe_formatting_and_plain_text(self) -> None:
+        blocks = parse_inbound_content_blocks(
+            '[{"type":"text","text":"<p>正文<br><strong>重点</strong><script>bad</script></p>"},'
+            '{"type":"img","url":"//cdn.example/image.png"}]'
+        )
+
+        self.assertEqual(blocks[0]["type"], "html")
+        self.assertEqual(blocks[0]["text"], "<p>正文<br><strong>重点</strong></p>")
+        self.assertEqual(blocks[1], {"type": "image", "url": "https://cdn.example/image.png"})
+        self.assertEqual(content_blocks_plain_text(blocks), "正文\n重点")
+
+
+if __name__ == "__main__":
+    unittest.main()

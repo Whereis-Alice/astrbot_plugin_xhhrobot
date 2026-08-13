@@ -1,1 +1,385 @@
-ZnJvbSBfX2Z1dHVyZV9fIGltcG9ydCBhbm5vdGF0aW9ucwoKaW1wb3J0IGFzeW5jaW8KaW1wb3J0IGpzb24KaW1wb3J0IHNxbGl0ZTMKaW1wb3J0IHRpbWUKaW1wb3J0IHV1aWQKZnJvbSBjb2xsZWN0aW9ucy5hYmMgaW1wb3J0IFNlcXVlbmNlCmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aApmcm9tIHR5cGluZyBpbXBvcnQgQW55Cgpmcm9tIC5yaWNoX2NvbnRlbnQgaW1wb3J0IGNvbnRlbnRfYmxvY2tzX3BsYWluX3RleHQKCgpjbGFzcyBEcmFmdFN0b3JlOgogICAgIiIiU21hbGwgU1FMaXRlLWJhY2tlZCBsb2NhbCBkcmFmdCBib3ggZm9yIExMTS1hdXRob3JlZCBwb3N0cy4iIiIKCiAgICBkZWYgX19pbml0X18oc2VsZiwgcGF0aDogUGF0aCwgKiwgbWF4X3JlY29yZHM6IGludCA9IDUwMCkgLT4gTm9uZToKICAgICAgICBzZWxmLnBhdGggPSBQYXRoKHBhdGgpCiAgICAgICAgc2VsZi5tYXhfcmVjb3JkcyA9IG1heCgxMCwgaW50KG1heF9yZWNvcmRzKSkKICAgICAgICBzZWxmLl9sb2NrID0gYXN5bmNpby5Mb2NrKCkKICAgICAgICBzZWxmLl9pbml0aWFsaXplZCA9IEZhbHNlCgogICAgYXN5bmMgZGVmIGluaXRpYWxpemUoc2VsZikgLT4gTm9uZToKICAgICAgICBpZiBzZWxmLl9pbml0aWFsaXplZDoKICAgICAgICAgICAgcmV0dXJuCiAgICAgICAgYXN5bmMgd2l0aCBzZWxmLl9sb2NrOgogICAgICAgICAgICBpZiBzZWxmLl9pbml0aWFsaXplZDoKICAgICAgICAgICAgICAgIHJldHVybgogICAgICAgICAgICBhd2FpdCBhc3luY2lvLnRvX3RocmVhZChzZWxmLl9pbml0aWFsaXplX3N5bmMpCiAgICAgICAgICAgIHNlbGYuX2luaXRpYWxpemVkID0gVHJ1ZQoKICAgIGFzeW5jIGRlZiBvdmVydmlldyhzZWxmKSAtPiBkaWN0W3N0ciwgaW50XToKICAgICAgICBhd2FpdCBzZWxmLmluaXRpYWxpemUoKQogICAgICAgIGFzeW5jIHdpdGggc2VsZi5fbG9jazoKICAgICAgICAgICAgcmV0dXJuIGF3YWl0IGFzeW5jaW8udG9fdGhyZWFkKHNlbGYuX292ZXJ2aWV3X3N5bmMpCgogICAgYXN5bmMgZGVmIGxpc3Qoc2VsZiwgKiwgbGltaXQ6IGludCA9IDIwKSAtPiBkaWN0W3N0ciwgQW55XToKICAgICAgICBhd2FpdCBzZWxmLmluaXRpYWxpemUoKQogICAgICAgIGFzeW5jIHdpdGggc2VsZi5fbG9jazoKICAgICAgICAgICAgcmV0dXJuIGF3YWl0IGFzeW5jaW8udG9fdGhyZWFkKAogICAgICAgICAgICAgICAgc2VsZi5fbGlzdF9zeW5jLCBtYXgoMSwgbWluKDEwMCwgaW50KGxpbWl0KSkpCiAgICAgICAgICAgICkKCiAgICBhc3luYyBkZWYgZ2V0KHNlbGYsIGRyYWZ0X2lkOiBzdHIpIC0+IGRpY3Rbc3RyLCBBbnldOgogICAgICAgIGF3YWl0IHNlbGYuaW5pdGlhbGl6ZSgpCiAgICAgICAgYXN5bmMgd2l0aCBzZWxmLl9sb2NrOgogICAgICAgICAgICByZXR1cm4gYXdhaXQgYXN5bmNpby50b190aHJlYWQoc2VsZi5fZ2V0X3N5bmMsIGRyYWZ0X2lkKQoKICAgIGFzeW5jIGRlZiBzYXZlKAogICAgICAgIHNlbGYsCiAgICAgICAgKiwKICAgICAgICBkcmFmdF9pZDogc3RyID0gIiIsCiAgICAgICAgdGl0bGU6IHN0ciB8IE5vbmUgPSBOb25lLAogICAgICAgIGJvZHk6IHN0ciB8IE5vbmUgPSBOb25lLAogICAgICAgIGRlc2NyaXB0aW9uOiBzdHIgfCBOb25lID0gTm9uZSwKICAgICAgICB0b3BpY19pZHM6IFNlcXVlbmNlW3N0cl0gfCBOb25lID0gTm9uZSwKICAgICAgICBoYXNodGFnczogU2VxdWVuY2Vbc3RyXSB8IE5vbmUgPSBOb25lLAogICAgICAgIGltYWdlX3VybHM6IFNlcXVlbmNlW3N0cl0gfCBOb25lID0gTm9uZSwKICAgICAgICBjb250ZW50X2Jsb2NrczogU2VxdWVuY2VbZGljdFtzdHIsIHN0cl1dIHwgTm9uZSA9IE5vbmUsCiAgICApIC0+IGRpY3Rbc3RyLCBBbnldOgogICAgICAgIGF3YWl0IHNlbGYuaW5pdGlhbGl6ZSgpCiAgICAgICAgdmFsdWVzID0gewogICAgICAgICAgICAidGl0bGUiOiB0aXRsZSwKICAgICAgICAgICAgImJvZHkiOiBib2R5LAogICAgICAgICAgICAiZGVzY3JpcHRpb24iOiBkZXNjcmlwdGlvbiwKICAgICAgICAgICAgInRvcGljX2lkcyI6IGxpc3QodG9waWNfaWRzKSBpZiB0b3BpY19pZHMgaXMgbm90IE5vbmUgZWxzZSBOb25lLAogICAgICAgICAgICAiaGFzaHRhZ3MiOiBsaXN0KGhhc2h0YWdzKSBpZiBoYXNodGFncyBpcyBub3QgTm9uZSBlbHNlIE5vbmUsCiAgICAgICAgICAgICJpbWFnZV91cmxzIjogbGlzdChpbWFnZV91cmxzKSBpZiBpbWFnZV91cmxzIGlzIG5vdCBOb25lIGVsc2UgTm9uZSwKICAgICAgICAgICAgImNvbnRlbnRfYmxvY2tzIjogKAogICAgICAgICAgICAgICAgW2RpY3QoYmxvY2spIGZvciBibG9jayBpbiBjb250ZW50X2Jsb2Nrc10KICAgICAgICAgICAgICAgIGlmIGNvbnRlbnRfYmxvY2tzIGlzIG5vdCBOb25lCiAgICAgICAgICAgICAgICBlbHNlIE5vbmUKICAgICAgICAgICAgKSwKICAgICAgICB9CiAgICAgICAgYXN5bmMgd2l0aCBzZWxmLl9sb2NrOgogICAgICAgICAgICByZXR1cm4gYXdhaXQgYXN5bmNpby50b190aHJlYWQoc2VsZi5fc2F2ZV9zeW5jLCBkcmFmdF9pZCwgdmFsdWVzKQoKICAgIGFzeW5jIGRlZiBkZWxldGUoc2VsZiwgZHJhZnRfaWQ6IHN0cikgLT4gZGljdFtzdHIsIEFueV06CiAgICAgICAgYXdhaXQgc2VsZi5pbml0aWFsaXplKCkKICAgICAgICBhc3luYyB3aXRoIHNlbGYuX2xvY2s6CiAgICAgICAgICAgIHJldHVybiBhd2FpdCBhc3luY2lvLnRvX3RocmVhZChzZWxmLl9kZWxldGVfc3luYywgZHJhZnRfaWQpCgogICAgZGVmIF9jb25uZWN0KHNlbGYpIC0+IHNxbGl0ZTMuQ29ubmVjdGlvbjoKICAgICAgICBjb25uZWN0aW9uID0gc3FsaXRlMy5jb25uZWN0KHNlbGYucGF0aCwgdGltZW91dD0zMCkKICAgICAgICBjb25uZWN0aW9uLnJvd19mYWN0b3J5ID0gc3FsaXRlMy5Sb3cKICAgICAgICBjb25uZWN0aW9uLmV4ZWN1dGUoIlBSQUdNQSBidXN5X3RpbWVvdXQgPSAzMDAwMCIpCiAgICAgICAgcmV0dXJuIGNvbm5lY3Rpb24KCiAgICBkZWYgX2luaXRpYWxpemVfc3luYyhzZWxmKSAtPiBOb25lOgogICAgICAgIHNlbGYucGF0aC5wYXJlbnQubWtkaXIocGFyZW50cz1UcnVlLCBleGlzdF9vaz1UcnVlKQogICAgICAgIGNvbm5lY3Rpb24gPSBzZWxmLl9jb25uZWN0KCkKICAgICAgICB0cnk6CiAgICAgICAgICAgIGNvbm5lY3Rpb24uZXhlY3V0ZSgiUFJBR01BIGpvdXJuYWxfbW9kZSA9IFdBTCIpCiAgICAgICAgICAgIGNvbm5lY3Rpb24uZXhlY3V0ZSgiUFJBR01BIHN5bmNocm9ub3VzID0gTk9STUFMIikKICAgICAgICAgICAgY29ubmVjdGlvbi5leGVjdXRlc2NyaXB0KAogICAgICAgICAgICAgICAgIiIiCiAgICAgICAgICAgICAgICBDUkVBVEUgVEFCTEUgSUYgTk9UIEVYSVNUUyBwb3N0X2RyYWZ0cyAoCiAgICAgICAgICAgICAgICAgICAgZHJhZnRfaWQgVEVYVCBQUklNQVJZIEtFWSwKICAgICAgICAgICAgICAgICAgICB0aXRsZSBURVhUIE5PVCBOVUxMIERFRkFVTFQgJycsCiAgICAgICAgICAgICAgICAgICAgYm9keSBURVhUIE5PVCBOVUxMIERFRkFVTFQgJycsCiAgICAgICAgICAgICAgICAgICAgZGVzY3JpcHRpb24gVEVYVCBOT1QgTlVMTCBERUZBVUxUICcnLAogICAgICAgICAgICAgICAgICAgIHRvcGljX2lkcyBURVhUIE5PVCBOVUxMIERFRkFVTFQgJ1tdJywKICAgICAgICAgICAgICAgICAgICBoYXNodGFncyBURVhUIE5PVCBOVUxMIERFRkFVTFQgJ1tdJywKICAgICAgICAgICAgICAgICAgICBpbWFnZV91cmxzIFRFWFQgTk9UIE5VTEwgREVGQVVMVCAnW10nLAogICAgICAgICAgICAgICAgICAgIGNvbnRlbnRfYmxvY2tzIFRFWFQgTk9UIE5VTEwgREVGQVVMVCAnW10nLAogICAgICAgICAgICAgICAgICAgIGNyZWF0ZWRfYXQgUkVBTCBOT1QgTlVMTCwKICAgICAgICAgICAgICAgICAgICB1cGRhdGVkX2F0IFJFQUwgTk9UIE5VTEwKICAgICAgICAgICAgICAgICk7CgogICAgICAgICAgICAgICAgQ1JFQVRFIElOREVYIElGIE5PVCBFWElTVFMgaWR4X3Bvc3RfZHJhZnRzX3VwZGF0ZWRfYXQKICAgICAgICAgICAgICAgICAgICBPTiBwb3N0X2RyYWZ0cyh1cGRhdGVkX2F0IERFU0MpOwogICAgICAgICAgICAgICAgIiIiCiAgICAgICAgICAgICkKICAgICAgICAgICAgY29sdW1ucyA9IHsKICAgICAgICAgICAgICAgIHN0cihyb3dbIm5hbWUiXSkKICAgICAgICAgICAgICAgIGZvciByb3cgaW4gY29ubmVjdGlvbi5leGVjdXRlKCJQUkFHTUEgdGFibGVfaW5mbyhwb3N0X2RyYWZ0cykiKQogICAgICAgICAgICB9CiAgICAgICAgICAgIGlmICJjb250ZW50X2Jsb2NrcyIgbm90IGluIGNvbHVtbnM6CiAgICAgICAgICAgICAgICBjb25uZWN0aW9uLmV4ZWN1dGUoCiAgICAgICAgICAgICAgICAgICAgIkFMVEVSIFRBQkxFIHBvc3RfZHJhZnRzICIKICAgICAgICAgICAgICAgICAgICAiQUREIENPTFVNTiBjb250ZW50X2Jsb2NrcyBURVhUIE5PVCBOVUxMIERFRkFVTFQgJ1tdJyIKICAgICAgICAgICAgICAgICkKICAgICAgICAgICAgY29ubmVjdGlvbi5jb21taXQoKQogICAgICAgIGZpbmFsbHk6CiAgICAgICAgICAgIGNvbm5lY3Rpb24uY2xvc2UoKQoKICAgIGRlZiBfb3ZlcnZpZXdfc3luYyhzZWxmKSAtPiBkaWN0W3N0ciwgaW50XToKICAgICAgICBjb25uZWN0aW9uID0gc2VsZi5fY29ubmVjdCgpCiAgICAgICAgdHJ5OgogICAgICAgICAgICBjb3VudCA9IGNvbm5lY3Rpb24uZXhlY3V0ZSgiU0VMRUNUIENPVU5UKCopIEZST00gcG9zdF9kcmFmdHMiKS5mZXRjaG9uZSgpWzBdCiAgICAgICAgICAgIHJldHVybiB7InRvdGFsIjogaW50KGNvdW50IG9yIDApfQogICAgICAgIGZpbmFsbHk6CiAgICAgICAgICAgIGNvbm5lY3Rpb24uY2xvc2UoKQoKICAgIGRlZiBfbGlzdF9zeW5jKHNlbGYsIGxpbWl0OiBpbnQpIC0+IGRpY3Rbc3RyLCBBbnldOgogICAgICAgIGNvbm5lY3Rpb24gPSBzZWxmLl9jb25uZWN0KCkKICAgICAgICB0cnk6CiAgICAgICAgICAgIHRvdGFsID0gY29ubmVjdGlvbi5leGVjdXRlKCJTRUxFQ1QgQ09VTlQoKikgRlJPTSBwb3N0X2RyYWZ0cyIpLmZldGNob25lKClbMF0KICAgICAgICAgICAgcm93cyA9IGNvbm5lY3Rpb24uZXhlY3V0ZSgKICAgICAgICAgICAgICAgICIiIgogICAgICAgICAgICAgICAgU0VMRUNUIGRyYWZ0X2lkLCB0aXRsZSwgYm9keSwgdG9waWNfaWRzLCBoYXNodGFncywgaW1hZ2VfdXJscywgY29udGVudF9ibG9ja3MsCiAgICAgICAgICAgICAgICAgICAgICAgY3JlYXRlZF9hdCwgdXBkYXRlZF9hdAogICAgICAgICAgICAgICAgRlJPTSBwb3N0X2RyYWZ0cwogICAgICAgICAgICAgICAgT1JERVIgQlkgdXBkYXRlZF9hdCBERVNDLCBkcmFmdF9pZCBBU0MKICAgICAgICAgICAgICAgIExJTUlUID8KICAgICAgICAgICAgICAgICIiIiwKICAgICAgICAgICAgICAgIChsaW1pdCwpLAogICAgICAgICAgICApLmZldGNoYWxsKCkKICAgICAgICAgICAgcmV0dXJuIHsKICAgICAgICAgICAgICAgICJ0b3RhbCI6IGludCh0b3RhbCBvciAwKSwKICAgICAgICAgICAgICAgICJkcmFmdHMiOiBbc2VsZi5fc3VtbWFyeV9mcm9tX3Jvdyhyb3cpIGZvciByb3cgaW4gcm93c10sCiAgICAgICAgICAgIH0KICAgICAgICBmaW5hbGx5OgogICAgICAgICAgICBjb25uZWN0aW9uLmNsb3NlKCkKCiAgICBkZWYgX2dldF9zeW5jKHNlbGYsIGRyYWZ0X2lkOiBzdHIpIC0+IGRpY3Rbc3RyLCBBbnldOgogICAgICAgIGNvbm5lY3Rpb24gPSBzZWxmLl9jb25uZWN0KCkKICAgICAgICB0cnk6CiAgICAgICAgICAgIHJvdyA9IGNvbm5lY3Rpb24uZXhlY3V0ZSgKICAgICAgICAgICAgICAgICJTRUxFQ1QgKiBGUk9NIHBvc3RfZHJhZnRzIFdIRVJFIGRyYWZ0X2lkID0gPyIsIChkcmFmdF9pZCwpCiAgICAgICAgICAgICkuZmV0Y2hvbmUoKQogICAgICAgICAgICBpZiByb3cgaXMgTm9uZToKICAgICAgICAgICAgICAgIHJhaXNlIFZhbHVlRXJyb3IoIuiNieeov+S4jeWtmOWcqOaIluW3suWIoOmZpOOAgiIpCiAgICAgICAgICAgIHJldHVybiB7ImRyYWZ0Ijogc2VsZi5fcmVjb3JkX2Zyb21fcm93KHJvdyl9CiAgICAgICAgZmluYWxseToKICAgICAgICAgICAgY29ubmVjdGlvbi5jbG9zZSgpCgogICAgZGVmIF9zYXZlX3N5bmMoc2VsZiwgZHJhZnRfaWQ6IHN0ciwgdmFsdWVzOiBkaWN0W3N0ciwgQW55XSkgLT4gZGljdFtzdHIsIEFueV06CiAgICAgICAgY29ubmVjdGlvbiA9IHNlbGYuX2Nvbm5lY3QoKQogICAgICAgIHRyeToKICAgICAgICAgICAgZHJhZnRfaWQgPSBzdHIoZHJhZnRfaWQgb3IgIiIpLnN0cmlwKCkKICAgICAgICAgICAgcm93ID0gTm9uZQogICAgICAgICAgICBpZiBkcmFmdF9pZDoKICAgICAgICAgICAgICAgIHJvdyA9IGNvbm5lY3Rpb24uZXhlY3V0ZSgKICAgICAgICAgICAgICAgICAgICAiU0VMRUNUICogRlJPTSBwb3N0X2RyYWZ0cyBXSEVSRSBkcmFmdF9pZCA9ID8iLCAoZHJhZnRfaWQsKQogICAgICAgICAgICAgICAgKS5mZXRjaG9uZSgpCiAgICAgICAgICAgIGVsc2U6CiAgICAgICAgICAgICAgICBkcmFmdF9pZCA9IHNlbGYuX25ld19kcmFmdF9pZChjb25uZWN0aW9uKQoKICAgICAgICAgICAgcmVjb3JkID0gKAogICAgICAgICAgICAgICAgc2VsZi5fcmVjb3JkX2Zyb21fcm93KHJvdykKICAgICAgICAgICAgICAgIGlmIHJvdyBpcyBub3QgTm9uZQogICAgICAgICAgICAgICAgZWxzZSBzZWxmLl9lbXB0eV9yZWNvcmQoZHJhZnRfaWQpCiAgICAgICAgICAgICkKICAgICAgICAgICAgZm9yIGtleSwgdmFsdWUgaW4gdmFsdWVzLml0ZW1zKCk6CiAgICAgICAgICAgICAgICBpZiB2YWx1ZSBpcyBub3QgTm9uZToKICAgICAgICAgICAgICAgICAgICByZWNvcmRba2V5XSA9IHZhbHVlCiAgICAgICAgICAgIGlmIG5vdCAoCiAgICAgICAgICAgICAgICByZWNvcmRbInRpdGxlIl0uc3RyaXAoKQogICAgICAgICAgICAgICAgb3IgcmVjb3JkWyJib2R5Il0uc3RyaXAoKQogICAgICAgICAgICAgICAgb3IgcmVjb3JkWyJpbWFnZV91cmxzIl0KICAgICAgICAgICAgICAgIG9yIHJlY29yZFsiY29udGVudF9ibG9ja3MiXQogICAgICAgICAgICApOgogICAgICAgICAgICAgICAgcmFpc2UgVmFsdWVFcnJvcigi6I2J56i/5qCH6aKY44CB5q2j5paH5ZKM5Zu+54mH5LiN6IO95ZCM5pe25Li656m644CCIikKCiAgICAgICAgICAgIG5vdyA9IHRpbWUudGltZSgpCiAgICAgICAgICAgIHJlY29yZFsidXBkYXRlZF9hdCJdID0gbm93CiAgICAgICAgICAgIGlmIHJvdyBpcyBOb25lOgogICAgICAgICAgICAgICAgcmVjb3JkWyJjcmVhdGVkX2F0Il0gPSBub3cKICAgICAgICAgICAgICAgIGNvbm5lY3Rpb24uZXhlY3V0ZSgKICAgICAgICAgICAgICAgICAgICAiIiIKICAgICAgICAgICAgICAgICAgICBJTlNFUlQgSU5UTyBwb3N0X2RyYWZ0cyAoCiAgICAgICAgICAgICAgICAgICAgICAgIGRyYWZ0X2lkLCB0aXRsZSwgYm9keSwgZGVzY3JpcHRpb24sIHRvcGljX2lkcywgaGFzaHRhZ3MsIGltYWdlX3VybHMsCiAgICAgICAgICAgICAgICAgICAgICAgIGNvbnRlbnRfYmxvY2tzLCBjcmVhdGVkX2F0LCB1cGRhdGVkX2F0CiAgICAgICAgICAgICAgICAgICAgKSBWQUxVRVMgKD8sID8sID8sID8sID8sID8sID8sID8sID8sID8pCiAgICAgICAgICAgICAgICAgICAgIiIiLAogICAgICAgICAgICAgICAgICAgIHNlbGYuX3JlY29yZF92YWx1ZXMocmVjb3JkKSwKICAgICAgICAgICAgICAgICkKICAgICAgICAgICAgZWxzZToKICAgICAgICAgICAgICAgIGNvbm5lY3Rpb24uZXhlY3V0ZSgKICAgICAgICAgICAgICAgICAgICAiIiIKICAgICAgICAgICAgICAgICAgICBVUERBVEUgcG9zdF9kcmFmdHMKICAgICAgICAgICAgICAgICAgICBTRVQgdGl0bGUgPSA/LCBib2R5ID0gPywgZGVzY3JpcHRpb24gPSA/LCB0b3BpY19pZHMgPSA/LCBoYXNodGFncyA9ID8sCiAgICAgICAgICAgICAgICAgICAgICAgIGltYWdlX3VybHMgPSA/LCBjb250ZW50X2Jsb2NrcyA9ID8sIHVwZGF0ZWRfYXQgPSA/CiAgICAgICAgICAgICAgICAgICAgV0hFUkUgZHJhZnRfaWQgPSA/CiAgICAgICAgICAgICAgICAgICAgIiIiLAogICAgICAgICAgICAgICAgICAgICgKICAgICAgICAgICAgICAgICAgICAgICAgcmVjb3JkWyJ0aXRsZSJdLAogICAgICAgICAgICAgICAgICAgICAgICByZWNvcmRbImJvZHkiXSwKICAgICAgICAgICAgICAgICAgICAgICAgcmVjb3JkWyJkZXNjcmlwdGlvbiJdLAogICAgICAgICAgICAgICAgICAgICAgICBqc29uLmR1bXBzKAogICAgICAgICAgICAgICAgICAgICAgICAgICAgcmVjb3JkWyJ0b3BpY19pZHMiXSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGVuc3VyZV9hc2NpaT1GYWxzZSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgIHNlcGFyYXRvcnM9KCIsIiwgIjoiKSwKICAgICAgICAgICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgICAgICAgICAganNvbi5kdW1wcygKICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJlY29yZFsiaGFzaHRhZ3MiXSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGVuc3VyZV9hc2NpaT1GYWxzZSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgIHNlcGFyYXRvcnM9KCIsIiwgIjoiKSwKICAgICAgICAgICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgICAgICAgICAganNvbi5kdW1wcygKICAgICAgICAgICAgICAgICAgICAgICAgICAgIHJlY29yZFsiaW1hZ2VfdXJscyJdLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgZW5zdXJlX2FzY2lpPUZhbHNlLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgc2VwYXJhdG9ycz0oIiwiLCAiOiIpLAogICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgICBqc29uLmR1bXBzKAogICAgICAgICAgICAgICAgICAgICAgICAgICAgcmVjb3JkWyJjb250ZW50X2Jsb2NrcyJdLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgZW5zdXJlX2FzY2lpPUZhbHNlLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgc2VwYXJhdG9ycz0oIiwiLCAiOiIpLAogICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgICByZWNvcmRbInVwZGF0ZWRfYXQiXSwKICAgICAgICAgICAgICAgICAgICAgICAgZHJhZnRfaWQsCiAgICAgICAgICAgICAgICAgICAgKSwKICAgICAgICAgICAgICAgICkKICAgICAgICAgICAgc2VsZi5fcHJ1bmVfc3luYyhjb25uZWN0aW9uKQogICAgICAgICAgICBjb25uZWN0aW9uLmNvbW1pdCgpCiAgICAgICAgICAgIHJldHVybiB7ImNyZWF0ZWQiOiByb3cgaXMgTm9uZSwgImRyYWZ0IjogcmVjb3JkfQogICAgICAgIGZpbmFsbHk6CiAgICAgICAgICAgIGNvbm5lY3Rpb24uY2xvc2UoKQoKICAgIGRlZiBfZGVsZXRlX3N5bmMoc2VsZiwgZHJhZnRfaWQ6IHN0cikgLT4gZGljdFtzdHIsIEFueV06CiAgICAgICAgY29ubmVjdGlvbiA9IHNlbGYuX2Nvbm5lY3QoKQogICAgICAgIHRyeToKICAgICAgICAgICAgcmVzdWx0ID0gY29ubmVjdGlvbi5leGVjdXRlKAogICAgICAgICAgICAgICAgIkRFTEVURSBGUk9NIHBvc3RfZHJhZnRzIFdIRVJFIGRyYWZ0X2lkID0gPyIsIChkcmFmdF9pZCwpCiAgICAgICAgICAgICkKICAgICAgICAgICAgaWYgcmVzdWx0LnJvd2NvdW50IDw9IDA6CiAgICAgICAgICAgICAgICByYWlzZSBWYWx1ZUVycm9yKCLojYnnqL/kuI3lrZjlnKjmiJblt7LliKDpmaTjgIIiKQogICAgICAgICAgICBjb25uZWN0aW9uLmNvbW1pdCgpCiAgICAgICAgICAgIHJldHVybiB7ImRyYWZ0X2lkIjogZHJhZnRfaWQsICJkZWxldGVkIjogVHJ1ZX0KICAgICAgICBmaW5hbGx5OgogICAgICAgICAgICBjb25uZWN0aW9uLmNsb3NlKCkKCiAgICBkZWYgX3BydW5lX3N5bmMoc2VsZiwgY29ubmVjdGlvbjogc3FsaXRlMy5Db25uZWN0aW9uKSAtPiBOb25lOgogICAgICAgIGNvbm5lY3Rpb24uZXhlY3V0ZSgKICAgICAgICAgICAgIiIiCiAgICAgICAgICAgIERFTEVURSBGUk9NIHBvc3RfZHJhZnRzCiAgICAgICAgICAgIFdIRVJFIGRyYWZ0X2lkIE5PVCBJTiAoCiAgICAgICAgICAgICAgICBTRUxFQ1QgZHJhZnRfaWQKICAgICAgICAgICAgICAgIEZST00gcG9zdF9kcmFmdHMKICAgICAgICAgICAgICAgIE9SREVSIEJZIHVwZGF0ZWRfYXQgREVTQywgZHJhZnRfaWQgQVNDCiAgICAgICAgICAgICAgICBMSU1JVCA/CiAgICAgICAgICAgICkKICAgICAgICAgICAgIiIiLAogICAgICAgICAgICAoc2VsZi5tYXhfcmVjb3JkcywpLAogICAgICAgICkKCiAgICBAc3RhdGljbWV0aG9kCiAgICBkZWYgX25ld19kcmFmdF9pZChjb25uZWN0aW9uOiBzcWxpdGUzLkNvbm5lY3Rpb24pIC0+IHN0cjoKICAgICAgICB3aGlsZSBUcnVlOgogICAgICAgICAgICBkcmFmdF9pZCA9ICJkcmFmdF8iICsgdXVpZC51dWlkNCgpLmhleFs6MTZdCiAgICAgICAgICAgIHJvdyA9IGNvbm5lY3Rpb24uZXhlY3V0ZSgKICAgICAgICAgICAgICAgICJTRUxFQ1QgMSBGUk9NIHBvc3RfZHJhZnRzIFdIRVJFIGRyYWZ0X2lkID0gPyIsIChkcmFmdF9pZCwpCiAgICAgICAgICAgICkuZmV0Y2hvbmUoKQogICAgICAgICAgICBpZiByb3cgaXMgTm9uZToKICAgICAgICAgICAgICAgIHJldHVybiBkcmFmdF9pZAoKICAgIEBzdGF0aWNtZXRob2QKICAgIGRlZiBfZW1wdHlfcmVjb3JkKGRyYWZ0X2lkOiBzdHIpIC0+IGRpY3Rbc3RyLCBBbnldOgogICAgICAgIHJldHVybiB7CiAgICAgICAgICAgICJkcmFmdF9pZCI6IGRyYWZ0X2lkLAogICAgICAgICAgICAidGl0bGUiOiAiIiwKICAgICAgICAgICAgImJvZHkiOiAiIiwKICAgICAgICAgICAgImRlc2NyaXB0aW9uIjogIiIsCiAgICAgICAgICAgICJ0b3BpY19pZHMiOiBbXSwKICAgICAgICAgICAgImhhc2h0YWdzIjogW10sCiAgICAgICAgICAgICJpbWFnZV91cmxzIjogW10sCiAgICAgICAgICAgICJjb250ZW50X2Jsb2NrcyI6IFtdLAogICAgICAgICAgICAiY3JlYXRlZF9hdCI6IDAuMCwKICAgICAgICAgICAgInVwZGF0ZWRfYXQiOiAwLjAsCiAgICAgICAgfQoKICAgIEBzdGF0aWNtZXRob2QKICAgIGRlZiBfcmVjb3JkX3ZhbHVlcyhyZWNvcmQ6IGRpY3Rbc3RyLCBBbnldKSAtPiB0dXBsZVtBbnksIC4uLl06CiAgICAgICAgcmV0dXJuICgKICAgICAgICAgICAgcmVjb3JkWyJkcmFmdF9pZCJdLAogICAgICAgICAgICByZWNvcmRbInRpdGxlIl0sCiAgICAgICAgICAgIHJlY29yZFsiYm9keSJdLAogICAgICAgICAgICByZWNvcmRbImRlc2NyaXB0aW9uIl0sCiAgICAgICAgICAgIGpzb24uZHVtcHMocmVjb3JkWyJ0b3BpY19pZHMiXSwgZW5zdXJlX2FzY2lpPUZhbHNlLCBzZXBhcmF0b3JzPSgiLCIsICI6IikpLAogICAgICAgICAgICBqc29uLmR1bXBzKHJlY29yZFsiaGFzaHRhZ3MiXSwgZW5zdXJlX2FzY2lpPUZhbHNlLCBzZXBhcmF0b3JzPSgiLCIsICI6IikpLAogICAgICAgICAgICBqc29uLmR1bXBzKHJlY29yZFsiaW1hZ2VfdXJscyJdLCBlbnN1cmVfYXNjaWk9RmFsc2UsIHNlcGFyYXRvcnM9KCIsIiwgIjoiKSksCiAgICAgICAgICAgIGpzb24uZHVtcHMoCiAgICAgICAgICAgICAgICByZWNvcmRbImNvbnRlbnRfYmxvY2tzIl0sIGVuc3VyZV9hc2NpaT1GYWxzZSwgc2VwYXJhdG9ycz0oIiwiLCAiOiIpCiAgICAgICAgICAgICksCiAgICAgICAgICAgIHJlY29yZFsiY3JlYXRlZF9hdCJdLAogICAgICAgICAgICByZWNvcmRbInVwZGF0ZWRfYXQiXSwKICAgICAgICApCgogICAgQHN0YXRpY21ldGhvZAogICAgZGVmIF9yZWNvcmRfZnJvbV9yb3cocm93OiBzcWxpdGUzLlJvdykgLT4gZGljdFtzdHIsIEFueV06CiAgICAgICAgcmV0dXJuIHsKICAgICAgICAgICAgImRyYWZ0X2lkIjogc3RyKHJvd1siZHJhZnRfaWQiXSksCiAgICAgICAgICAgICJ0aXRsZSI6IHN0cihyb3dbInRpdGxlIl0gb3IgIiIpLAogICAgICAgICAgICAiYm9keSI6IHN0cihyb3dbImJvZHkiXSBvciAiIiksCiAgICAgICAgICAgICJkZXNjcmlwdGlvbiI6IHN0cihyb3dbImRlc2NyaXB0aW9uIl0gb3IgIiIpLAogICAgICAgICAgICAidG9waWNfaWRzIjogX2pzb25fbGlzdChyb3dbInRvcGljX2lkcyJdKSwKICAgICAgICAgICAgImhhc2h0YWdzIjogX2pzb25fbGlzdChyb3dbImhhc2h0YWdzIl0pLAogICAgICAgICAgICAiaW1hZ2VfdXJscyI6IF9qc29uX2xpc3Qocm93WyJpbWFnZV91cmxzIl0pLAogICAgICAgICAgICAiY29udGVudF9ibG9ja3MiOiBfanNvbl9ibG9ja3Mocm93WyJjb250ZW50X2Jsb2NrcyJdKSwKICAgICAgICAgICAgImNyZWF0ZWRfYXQiOiBmbG9hdChyb3dbImNyZWF0ZWRfYXQiXSBvciAwKSwKICAgICAgICAgICAgInVwZGF0ZWRfYXQiOiBmbG9hdChyb3dbInVwZGF0ZWRfYXQiXSBvciAwKSwKICAgICAgICB9CgogICAgQHN0YXRpY21ldGhvZAogICAgZGVmIF9zdW1tYXJ5X2Zyb21fcm93KHJvdzogc3FsaXRlMy5Sb3cpIC0+IGRpY3Rbc3RyLCBBbnldOgogICAgICAgIGJsb2NrcyA9IF9qc29uX2Jsb2Nrcyhyb3dbImNvbnRlbnRfYmxvY2tzIl0pCiAgICAgICAgYm9keSA9IHN0cihyb3dbImJvZHkiXSBvciAiIikuc3RyaXAoKSBvciBjb250ZW50X2Jsb2Nrc19wbGFpbl90ZXh0KGJsb2NrcykKICAgICAgICBib2R5ID0gYm9keS5yZXBsYWNlKCJcbiIsICIgIikKICAgICAgICBpbWFnZV91cmxzID0gX2pzb25fbGlzdChyb3dbImltYWdlX3VybHMiXSkKICAgICAgICByZXR1cm4gewogICAgICAgICAgICAiZHJhZnRfaWQiOiBzdHIocm93WyJkcmFmdF9pZCJdKSwKICAgICAgICAgICAgInRpdGxlIjogc3RyKHJvd1sidGl0bGUiXSBvciAiIiksCiAgICAgICAgICAgICJib2R5X3ByZXZpZXciOiBib2R5WzoxNjBdLAogICAgICAgICAgICAidG9waWNfaWRzIjogX2pzb25fbGlzdChyb3dbInRvcGljX2lkcyJdKSwKICAgICAgICAgICAgImhhc2h0YWdzIjogX2pzb25fbGlzdChyb3dbImhhc2h0YWdzIl0pLAogICAgICAgICAgICAiaW1hZ2VfY291bnQiOiBsZW4oaW1hZ2VfdXJscyksCiAgICAgICAgICAgICJjb250ZW50X2Jsb2NrX2NvdW50IjogbGVuKGJsb2NrcyksCiAgICAgICAgICAgICJjcmVhdGVkX2F0IjogZmxvYXQocm93WyJjcmVhdGVkX2F0Il0gb3IgMCksCiAgICAgICAgICAgICJ1cGRhdGVkX2F0IjogZmxvYXQocm93WyJ1cGRhdGVkX2F0Il0gb3IgMCksCiAgICAgICAgfQoKCmRlZiBfanNvbl9saXN0KHZhbHVlOiBBbnkpIC0+IGxpc3Rbc3RyXToKICAgIHRyeToKICAgICAgICBwYXJzZWQgPSBqc29uLmxvYWRzKHN0cih2YWx1ZSBvciAiW10iKSkKICAgIGV4Y2VwdCAoVHlwZUVycm9yLCBWYWx1ZUVycm9yLCBqc29uLkpTT05EZWNvZGVFcnJvcik6CiAgICAgICAgcmV0dXJuIFtdCiAgICBpZiBub3QgaXNpbnN0YW5jZShwYXJzZWQsIGxpc3QpOgogICAgICAgIHJldHVybiBbXQogICAgcmV0dXJuIFtzdHIoaXRlbSkgZm9yIGl0ZW0gaW4gcGFyc2VkIGlmIHN0cihpdGVtKS5zdHJpcCgpXQoKCmRlZiBfanNvbl9ibG9ja3ModmFsdWU6IEFueSkgLT4gbGlzdFtkaWN0W3N0ciwgc3RyXV06CiAgICB0cnk6CiAgICAgICAgcGFyc2VkID0ganNvbi5sb2FkcyhzdHIodmFsdWUgb3IgIltdIikpCiAgICBleGNlcHQgKFR5cGVFcnJvciwgVmFsdWVFcnJvciwganNvbi5KU09ORGVjb2RlRXJyb3IpOgogICAgICAgIHJldHVybiBbXQogICAgaWYgbm90IGlzaW5zdGFuY2UocGFyc2VkLCBsaXN0KToKICAgICAgICByZXR1cm4gW10KICAgIGJsb2NrczogbGlzdFtkaWN0W3N0ciwgc3RyXV0gPSBbXQogICAgZm9yIGl0ZW0gaW4gcGFyc2VkOgogICAgICAgIGlmIG5vdCBpc2luc3RhbmNlKGl0ZW0sIGRpY3QpOgogICAgICAgICAgICBjb250aW51ZQogICAgICAgIGl0ZW1fdHlwZSA9IHN0cihpdGVtLmdldCgidHlwZSIpIG9yICIiKS5zdHJpcCgpLmxvd2VyKCkKICAgICAgICBpZiBpdGVtX3R5cGUgaW4geyJ0ZXh0IiwgImh0bWwifToKICAgICAgICAgICAgdGV4dCA9IHN0cihpdGVtLmdldCgidGV4dCIpIG9yICIiKQogICAgICAgICAgICBpZiB0ZXh0LnN0cmlwKCk6CiAgICAgICAgICAgICAgICBibG9ja3MuYXBwZW5kKHsidHlwZSI6IGl0ZW1fdHlwZSwgInRleHQiOiB0ZXh0fSkKICAgICAgICBlbGlmIGl0ZW1fdHlwZSA9PSAiaW1hZ2UiOgogICAgICAgICAgICB1cmwgPSBzdHIoaXRlbS5nZXQoInVybCIpIG9yICIiKS5zdHJpcCgpCiAgICAgICAgICAgIGlmIHVybDoKICAgICAgICAgICAgICAgIGJsb2Nrcy5hcHBlbmQoeyJ0eXBlIjogImltYWdlIiwgInVybCI6IHVybH0pCiAgICByZXR1cm4gYmxvY2tzCg==
+from __future__ import annotations
+
+import asyncio
+import json
+import sqlite3
+import time
+import uuid
+from collections.abc import Sequence
+from pathlib import Path
+from typing import Any
+
+from .rich_content import content_blocks_plain_text
+
+
+class DraftStore:
+    """Small SQLite-backed local draft box for LLM-authored posts."""
+
+    def __init__(self, path: Path, *, max_records: int = 500) -> None:
+        self.path = Path(path)
+        self.max_records = max(10, int(max_records))
+        self._lock = asyncio.Lock()
+        self._initialized = False
+
+    async def initialize(self) -> None:
+        if self._initialized:
+            return
+        async with self._lock:
+            if self._initialized:
+                return
+            await asyncio.to_thread(self._initialize_sync)
+            self._initialized = True
+
+    async def overview(self) -> dict[str, int]:
+        await self.initialize()
+        async with self._lock:
+            return await asyncio.to_thread(self._overview_sync)
+
+    async def list(self, *, limit: int = 20) -> dict[str, Any]:
+        await self.initialize()
+        async with self._lock:
+            return await asyncio.to_thread(
+                self._list_sync, max(1, min(100, int(limit)))
+            )
+
+    async def get(self, draft_id: str) -> dict[str, Any]:
+        await self.initialize()
+        async with self._lock:
+            return await asyncio.to_thread(self._get_sync, draft_id)
+
+    async def save(
+        self,
+        *,
+        draft_id: str = "",
+        title: str | None = None,
+        body: str | None = None,
+        description: str | None = None,
+        topic_ids: Sequence[str] | None = None,
+        hashtags: Sequence[str] | None = None,
+        image_urls: Sequence[str] | None = None,
+        content_blocks: Sequence[dict[str, str]] | None = None,
+    ) -> dict[str, Any]:
+        await self.initialize()
+        values = {
+            "title": title,
+            "body": body,
+            "description": description,
+            "topic_ids": list(topic_ids) if topic_ids is not None else None,
+            "hashtags": list(hashtags) if hashtags is not None else None,
+            "image_urls": list(image_urls) if image_urls is not None else None,
+            "content_blocks": (
+                [dict(block) for block in content_blocks]
+                if content_blocks is not None
+                else None
+            ),
+        }
+        async with self._lock:
+            return await asyncio.to_thread(self._save_sync, draft_id, values)
+
+    async def delete(self, draft_id: str) -> dict[str, Any]:
+        await self.initialize()
+        async with self._lock:
+            return await asyncio.to_thread(self._delete_sync, draft_id)
+
+    def _connect(self) -> sqlite3.Connection:
+        connection = sqlite3.connect(self.path, timeout=30)
+        connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA busy_timeout = 30000")
+        return connection
+
+    def _initialize_sync(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        connection = self._connect()
+        try:
+            connection.execute("PRAGMA journal_mode = WAL")
+            connection.execute("PRAGMA synchronous = NORMAL")
+            connection.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS post_drafts (
+                    draft_id TEXT PRIMARY KEY,
+                    title TEXT NOT NULL DEFAULT '',
+                    body TEXT NOT NULL DEFAULT '',
+                    description TEXT NOT NULL DEFAULT '',
+                    topic_ids TEXT NOT NULL DEFAULT '[]',
+                    hashtags TEXT NOT NULL DEFAULT '[]',
+                    image_urls TEXT NOT NULL DEFAULT '[]',
+                    content_blocks TEXT NOT NULL DEFAULT '[]',
+                    created_at REAL NOT NULL,
+                    updated_at REAL NOT NULL
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_post_drafts_updated_at
+                    ON post_drafts(updated_at DESC);
+                """
+            )
+            columns = {
+                str(row["name"])
+                for row in connection.execute("PRAGMA table_info(post_drafts)")
+            }
+            if "content_blocks" not in columns:
+                connection.execute(
+                    "ALTER TABLE post_drafts "
+                    "ADD COLUMN content_blocks TEXT NOT NULL DEFAULT '[]'"
+                )
+            connection.commit()
+        finally:
+            connection.close()
+
+    def _overview_sync(self) -> dict[str, int]:
+        connection = self._connect()
+        try:
+            count = connection.execute("SELECT COUNT(*) FROM post_drafts").fetchone()[0]
+            return {"total": int(count or 0)}
+        finally:
+            connection.close()
+
+    def _list_sync(self, limit: int) -> dict[str, Any]:
+        connection = self._connect()
+        try:
+            total = connection.execute("SELECT COUNT(*) FROM post_drafts").fetchone()[0]
+            rows = connection.execute(
+                """
+                SELECT draft_id, title, body, topic_ids, hashtags, image_urls, content_blocks,
+                       created_at, updated_at
+                FROM post_drafts
+                ORDER BY updated_at DESC, draft_id ASC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+            return {
+                "total": int(total or 0),
+                "drafts": [self._summary_from_row(row) for row in rows],
+            }
+        finally:
+            connection.close()
+
+    def _get_sync(self, draft_id: str) -> dict[str, Any]:
+        connection = self._connect()
+        try:
+            row = connection.execute(
+                "SELECT * FROM post_drafts WHERE draft_id = ?", (draft_id,)
+            ).fetchone()
+            if row is None:
+                raise ValueError("草稿不存在或已删除。")
+            return {"draft": self._record_from_row(row)}
+        finally:
+            connection.close()
+
+    def _save_sync(self, draft_id: str, values: dict[str, Any]) -> dict[str, Any]:
+        connection = self._connect()
+        try:
+            draft_id = str(draft_id or "").strip()
+            row = None
+            if draft_id:
+                row = connection.execute(
+                    "SELECT * FROM post_drafts WHERE draft_id = ?", (draft_id,)
+                ).fetchone()
+            else:
+                draft_id = self._new_draft_id(connection)
+
+            record = (
+                self._record_from_row(row)
+                if row is not None
+                else self._empty_record(draft_id)
+            )
+            for key, value in values.items():
+                if value is not None:
+                    record[key] = value
+            if not (
+                record["title"].strip()
+                or record["body"].strip()
+                or record["image_urls"]
+                or record["content_blocks"]
+            ):
+                raise ValueError("草稿标题、正文和图片不能同时为空。")
+
+            now = time.time()
+            record["updated_at"] = now
+            if row is None:
+                record["created_at"] = now
+                connection.execute(
+                    """
+                    INSERT INTO post_drafts (
+                        draft_id, title, body, description, topic_ids, hashtags, image_urls,
+                        content_blocks, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    self._record_values(record),
+                )
+            else:
+                connection.execute(
+                    """
+                    UPDATE post_drafts
+                    SET title = ?, body = ?, description = ?, topic_ids = ?, hashtags = ?,
+                        image_urls = ?, content_blocks = ?, updated_at = ?
+                    WHERE draft_id = ?
+                    """,
+                    (
+                        record["title"],
+                        record["body"],
+                        record["description"],
+                        json.dumps(
+                            record["topic_ids"],
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        ),
+                        json.dumps(
+                            record["hashtags"],
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        ),
+                        json.dumps(
+                            record["image_urls"],
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        ),
+                        json.dumps(
+                            record["content_blocks"],
+                            ensure_ascii=False,
+                            separators=(",", ":"),
+                        ),
+                        record["updated_at"],
+                        draft_id,
+                    ),
+                )
+            self._prune_sync(connection)
+            connection.commit()
+            return {"created": row is None, "draft": record}
+        finally:
+            connection.close()
+
+    def _delete_sync(self, draft_id: str) -> dict[str, Any]:
+        connection = self._connect()
+        try:
+            result = connection.execute(
+                "DELETE FROM post_drafts WHERE draft_id = ?", (draft_id,)
+            )
+            if result.rowcount <= 0:
+                raise ValueError("草稿不存在或已删除。")
+            connection.commit()
+            return {"draft_id": draft_id, "deleted": True}
+        finally:
+            connection.close()
+
+    def _prune_sync(self, connection: sqlite3.Connection) -> None:
+        connection.execute(
+            """
+            DELETE FROM post_drafts
+            WHERE draft_id NOT IN (
+                SELECT draft_id
+                FROM post_drafts
+                ORDER BY updated_at DESC, draft_id ASC
+                LIMIT ?
+            )
+            """,
+            (self.max_records,),
+        )
+
+    @staticmethod
+    def _new_draft_id(connection: sqlite3.Connection) -> str:
+        while True:
+            draft_id = "draft_" + uuid.uuid4().hex[:16]
+            row = connection.execute(
+                "SELECT 1 FROM post_drafts WHERE draft_id = ?", (draft_id,)
+            ).fetchone()
+            if row is None:
+                return draft_id
+
+    @staticmethod
+    def _empty_record(draft_id: str) -> dict[str, Any]:
+        return {
+            "draft_id": draft_id,
+            "title": "",
+            "body": "",
+            "description": "",
+            "topic_ids": [],
+            "hashtags": [],
+            "image_urls": [],
+            "content_blocks": [],
+            "created_at": 0.0,
+            "updated_at": 0.0,
+        }
+
+    @staticmethod
+    def _record_values(record: dict[str, Any]) -> tuple[Any, ...]:
+        return (
+            record["draft_id"],
+            record["title"],
+            record["body"],
+            record["description"],
+            json.dumps(record["topic_ids"], ensure_ascii=False, separators=(",", ":")),
+            json.dumps(record["hashtags"], ensure_ascii=False, separators=(",", ":")),
+            json.dumps(record["image_urls"], ensure_ascii=False, separators=(",", ":")),
+            json.dumps(
+                record["content_blocks"], ensure_ascii=False, separators=(",", ":")
+            ),
+            record["created_at"],
+            record["updated_at"],
+        )
+
+    @staticmethod
+    def _record_from_row(row: sqlite3.Row) -> dict[str, Any]:
+        return {
+            "draft_id": str(row["draft_id"]),
+            "title": str(row["title"] or ""),
+            "body": str(row["body"] or ""),
+            "description": str(row["description"] or ""),
+            "topic_ids": _json_list(row["topic_ids"]),
+            "hashtags": _json_list(row["hashtags"]),
+            "image_urls": _json_list(row["image_urls"]),
+            "content_blocks": _json_blocks(row["content_blocks"]),
+            "created_at": float(row["created_at"] or 0),
+            "updated_at": float(row["updated_at"] or 0),
+        }
+
+    @staticmethod
+    def _summary_from_row(row: sqlite3.Row) -> dict[str, Any]:
+        blocks = _json_blocks(row["content_blocks"])
+        body = str(row["body"] or "").strip() or content_blocks_plain_text(blocks)
+        body = body.replace("\n", " ")
+        image_urls = _json_list(row["image_urls"])
+        return {
+            "draft_id": str(row["draft_id"]),
+            "title": str(row["title"] or ""),
+            "body_preview": body[:160],
+            "topic_ids": _json_list(row["topic_ids"]),
+            "hashtags": _json_list(row["hashtags"]),
+            "image_count": len(image_urls),
+            "content_block_count": len(blocks),
+            "created_at": float(row["created_at"] or 0),
+            "updated_at": float(row["updated_at"] or 0),
+        }
+
+
+def _json_list(value: Any) -> list[str]:
+    try:
+        parsed = json.loads(str(value or "[]"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(item) for item in parsed if str(item).strip()]
+
+
+def _json_blocks(value: Any) -> list[dict[str, str]]:
+    try:
+        parsed = json.loads(str(value or "[]"))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return []
+    if not isinstance(parsed, list):
+        return []
+    blocks: list[dict[str, str]] = []
+    for item in parsed:
+        if not isinstance(item, dict):
+            continue
+        item_type = str(item.get("type") or "").strip().lower()
+        if item_type in {"text", "html"}:
+            text = str(item.get("text") or "")
+            if text.strip():
+                blocks.append({"type": item_type, "text": text})
+        elif item_type == "image":
+            url = str(item.get("url") or "").strip()
+            if url:
+                blocks.append({"type": "image", "url": url})
+    return blocks
