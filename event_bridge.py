@@ -60,6 +60,21 @@ def _is_invisible_delivery_placeholder(value: str) -> bool:
     )
 
 
+def _image_component(source: str) -> Image:
+    value = str(source or "").strip()
+    if value.startswith("data:image/"):
+        header, separator, encoded = value.partition(",")
+        if separator and ";base64" in header.casefold():
+            return Image.fromBase64(encoded)
+    if value.startswith("base64://"):
+        return Image.fromBase64(value.removeprefix("base64://"))
+    if value.startswith("file://"):
+        return Image.fromFileSystem(value.removeprefix("file:///"))
+    if is_http_url(value):
+        return Image.fromURL(value)
+    return Image.fromFileSystem(value)
+
+
 @dataclass(frozen=True, slots=True)
 class EventTarget:
     kind: str
@@ -390,9 +405,9 @@ def build_comment_message(
             label_text = f"\n[{normalized_label}：{len(urls)} 张]"
             chain.append(Plain(label_text))
             message_text_parts.append(label_text)
-            chain.extend(Image.fromURL(url) for url in urls)
+            chain.extend(_image_component(url) for url in urls)
     else:
-        chain.extend(Image.fromURL(url) for url in unique_strings(image_urls))
+        chain.extend(_image_component(url) for url in unique_strings(image_urls))
     message = AstrBotMessage()
     message.type = MessageType.GROUP_MESSAGE
     message.self_id = self_id
@@ -424,7 +439,7 @@ def build_direct_message(
 ) -> AstrBotMessage:
     self_id = _namespaced_user(self_user_id or XHH_PLATFORM_ID)
     chain: list[Any] = [At(qq=self_id, name="小黑盒bot"), Plain(message_text)]
-    chain.extend(Image.fromURL(url) for url in unique_strings(image_urls))
+    chain.extend(_image_component(url) for url in unique_strings(image_urls))
     message = AstrBotMessage()
     message.type = MessageType.FRIEND_MESSAGE
     message.self_id = self_id

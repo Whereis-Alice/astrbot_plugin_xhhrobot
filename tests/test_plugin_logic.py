@@ -838,33 +838,105 @@ class CommentImageGenerationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("被回复评论图片 1 张", str(context.request["prompt"]))
         self.assertIn("帖子图片 1 张", str(context.request["prompt"]))
 
-    async def test_gif_visual_input_is_converted_and_failed_gif_is_skipped(self) -> None:
+    async def test_visual_input_is_embedded_and_failed_image_is_skipped(self) -> None:
         plugin = object.__new__(XhhRobotPlugin)
         plugin.config = {"media": {"max_local_image_bytes": 1024 * 1024}}
         plugin.client = SimpleNamespace(
             prepare_llm_image_source=AsyncMock(
                 side_effect=[
-                    "data:image/png;base64,ZmFrZQ==",
+                    "data:image/jpeg;base64,ZmFrZQ==",
                     RuntimeError("下载超时"),
+                    "data:image/png;base64,ZmFrZQ==",
                 ]
             )
         )
 
         result = await plugin._prepare_llm_image_urls(
             [
-                "https://cdn.example/first.gif",
-                "https://cdn.example/second.gif",
                 "https://cdn.example/ordinary.jpg",
+                "https://cdn.example/missing.jpg",
+                "https://cdn.example/animation.gif",
             ]
         )
 
         self.assertEqual(
             result,
             [
+                "data:image/jpeg;base64,ZmFrZQ==",
                 "data:image/png;base64,ZmFrZQ==",
-                "https://cdn.example/ordinary.jpg",
             ],
         )
+
+    async def test_auto_browse_model_retries_transient_upstream_error(self) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "reliability": {
+                "max_retry_attempts": 3,
+                "retry_base_delay_sec": 5,
+            }
+        }
+        plugin._stop_event = asyncio.Event()
+        plugin._resolve_provider_id = AsyncMock(return_value="model")
+        plugin._build_auto_browse_system_prompt = AsyncMock(return_value="system")
+        plugin._wait_or_stop = AsyncMock()
+        transient = RuntimeError(
+            "Error code: 530 - The host is configured as a Cloudflare Tunnel"
+        )
+        plugin._llm_generate_with_optional_search = AsyncMock(
+            side_effect=[transient, SimpleNamespace(completion_text="模型结果")]
+        )
+
+        result = await plugin._browse_llm_generate("prompt", allow_search=False)
+
+        self.assertEqual(result, "模型结果")
+        self.assertEqual(plugin._llm_generate_with_optional_search.await_count, 2)
+        plugin._wait_or_stop.assert_awaited_once_with(5)
+
+    async def test_auto_browse_model_does_not_retry_image_download_404(self) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "reliability": {
+                "max_retry_attempts": 3,
+                "retry_base_delay_sec": 5,
+            }
+        }
+        plugin._stop_event = asyncio.Event()
+        plugin._resolve_provider_id = AsyncMock(return_value="model")
+        plugin._build_auto_browse_system_prompt = AsyncMock(return_value="system")
+        plugin._wait_or_stop = AsyncMock()
+        error_type = type("DownloadFileHTTPError", (RuntimeError,), {})
+        failure = error_type("HTTP status code: 404")
+        plugin._llm_generate_with_optional_search = AsyncMock(side_effect=failure)
+
+        with self.assertRaises(error_type):
+            await plugin._browse_llm_generate("prompt", allow_search=False)
+
+        plugin._llm_generate_with_optional_search.assert_awaited_once()
+        plugin._wait_or_stop.assert_not_awaited()
+
+    async def test_auto_browse_model_final_failure_records_attempt_count(self) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "reliability": {
+                "max_retry_attempts": 3,
+                "retry_base_delay_sec": 5,
+            }
+        }
+        plugin._stop_event = asyncio.Event()
+        plugin._resolve_provider_id = AsyncMock(return_value="model")
+        plugin._build_auto_browse_system_prompt = AsyncMock(return_value="system")
+        plugin._wait_or_stop = AsyncMock()
+        failure = RuntimeError(
+            "Error code: 502 - The origin web server returned an invalid response"
+        )
+        plugin._llm_generate_with_optional_search = AsyncMock(side_effect=failure)
+
+        with self.assertRaises(RuntimeError) as raised:
+            await plugin._browse_llm_generate("prompt", allow_search=False)
+
+        self.assertEqual(plugin._llm_generate_with_optional_search.await_count, 3)
+        self.assertEqual(plugin._wait_or_stop.await_count, 2)
+        self.assertEqual(getattr(raised.exception, "_xhh_retry_attempts", 0), 3)
 
 
 class DirectMessageRestrictionTests(unittest.IsolatedAsyncioTestCase):
@@ -996,6 +1068,25 @@ class ErrorNotificationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("LLM 工具执行失败", notification)
         self.assertIn("请求超时", notification)
         self.assertIn("xhh_publish_post", notification)
+
+    async def test_error_notification_reports_exhausted_read_retries(self) -> None:
+        plugin = object.__new__(XhhRobotPlugin)
+        plugin.config = {
+            "notifications": {
+                "umo": "test:FriendMessage:notify",
+                "notify_on_error": True,
+            }
+        }
+        plugin.context = RecordingNotificationContext()
+        error = XhhError("小黑盒 HTTP 500：请求失败了")
+        vars(error)["_xhh_retry_attempts"] = 3
+
+        await plugin._notify_error("私信轮询失败", error)
+
+        self.assertEqual(len(plugin.context.sent), 1)
+        notification = plugin.context.sent[0][1]
+        self.assertIn("已自动尝试 3 次", notification)
+        self.assertIn("小黑盒读取接口仍暂时不可用", notification)
 
     async def test_notification_send_failure_does_not_escape(self) -> None:
         class FailingNotificationContext:

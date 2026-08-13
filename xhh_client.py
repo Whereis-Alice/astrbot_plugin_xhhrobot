@@ -32,7 +32,6 @@ from .media import (
     extract_image_urls,
     gif_to_png_payload,
     image_payload_to_data_url,
-    is_gif_source,
     is_http_url,
     is_xhh_image_url,
     load_image_payload,
@@ -321,6 +320,8 @@ class XhhClient:
         web_version: str,
         device_id: str,
         timeout_seconds: int = 20,
+        read_retry_attempts: int = 1,
+        read_retry_base_delay_seconds: float = 1.0,
         proxy_url: str = "",
         direct_message_api_params_url: str = "",
         direct_message_restriction_pause_seconds: int = 1800,
@@ -333,6 +334,10 @@ class XhhClient:
         self.web_version = web_version
         self.device_id = device_id
         self.timeout_seconds = max(5, timeout_seconds)
+        self.read_retry_attempts = max(1, int(read_retry_attempts))
+        self.read_retry_base_delay_seconds = max(
+            0.0, float(read_retry_base_delay_seconds)
+        )
         self.proxy_url = self._validate_proxy_url(proxy_url)
         self._direct_message_api_params = self._parse_direct_message_api_params(
             direct_message_api_params_url
@@ -1606,18 +1611,15 @@ class XhhClient:
         max_bytes: int = 20 * 1024 * 1024,
         max_pixels: int = 16_000_000,
     ) -> str:
-        """Make GIF inputs compatible with AstrBot vision providers.
+        """Validate one visual input locally before handing it to AstrBot.
 
-        Non-GIF URLs remain URLs so normal vision requests do not pay an
-        unnecessary download and base64 conversion cost.
+        Remote images are embedded after download so providers do not need to
+        fetch Xiaoheihe CDN URLs themselves. GIF inputs are converted to PNG.
         """
 
-        text = str(source or "").strip()
-        if not is_gif_source(text):
-            return text
-        payload = await self.fetch_image_payload(text, max_bytes=max_bytes)
+        payload = await self.fetch_image_payload(source, max_bytes=max_bytes)
         if payload.mimetype != "image/gif":
-            return text
+            return image_payload_to_data_url(payload)
         png = await asyncio.to_thread(
             gif_to_png_payload,
             payload,
@@ -2453,6 +2455,67 @@ class XhhClient:
         direct_message_request: bool = False,
         login_request: bool = False,
     ) -> _JsonResponse:
+        attempts = (
+            self.read_retry_attempts
+            if method.upper() == "GET" and not write_request
+            else 1
+        )
+        for attempt in range(1, attempts + 1):
+            try:
+                return await self._request_json_once(
+                    method,
+                    path,
+                    params=params,
+                    data=data,
+                    use_reply_api=use_reply_api,
+                    auth_required=auth_required,
+                    allow_api_failure=allow_api_failure,
+                    write_request=write_request,
+                    direct_message_request=direct_message_request,
+                    login_request=login_request,
+                )
+            except asyncio.CancelledError:
+                raise
+            except XhhError as exc:
+                if attempt >= attempts or not self._is_retryable_read_error(exc):
+                    if attempt > 1:
+                        self._mark_retry_attempts(exc, attempt)
+                    raise
+                delay = (
+                    min(30.0, max(0.0, float(exc.retry_after)))
+                    if exc.retry_after is not None
+                    else min(
+                        self.read_retry_base_delay_seconds * (2 ** (attempt - 1)),
+                        30.0,
+                    )
+                )
+                logger.warning(
+                    "xhhrobot transient read failed; retrying: path=%s attempt=%d/%d "
+                    "delay=%.1fs error=%r",
+                    path,
+                    attempt + 1,
+                    attempts,
+                    delay,
+                    exc,
+                )
+                if delay > 0:
+                    await asyncio.sleep(delay)
+        raise AssertionError("unreachable")
+
+    async def _request_json_once(
+        self,
+        method: str,
+        path: str,
+        *,
+        params: Mapping[str, str] | None = None,
+        data: Mapping[str, str] | None = None,
+        use_reply_api: bool = False,
+        auth_required: bool,
+        allow_api_failure: bool = False,
+        write_request: bool = False,
+        direct_message_request: bool = False,
+        login_request: bool = False,
+    ) -> _JsonResponse:
         await self.start()
         if auth_required and (self.auth is None or not self.auth.cookie):
             raise XhhError("尚未登录小黑盒。", auth_required=True, retryable=False)
@@ -2614,6 +2677,41 @@ class XhhClient:
                 retryable=True,
                 delivery_uncertain=write_request,
             ) from exc
+
+    @staticmethod
+    def _is_retryable_read_error(exc: XhhError) -> bool:
+        if (
+            not exc.retryable
+            or exc.auth_required
+            or exc.terminal
+            or exc.delivery_uncertain
+        ):
+            return False
+        text = str(exc).casefold()
+        return bool(
+            exc.retry_after is not None
+            or re.search(r"(?:http|状态码)[^0-9]{0,8}(?:408|425|429|5\d\d)\b", text)
+            or any(
+                marker in text
+                for marker in (
+                    "请求小黑盒失败",
+                    "请求失败",
+                    "稍后再试",
+                    "server error",
+                    "temporarily unavailable",
+                    "timeout",
+                    "timed out",
+                    "connection reset",
+                )
+            )
+        )
+
+    @staticmethod
+    def _mark_retry_attempts(exc: BaseException, attempts: int) -> None:
+        try:
+            exc._xhh_retry_attempts = max(1, int(attempts))  # type: ignore[attr-defined]
+        except (AttributeError, TypeError):
+            return
 
     @staticmethod
     def _parse_direct_message_api_params(value: str) -> dict[str, str]:

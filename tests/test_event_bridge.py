@@ -115,6 +115,25 @@ class EventBridgeTests(unittest.IsolatedAsyncioTestCase):
             ],
         )
 
+    def test_inline_visual_input_becomes_base64_image_component(self) -> None:
+        comment = build_comment_message(
+            self_user_id="42",
+            session_id="post!100",
+            message_id="7",
+            sender_id="99",
+            sender_name="Alice",
+            message_text="评论正文",
+            image_urls=("data:image/png;base64,ZmFrZQ==",),
+            link_id=100,
+            link_title="帖子标题",
+            timestamp=123,
+            raw_message={},
+        )
+
+        images = [item for item in comment.message if isinstance(item, Image)]
+        self.assertEqual(len(images), 1)
+        self.assertEqual(images[0].file, "base64://ZmFrZQ==")
+
     def test_outbound_image_prefers_local_original_over_preview_url(self) -> None:
         image = Image(
             file="https://example.com/preview.jpg",

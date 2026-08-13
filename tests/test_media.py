@@ -102,6 +102,20 @@ class MediaTests(unittest.IsolatedAsyncioTestCase):
             "https://images.example/a.jpg?imageMogr2/thumbnail/300x300",
         )
 
+    def test_image_url_trailing_backslash_is_removed(self) -> None:
+        self.assertEqual(
+            normalize_http_image_url(
+                "https://imgheybox.max-c.com/web/thumb.jpeg\\"
+            ),
+            "https://imgheybox.max-c.com/web/thumb.jpeg",
+        )
+        self.assertEqual(
+            extract_image_urls(
+                "https://imgheybox.max-c.com/web/thumb.png\\"
+            ),
+            ["https://imgheybox.max-c.com/web/thumb.png"],
+        )
+
     def test_image_url_lists_and_nested_img_fields_are_supported(self) -> None:
         self.assertEqual(
             extract_image_urls(
@@ -179,6 +193,22 @@ class MediaTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(result.startswith("data:image/png;base64,"))
         client.fetch_image_payload.assert_awaited_once()
+
+    async def test_llm_static_image_is_validated_and_embedded(self) -> None:
+        client = self.client()
+        client.fetch_image_payload = AsyncMock(
+            return_value=ImagePayload("photo.jpg", "image/jpeg", PNG_1X1, 1, 1)
+        )
+
+        result = await client.prepare_llm_image_source(
+            "https://imgheybox.max-c.com/web/photo.jpg\\"
+        )
+
+        self.assertTrue(result.startswith("data:image/jpeg;base64,"))
+        client.fetch_image_payload.assert_awaited_once_with(
+            "https://imgheybox.max-c.com/web/photo.jpg\\",
+            max_bytes=20 * 1024 * 1024,
+        )
 
     async def test_prepare_sources_uploads_original_network_bytes_and_local_images(
         self,

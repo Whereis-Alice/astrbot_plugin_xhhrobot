@@ -54,7 +54,7 @@ def unique_strings(values: Iterable[Any]) -> list[str]:
 
 
 def normalize_http_image_url(value: Any) -> str:
-    text = str(value or "").strip()
+    text = str(value or "").strip().rstrip("\\")
     if text.startswith("//"):
         text = "https:" + text
     if len(text) > 4096:

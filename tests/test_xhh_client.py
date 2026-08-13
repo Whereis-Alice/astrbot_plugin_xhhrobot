@@ -244,6 +244,73 @@ class XhhClientTests(unittest.IsolatedAsyncioTestCase):
             "user_heybox_id=42; token=value",
         )
 
+    async def test_get_retries_json_http_500_then_succeeds(self) -> None:
+        client, session = self.make_client(
+            [
+                FakeResponse({"status": "failed", "msg": "请求失败了"}, status=500),
+                FakeResponse({"status": "ok", "result": {"messages": []}}),
+            ]
+        )
+        client.read_retry_attempts = 3
+        client.read_retry_base_delay_seconds = 0
+
+        mentions = await client.fetch_mentions(offset=0, limit=20)
+
+        self.assertEqual(mentions, [])
+        self.assertEqual(len(session.requests), 2)
+
+    async def test_get_retries_non_json_http_500_then_succeeds(self) -> None:
+        first = FakeResponse({}, status=500)
+        first._raw = "<h1>Server Error (500)</h1>"
+        client, session = self.make_client(
+            [
+                first,
+                FakeResponse({"status": "ok", "result": {"messages": []}}),
+            ]
+        )
+        client.read_retry_attempts = 3
+        client.read_retry_base_delay_seconds = 0
+
+        payload = await client.fetch_direct_message_entries()
+
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(len(session.requests), 2)
+
+    async def test_get_final_http_500_records_attempt_count(self) -> None:
+        client, session = self.make_client(
+            [
+                FakeResponse({"status": "failed", "msg": "请求失败了"}, status=500),
+                FakeResponse({"status": "failed", "msg": "请求失败了"}, status=500),
+                FakeResponse({"status": "failed", "msg": "请求失败了"}, status=500),
+            ]
+        )
+        client.read_retry_attempts = 3
+        client.read_retry_base_delay_seconds = 0
+
+        with self.assertRaises(XhhError) as raised:
+            await client.fetch_feed()
+
+        self.assertEqual(len(session.requests), 3)
+        self.assertEqual(getattr(raised.exception, "_xhh_retry_attempts", 0), 3)
+
+    async def test_post_http_500_is_not_retried(self) -> None:
+        client, session = self.make_client(
+            [FakeResponse({"status": "failed", "msg": "请求失败了"}, status=500)]
+        )
+        client.read_retry_attempts = 3
+        client.read_retry_base_delay_seconds = 0
+
+        with self.assertRaises(XhhError):
+            await client._request_json(
+                "POST",
+                "/bbs/app/comment/create",
+                data={"text": "测试"},
+                auth_required=True,
+                write_request=True,
+            )
+
+        self.assertEqual(len(session.requests), 1)
+
     async def test_fetch_comment_messages_filters_mixed_page_but_keeps_raw_count(
         self,
     ) -> None:

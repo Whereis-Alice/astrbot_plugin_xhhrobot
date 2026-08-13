@@ -282,6 +282,13 @@ class XhhRobotPlugin(Star):
             timeout_seconds=self._int_cfg(
                 "reliability.request_timeout_sec", 20, 5, 120
             ),
+            read_retry_attempts=self._int_cfg(
+                "reliability.max_retry_attempts", 3, 1, 20
+            ),
+            read_retry_base_delay_seconds=min(
+                10,
+                self._int_cfg("reliability.retry_base_delay_sec", 60, 5, 3600),
+            ),
             proxy_url=self._str_cfg("connection.proxy_url", ""),
             direct_message_api_params_url=self._str_cfg(
                 "direct_messages.api_params_url", ""
@@ -2446,18 +2453,90 @@ class XhhRobotPlugin(Star):
     ) -> str:
         provider_id = await self._resolve_provider_id()
         system_prompt = await self._build_auto_browse_system_prompt()
-        response = await self._llm_generate_with_optional_search(
-            provider_id=provider_id,
-            prompt=prompt,
-            system_prompt=system_prompt,
-            image_urls=image_urls,
-            event=event,
-            allow_search=allow_search,
+        attempts = self._int_cfg("reliability.max_retry_attempts", 3, 1, 20)
+        base_delay = min(
+            10,
+            self._int_cfg("reliability.retry_base_delay_sec", 60, 5, 3600),
         )
-        text = str(getattr(response, "completion_text", None) or "").strip()
-        if not text:
-            raise RuntimeError("AstrBot 模型返回了空文本。")
-        return text
+        for attempt in range(1, attempts + 1):
+            try:
+                response = await self._llm_generate_with_optional_search(
+                    provider_id=provider_id,
+                    prompt=prompt,
+                    system_prompt=system_prompt,
+                    image_urls=image_urls,
+                    event=event,
+                    allow_search=allow_search,
+                )
+                text = str(getattr(response, "completion_text", None) or "").strip()
+                if not text:
+                    raise RuntimeError("AstrBot 模型返回了空文本。")
+                return text
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                if attempt >= attempts or not self._is_transient_model_error(exc):
+                    self._mark_retry_attempts(exc, attempt)
+                    raise
+                delay = min(base_delay * (2 ** (attempt - 1)), 30)
+                logger.warning(
+                    "%s transient auto-browse model failure; retrying: "
+                    "attempt=%d/%d delay=%ds error=%r",
+                    PLUGIN_ID,
+                    attempt + 1,
+                    attempts,
+                    delay,
+                    exc,
+                )
+                await self._wait_or_stop(delay)
+                if self._stop_event.is_set():
+                    raise asyncio.CancelledError
+        raise AssertionError("unreachable")
+
+    @staticmethod
+    def _is_transient_model_error(exc: BaseException) -> bool:
+        text = f"{type(exc).__name__}: {exc}".casefold()
+        if any(
+            marker in text
+            for marker in (
+                "downloadfilehttperror",
+                "invalid json",
+                "jsondecode",
+                "parse error",
+                "validation error",
+                "permission denied",
+                "unauthorized",
+                "forbidden",
+            )
+        ):
+            return False
+        return bool(
+            re.search(r"(?:error code|http|status)[^0-9]{0,12}(?:408|425|429|500|502|503|504|520|521|522|523|524|525|526|527|530)\b", text)
+            or any(
+                marker in text
+                for marker in (
+                    "cloudflare tunnel",
+                    "origin web server",
+                    "bad_response_status_code",
+                    "upstream_error",
+                    "upstream",
+                    "temporarily unavailable",
+                    "service unavailable",
+                    "model_cooldown",
+                    "cooling down",
+                    "timeout",
+                    "timed out",
+                    "connection reset",
+                )
+            )
+        )
+
+    @staticmethod
+    def _mark_retry_attempts(exc: BaseException, attempts: int) -> None:
+        try:
+            exc._xhh_retry_attempts = max(1, int(attempts))  # type: ignore[attr-defined]
+        except (AttributeError, TypeError):
+            return
 
     async def _build_auto_browse_system_prompt(self) -> str:
         parts = [AUTO_BROWSE_SYSTEM_PROMPT]
@@ -3528,7 +3607,7 @@ class XhhRobotPlugin(Star):
         return prepared
 
     async def _prepare_llm_image_urls(self, urls: Any) -> list[str]:
-        """Convert GIFs before AstrBot hands visual input to a provider."""
+        """Validate and embed images before AstrBot hands them to a provider."""
 
         client = getattr(self, "client", None)
         converter = getattr(client, "prepare_llm_image_source", None)
@@ -3537,34 +3616,25 @@ class XhhRobotPlugin(Star):
         )
         prepared: list[str] = []
         for source in unique_strings(urls or []):
-            if not is_gif_source(source):
-                prepared.append(source)
-                continue
             if not callable(converter):
-                logger.warning(
-                    "%s skipped GIF visual input because the image converter is unavailable: source=%r",
-                    PLUGIN_ID,
-                    source,
-                )
-                await self._notify_error(
-                    "GIF 图片处理失败",
-                    "图片转换器不可用",
-                    details="已跳过该 GIF，文字处理仍会继续。",
-                )
+                if is_gif_source(source):
+                    logger.warning(
+                        "%s skipped GIF visual input because the image converter "
+                        "is unavailable: source=%r",
+                        PLUGIN_ID,
+                        source,
+                    )
+                else:
+                    prepared.append(source)
                 continue
             try:
                 converted = await converter(source, max_bytes=max_bytes)
             except Exception as exc:  # noqa: BLE001 - one bad image must not abort text generation
                 logger.warning(
-                    "%s skipped GIF visual input: source=%r error=%r",
+                    "%s skipped unavailable visual input: source=%r error=%r",
                     PLUGIN_ID,
                     source,
                     exc,
-                )
-                await self._notify_error(
-                    "GIF 图片处理失败",
-                    exc,
-                    details="已跳过该 GIF，文字处理仍会继续。",
                 )
                 continue
             if converted:
@@ -5218,6 +5288,21 @@ class XhhRobotPlugin(Star):
         error_type = type(error).__name__ if isinstance(error, BaseException) else "Error"
         error_text = self._safe_notification_text(error, limit=800)
         detail_text = self._safe_notification_text(details, limit=800) if details else ""
+        retry_attempts = int(getattr(error, "_xhh_retry_attempts", 1) or 1)
+        if retry_attempts > 1:
+            recovery_source = (
+                "小黑盒读取接口"
+                if isinstance(error, XhhError)
+                else "模型服务上游"
+            )
+            detail_text = "\n".join(
+                part
+                for part in (
+                    detail_text,
+                    f"恢复处理：已自动尝试 {retry_attempts} 次；{recovery_source}仍暂时不可用。",
+                )
+                if part
+            )
         key = f"{category}|{error_type}|{error_text}"
         lock = getattr(self, "_error_notification_lock", None)
         if lock is None:
